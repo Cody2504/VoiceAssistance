@@ -159,8 +159,9 @@ class VideoSearch:
 
         # Exclude CLS embeddings (shot_index == -1) for clip-level search
         if group_by == "clip":
+            from qdrant_client.models import Range
             filter_conditions.append(
-                FieldCondition(key="is_cls_embedding", match=MatchValue(value=False))
+                FieldCondition(key="shot_index", range=Range(gte=0))
             )
 
         if video_filter:
