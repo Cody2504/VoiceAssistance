@@ -1,82 +1,145 @@
 """
-Video Q&A module using Qwen2-VL-7B for video understanding.
-Replaces TwelveLabs Pegasus APIs (gist, summarize, generate).
+Video Q&A module using OpenRouter API (qwen/qwen3-vl-8b-instruct).
+
+Replaces local Qwen2-VL model with OpenRouter API call.
+Sends extracted frames as base64 images to the VLM endpoint.
 
 Usage:
-    qa = VideoQA()
-    answer = await qa.freeform("What is happening in this video?", video_path="clip.mp4")
+    qa = VideoQA.from_config(config)
+    answer = await qa.freeform("What is happening?", video_path="clip.mp4")
     summary = await qa.summarize(video_path="clip.mp4", mode="summary")
 """
+import base64
 import json
 import logging
-from typing import Optional
+import os
+from typing import List, Optional
+
+import numpy as np
 
 log = logging.getLogger(__name__)
 
 
-class VideoQA:
-    """Qwen2-VL-7B wrapper for video question answering and text generation.
+def _frames_to_base64_images(frames: np.ndarray, max_images: int = 8) -> List[str]:
+    """Convert numpy frames [N, H, W, 3] to base64-encoded JPEG strings."""
+    try:
+        from PIL import Image
+        import io
 
-    Handles all three TwelveLabs Pegasus replacement tasks:
+        images = []
+        # Sample evenly if too many frames
+        indices = np.linspace(0, len(frames) - 1, min(max_images, len(frames)), dtype=int)
+
+        for idx in indices:
+            frame = frames[idx]
+            img = Image.fromarray(frame)
+            # Resize to reasonable size for API
+            img.thumbnail((512, 512))
+            buf = io.BytesIO()
+            img.save(buf, format="JPEG", quality=80)
+            b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+            images.append(b64)
+
+        return images
+    except ImportError:
+        log.warning("Pillow not installed. pip install Pillow")
+        return []
+
+
+class VideoQA:
+    """Video Q&A via OpenRouter API using qwen/qwen3-vl-8b-instruct.
+
+    Sends extracted video frames as images to the VLM for understanding.
+    Handles all TwelveLabs Pegasus replacement tasks:
     - gist (title, topics, hashtags)
     - summarize (summary, highlights, chapters)
     - freeform (arbitrary Q&A about video content)
     """
 
-    def __init__(self, model_name: str = "Qwen/Qwen2-VL-7B-Instruct", device: str = "cuda"):
-        self.model_name = model_name
-        self.device = device
-        self._model = None
-        self._processor = None
+    def __init__(
+        self,
+        api_key: str = "",
+        model: str = "qwen/qwen3-vl-8b-instruct",
+        base_url: str = "https://openrouter.ai/api/v1",
+        max_frames: int = 8,
+    ):
+        self.model = model
+        self.base_url = base_url
+        self.max_frames = max_frames
+        self._client = None
+        self._api_key = api_key
+
+    @classmethod
+    def from_config(cls, config):
+        """Create a VideoQA from a PipelineConfig."""
+        return cls(
+            api_key=config.openrouter_api_key,
+            model=config.vlm_model,
+            base_url=config.openrouter_base_url,
+        )
 
     def _lazy_load(self):
-        if self._model is not None:
+        if self._client is not None:
             return
-
-        log.info(f"Loading Qwen2-VL from {self.model_name}...")
+        if not self._api_key:
+            log.warning("OPENROUTER_API_KEY not set. VideoQA will return placeholder responses.")
+            self._client = "unavailable"
+            return
         try:
-            import torch
-            from transformers import Qwen2VLForConditionalGeneration, AutoProcessor
-
-            self._model = Qwen2VLForConditionalGeneration.from_pretrained(
-                self.model_name,
-                torch_dtype=torch.bfloat16,
-                device_map="auto",
+            from openai import OpenAI
+            self._client = OpenAI(
+                api_key=self._api_key,
+                base_url=self.base_url,
             )
-            self._processor = AutoProcessor.from_pretrained(self.model_name)
-            log.info("Qwen2-VL loaded successfully.")
-        except (ImportError, Exception) as e:
-            log.warning(f"Could not load Qwen2-VL: {e}. Video Q&A will return placeholder responses.")
-            self._model = "unavailable"
+            log.info(f"OpenRouter VLM client initialized (model={self.model})")
+        except ImportError:
+            log.warning("openai package not installed. pip install openai")
+            self._client = "unavailable"
+
+    def _extract_frames(self, video_path: str) -> np.ndarray:
+        """Extract frames from video for VLM input."""
+        try:
+            from jockey.open_source.indexer import extract_frames
+            # Extract from the whole video
+            frames = extract_frames(video_path, 0.0, 9999.0, max_frames=self.max_frames)
+            return frames
+        except Exception as e:
+            log.warning(f"Frame extraction failed: {e}")
+            return np.zeros((1, 224, 224, 3), dtype=np.uint8)
 
     def _generate(self, video_path: str, prompt: str, max_tokens: int = 512) -> str:
-        """Core generation method — sends video + prompt to Qwen2-VL."""
+        """Core generation method — sends video frames + prompt to VLM via OpenRouter."""
         self._lazy_load()
 
-        if self._model == "unavailable":
-            return f"[Qwen2-VL unavailable] Prompt was: {prompt}"
+        if self._client == "unavailable":
+            return f"[VLM unavailable — set OPENROUTER_API_KEY] Prompt was: {prompt}"
 
-        import torch
+        # Extract frames and convert to base64
+        frames = self._extract_frames(video_path)
+        b64_images = _frames_to_base64_images(frames, max_images=self.max_frames)
 
-        messages = [{
-            "role": "user",
-            "content": [
-                {"type": "video", "video": f"file://{video_path}", "max_pixels": 360 * 420, "fps": 1.0},
-                {"type": "text", "text": prompt},
-            ],
-        }]
+        if not b64_images:
+            return f"[Could not extract frames from {video_path}] Prompt was: {prompt}"
 
-        text = self._processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-        inputs = self._processor(text=[text], videos=[video_path], return_tensors="pt")
-        inputs = {k: v.to(self._model.device) for k, v in inputs.items()}
+        # Build message with images
+        content = []
+        for b64 in b64_images:
+            content.append({
+                "type": "image_url",
+                "image_url": {"url": f"data:image/jpeg;base64,{b64}"},
+            })
+        content.append({"type": "text", "text": prompt})
 
-        with torch.no_grad():
-            output_ids = self._model.generate(**inputs, max_new_tokens=max_tokens)
-
-        # Decode only the generated tokens (skip the input)
-        generated_ids = output_ids[:, inputs["input_ids"].shape[1]:]
-        response = self._processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
-        return response.strip()
+        try:
+            response = self._client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": content}],
+                max_tokens=max_tokens,
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            log.warning(f"OpenRouter VLM call failed: {e}")
+            return f"[VLM error: {e}] Prompt was: {prompt}"
 
     async def gist(self, video_path: str, options: list) -> str:
         """Generate gist output: title, topics, hashtags.

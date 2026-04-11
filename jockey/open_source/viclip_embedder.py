@@ -1,99 +1,102 @@
 """
-ViCLIP video embedding module.
+Video/Image CLIP embedding module.
 
-Wraps InternVideo2/ViCLIP for generating video and text embeddings.
-Uses the pretrained model by default; swap checkpoint path for fine-tuned version later.
+Uses openai/clip-vit-large-patch14 from HuggingFace transformers.
+For video, extracts frames and averages their CLIP embeddings.
 
 Usage:
-    embedder = ViCLIPEmbedder()
-    video_emb = embedder.encode_video(frames)   # np.ndarray [D]
-    text_emb = embedder.encode_text("a dog playing fetch")  # np.ndarray [D]
+    embedder = ViCLIPEmbedder(device="cpu")
+    video_emb = embedder.encode_video(frames)   # np.ndarray [768]
+    text_emb = embedder.encode_text("a dog playing fetch")  # np.ndarray [768]
 """
 import logging
+import os
 import numpy as np
 from typing import Union, List
 
 log = logging.getLogger(__name__)
 
+EMBEDDING_DIM = 768  # clip-vit-large-patch14 output dimension
+
 
 class ViCLIPEmbedder:
-    """Wrapper around InternVideo2/ViCLIP for video-text embeddings.
+    """Wrapper around OpenAI CLIP ViT-L/14 for video-text embeddings.
 
-    For now, uses the pretrained model via the transformers/InternVideo2 API.
-    After fine-tuning, just change `model_name_or_path` to your checkpoint.
+    Uses the standard CLIP model (768-dim) from HuggingFace transformers.
+    Video frames are encoded individually and averaged to produce
+    a single video-level embedding (mean pooling over frames).
     """
 
-    def __init__(self, model_name_or_path: str = "OpenGVLab/ViCLIP-L-14", device: str = "cuda"):
+    def __init__(self, model_name_or_path: str = "openai/clip-vit-large-patch14", device: str = "cuda"):
         self.model_name_or_path = model_name_or_path
         self.device = device
         self._model = None
+        self._processor = None
         self._tokenizer = None
+        self._hf_token = os.environ.get("HF_API_KEY", None)
 
     def _lazy_load(self):
         """Lazy-load the model only when first needed."""
         if self._model is not None:
             return
 
-        log.info(f"Loading ViCLIP model from {self.model_name_or_path}...")
+        log.info(f"Loading CLIP model from {self.model_name_or_path}...")
         try:
-            # Primary: try loading via the InternVideo2 library
-            from internvideo2.models.viclip import ViCLIP as ViCLIPModel
-            self._model = ViCLIPModel.from_pretrained(self.model_name_or_path)
+            from transformers import CLIPModel, CLIPProcessor, CLIPTokenizer
+
+            self._model = CLIPModel.from_pretrained(
+                self.model_name_or_path,
+                token=self._hf_token,
+            )
             self._model = self._model.to(self.device).eval()
-            log.info("Loaded ViCLIP via internvideo2 library.")
-        except ImportError:
-            try:
-                # Fallback: try loading via transformers (if available as HF model)
-                from transformers import AutoModel, AutoTokenizer
-                self._model = AutoModel.from_pretrained(self.model_name_or_path, trust_remote_code=True)
-                self._model = self._model.to(self.device).eval()
-                self._tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path, trust_remote_code=True)
-                log.info("Loaded ViCLIP via transformers.")
-            except Exception as e:
-                log.warning(f"Could not load ViCLIP model: {e}. Using random embeddings as placeholder.")
-                self._model = "placeholder"
+            self._processor = CLIPProcessor.from_pretrained(
+                self.model_name_or_path,
+                token=self._hf_token,
+            )
+            self._tokenizer = CLIPTokenizer.from_pretrained(
+                self.model_name_or_path,
+                token=self._hf_token,
+            )
+            param_count = sum(p.numel() for p in self._model.parameters())
+            log.info(f"Loaded CLIP model ({param_count:,} params, device={self.device})")
+        except Exception as e:
+            log.warning(f"Could not load CLIP model: {e}. Using random embeddings as placeholder.")
+            self._model = "placeholder"
 
     def encode_video(self, frames: np.ndarray) -> np.ndarray:
         """Encode video frames into a normalized embedding vector.
+
+        Processes each frame through CLIP's vision encoder and averages the
+        frame embeddings (mean pooling) to produce a single video embedding.
 
         Args:
             frames: Video frames as numpy array [N, H, W, 3] (uint8, RGB).
 
         Returns:
-            Normalized embedding vector [D].
+            Normalized embedding vector [768].
         """
         self._lazy_load()
 
         if self._model == "placeholder":
-            emb = np.random.randn(768).astype(np.float32)
+            emb = np.random.randn(EMBEDDING_DIM).astype(np.float32)
             return emb / np.linalg.norm(emb)
 
         import torch
-        import torch.nn.functional as F_torch
+        from PIL import Image
 
         with torch.no_grad():
-            # Convert frames: [N, H, W, 3] uint8 → [B, T, C, H, W] float
-            frames_tensor = torch.from_numpy(frames).float().permute(0, 3, 1, 2) / 255.0  # [N, 3, H, W]
-            # Resize to 224x224 if needed
-            if frames_tensor.shape[-2] != 224 or frames_tensor.shape[-1] != 224:
-                frames_tensor = F_torch.interpolate(frames_tensor, size=(224, 224), mode='bilinear', align_corners=False)
-            frames_tensor = frames_tensor.unsqueeze(0).to(self.device)  # [1, T, 3, H, W]
+            # Convert numpy frames to PIL images
+            pil_images = [Image.fromarray(frame) for frame in frames]
 
-            # ViCLIP HF model uses encode_vision()
-            if hasattr(self._model, 'encode_vision'):
-                # Returns: (vision_embeds [B,T,L,C], pooled_vision_embeds [B,T,C])
-                result = self._model.encode_vision(frames_tensor)
-                if isinstance(result, tuple):
-                    pooled = result[1]  # [B, T, C]
-                    emb = pooled.mean(dim=1).squeeze()  # Average over temporal dim → [C]
-                else:
-                    emb = result.squeeze()
-            elif hasattr(self._model, 'get_video_features'):
-                emb = self._model.get_video_features(pixel_values=frames_tensor).squeeze()
-            else:
-                emb = self._model(frames_tensor).squeeze()
+            # Process all frames as a batch
+            inputs = self._processor(images=pil_images, return_tensors="pt")
+            inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
-            emb = emb.cpu().numpy().astype(np.float32)
+            # Get image embeddings [N, 768]
+            image_features = self._model.get_image_features(**inputs)
+
+            # Mean pool over frames → [768]
+            emb = image_features.mean(dim=0).cpu().numpy().astype(np.float32)
 
         emb = emb / np.linalg.norm(emb)
         return emb
@@ -105,33 +108,23 @@ class ViCLIPEmbedder:
             text: Natural language query string.
 
         Returns:
-            Normalized embedding vector [D].
+            Normalized embedding vector [768].
         """
         self._lazy_load()
 
         if self._model == "placeholder":
-            emb = np.random.randn(768).astype(np.float32)
+            emb = np.random.randn(EMBEDDING_DIM).astype(np.float32)
             return emb / np.linalg.norm(emb)
 
         import torch
-        with torch.no_grad():
-            # ViCLIP HF model — encode_text takes raw text, tokenizes internally 
-            if hasattr(self._model, 'encode_text') and not self._tokenizer:
-                emb = self._model.encode_text(text)
-                if isinstance(emb, tuple):
-                    emb = emb[-1]  # pooled text embedding
-                emb = emb.squeeze()
-            elif self._tokenizer is not None:
-                tokens = self._tokenizer(text, return_tensors="pt", padding=True, truncation=True)
-                tokens = {k: v.to(self.device) for k, v in tokens.items()}
-                if hasattr(self._model, 'get_text_features'):
-                    emb = self._model.get_text_features(**tokens).squeeze()
-                else:
-                    emb = self._model.encode_text(**tokens).squeeze()
-            else:
-                raise RuntimeError("Model does not have encode_text method or tokenizer")
 
-            emb = emb.cpu().numpy().astype(np.float32)
+        with torch.no_grad():
+            inputs = self._tokenizer(
+                text, return_tensors="pt", padding=True, truncation=True, max_length=77,
+            )
+            inputs = {k: v.to(self.device) for k, v in inputs.items()}
+            text_features = self._model.get_text_features(**inputs)
+            emb = text_features.squeeze().cpu().numpy().astype(np.float32)
 
         emb = emb / np.linalg.norm(emb)
         return emb
