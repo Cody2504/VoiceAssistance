@@ -14,15 +14,35 @@ import os
 from dataclasses import dataclass
 from typing import Optional
 
-# Load .env file from jockey/ directory
-_env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
-if os.path.isfile(_env_path):
-    with open(_env_path) as f:
-        for line in f:
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                key, _, value = line.partition("=")
-                os.environ.setdefault(key.strip(), value.strip())
+# Load .env file from project root or jockey/ directory
+_config_dir = os.path.dirname(os.path.abspath(__file__))
+_env_candidates = [
+    os.path.join(_config_dir, "..", "..", ".env"),   # project root (tl-jockey/.env)
+    os.path.join(_config_dir, "..", ".env"),          # jockey/.env
+]
+for _env_path in _env_candidates:
+    _env_path = os.path.normpath(_env_path)
+    if os.path.isfile(_env_path):
+        with open(_env_path) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    key, _, value = line.partition("=")
+                    os.environ.setdefault(key.strip(), value.strip())
+        break
+
+# Ensure HF_TOKEN is set for huggingface_hub (our .env uses HF_API_KEY)
+if os.environ.get("HF_API_KEY") and not os.environ.get("HF_TOKEN"):
+    os.environ["HF_TOKEN"] = os.environ["HF_API_KEY"]
+
+
+def _auto_device() -> str:
+    """Default device: cuda if available, else cpu. Avoids silent random-embedding fallback."""
+    try:
+        import torch
+        return "cuda" if torch.cuda.is_available() else "cpu"
+    except ImportError:
+        return "cpu"
 
 
 @dataclass
@@ -43,12 +63,12 @@ class PipelineConfig:
 
     # --- ViCLIP (Video Embeddings — Local HuggingFace) ---
     viclip_model_name: str = os.environ.get("VICLIP_MODEL", "openai/clip-vit-large-patch14")
-    viclip_device: str = os.environ.get("VICLIP_DEVICE", "cuda")
+    viclip_device: str = os.environ.get("VICLIP_DEVICE", _auto_device())
     viclip_embedding_dim: int = 768
 
     # --- Audio Encoder (wav2vec2 — Local HuggingFace) ---
     audio_encoder_model: str = os.environ.get("AUDIO_ENCODER_MODEL", "facebook/wav2vec2-base-960h")
-    audio_encoder_device: str = os.environ.get("AUDIO_ENCODER_DEVICE", "cuda")
+    audio_encoder_device: str = os.environ.get("AUDIO_ENCODER_DEVICE", _auto_device())
     audio_embedding_dim: int = 768
 
     # --- Text Embeddings (via OpenRouter API) ---
@@ -72,7 +92,7 @@ class PipelineConfig:
     mediafm_hidden_dim: int = int(os.environ.get("MEDIAFM_HIDDEN_DIM", "512"))
     mediafm_num_layers: int = int(os.environ.get("MEDIAFM_NUM_LAYERS", "3"))
     mediafm_num_heads: int = int(os.environ.get("MEDIAFM_NUM_HEADS", "8"))
-    mediafm_device: str = os.environ.get("MEDIAFM_DEVICE", "cuda")
+    mediafm_device: str = os.environ.get("MEDIAFM_DEVICE", _auto_device())
     mediafm_checkpoint: Optional[str] = os.environ.get("MEDIAFM_CHECKPOINT", None)
 
     # --- ZipFormer ASR ---

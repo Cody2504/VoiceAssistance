@@ -38,18 +38,34 @@ class AudioEncoder:
     def embedding_dim(self) -> int:
         return self._embedding_dim
 
+    def _resolve_device(self) -> str:
+        """Resolve device with CUDA-availability fallback to CPU."""
+        if self.device.startswith("cuda"):
+            try:
+                import torch
+                if not torch.cuda.is_available():
+                    log.warning(
+                        f"CUDA requested for wav2vec2 but no CUDA driver found. "
+                        f"Falling back to CPU (slow but correct)."
+                    )
+                    self.device = "cpu"
+            except ImportError:
+                self.device = "cpu"
+        return self.device
+
     def _lazy_load(self):
         """Lazy-load the wav2vec2 model only when first needed."""
         if self._model is not None:
             return
 
-        log.info(f"Loading audio encoder from {self.model_name}...")
+        device = self._resolve_device()
+        log.info(f"Loading audio encoder from {self.model_name} on {device}...")
         try:
             from transformers import Wav2Vec2Model, Wav2Vec2Processor
 
             self._processor = Wav2Vec2Processor.from_pretrained(self.model_name)
             self._model = Wav2Vec2Model.from_pretrained(self.model_name)
-            self._model = self._model.to(self.device).eval()
+            self._model = self._model.to(device).eval()
             self._embedding_dim = self._model.config.hidden_size
             log.info(f"Loaded wav2vec2 audio encoder (dim={self._embedding_dim}).")
         except (ImportError, Exception) as e:

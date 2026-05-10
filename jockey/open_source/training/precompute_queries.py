@@ -1,0 +1,123 @@
+"""
+Precompute Query Embeddings — cache text-embedding-3-large embeddings for unique queries.
+
+Run once after parsing Charades-STA annotations. Avoids hitting the API during training.
+
+Usage:
+    python -m jockey.open_source.training.precompute_queries \\
+        --annotations data/charades_sta_train.txt data/charades_sta_test.txt \\
+        --out features/charades/query_emb.npz
+
+Cached format (.npz):
+    queries     — object array of strings
+    embeddings  — float32 [num_queries, text_dim]
+
+Incremental: if --out exists, only new queries are embedded and merged in.
+"""
+import argparse
+import logging
+import os
+import time
+from typing import Dict, List
+
+import numpy as np
+
+from jockey.open_source.config import config as default_config
+from jockey.open_source.training.charades_sta import parse_annotations, unique_queries
+
+log = logging.getLogger(__name__)
+
+
+def load_existing_cache(path: str) -> Dict[str, np.ndarray]:
+    if not os.path.isfile(path):
+        return {}
+    data = np.load(path, allow_pickle=True)
+    return {str(q): v for q, v in zip(data["queries"], data["embeddings"])}
+
+
+def save_cache(cache: Dict[str, np.ndarray], path: str) -> None:
+    out_dir = os.path.dirname(os.path.abspath(path))
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
+    queries = np.array(list(cache.keys()), dtype=object)
+    embeddings = np.stack(list(cache.values()), axis=0).astype(np.float32)
+    np.savez_compressed(path, queries=queries, embeddings=embeddings)
+
+
+def collect_unique_queries(annotation_paths: List[str]) -> List[str]:
+    all_records = []
+    for p in annotation_paths:
+        all_records.extend(parse_annotations(p))
+    return unique_queries(all_records)
+
+
+def main():
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s | %(name)s | %(levelname)s | %(message)s",
+        datefmt="%H:%M:%S",
+    )
+    p = argparse.ArgumentParser(description="Precompute Charades-STA query embeddings.")
+    p.add_argument(
+        "--annotations", nargs="+", required=True,
+        help="One or more Charades-STA annotation .txt files (train + test).",
+    )
+    p.add_argument("--out", required=True, help="Output .npz cache path.")
+    p.add_argument("--checkpoint-every", type=int, default=100,
+                   help="Save cache to disk every N queries.")
+    p.add_argument("--limit", type=int, default=None, help="Embed at most N new queries.")
+    args = p.parse_args()
+
+    queries = collect_unique_queries(args.annotations)
+    log.info(f"{len(queries)} unique queries across {len(args.annotations)} annotation files")
+
+    cache = load_existing_cache(args.out)
+    log.info(f"Existing cache: {len(cache)} queries")
+
+    todo = [q for q in queries if q not in cache]
+    if args.limit is not None:
+        todo = todo[: args.limit]
+    log.info(f"To embed: {len(todo)} new queries")
+
+    if not todo:
+        save_cache(cache, args.out)
+        log.info(f"Nothing to do. Cache saved at {args.out} ({len(cache)} queries)")
+        return
+
+    from jockey.open_source.search import TextEmbedder
+
+    embedder = TextEmbedder(
+        api_key=default_config.openrouter_api_key,
+        model=default_config.text_embedding_model,
+        base_url=default_config.openrouter_base_url,
+    )
+
+    t0 = time.time()
+    n_ok = n_fail = 0
+    for i, q in enumerate(todo, 1):
+        try:
+            emb = embedder.encode(q).astype(np.float32)
+            cache[q] = emb
+            n_ok += 1
+        except Exception as e:
+            log.warning(f"  failed '{q[:60]}...': {e}")
+            n_fail += 1
+
+        if i % args.checkpoint_every == 0:
+            save_cache(cache, args.out)
+            elapsed = time.time() - t0
+            log.info(
+                f"[{i}/{len(todo)}] checkpoint saved "
+                f"({elapsed:.1f}s, ok={n_ok} fail={n_fail})"
+            )
+
+    save_cache(cache, args.out)
+    elapsed = time.time() - t0
+    log.info(
+        f"Done. cached={len(cache)} new_ok={n_ok} new_fail={n_fail} "
+        f"elapsed={elapsed:.1f}s → {args.out}"
+    )
+
+
+if __name__ == "__main__":
+    main()
