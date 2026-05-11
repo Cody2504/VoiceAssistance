@@ -39,23 +39,45 @@ from jockey.open_source.config import config as default_config, PipelineConfig
 from jockey.open_source.indexer import detect_shots, extract_frames, _get_video_duration
 
 
-def uniform_windows(duration: float, window_sec: float) -> List[tuple]:
+def uniform_windows(
+    duration: float,
+    window_sec: float,
+    min_last_sec: Optional[float] = None,
+) -> List[tuple]:
     """Split a video duration into fixed-length windows.
 
     For continuous single-shot footage (Charades, ego-centric, user uploads) where
     PySceneDetect collapses to a single boundary. Temporal-grounding literature
     (Moment-DETR, QD-DETR, UniVTG) operates on uniform clips like these.
 
-    Returns list of (start_sec, end_sec). Final window may be shorter than window_sec.
+    Trailing partial window handling:
+        If the final window would be shorter than `min_last_sec` (default = half
+        the window size), it's merged into the previous window. This avoids
+        meaningless short windows (e.g. 0.7s of audio for Whisper, 1-2 frames for
+        CLIP) at video boundaries.
+
+    Returns list of (start_sec, end_sec).
     """
     if duration <= 0:
         return [(0.0, max(0.1, duration))]
+    if min_last_sec is None:
+        min_last_sec = window_sec / 2.0
+
     windows: List[tuple] = []
     t = 0.0
     while t < duration - 1e-3:
         end = min(t + window_sec, duration)
         windows.append((float(t), float(end)))
         t = end
+
+    # Merge the trailing window if it's too short.
+    if len(windows) >= 2:
+        last_dur = windows[-1][1] - windows[-1][0]
+        if last_dur < min_last_sec:
+            prev_start, _ = windows[-2]
+            _, last_end = windows[-1]
+            windows = windows[:-2] + [(prev_start, last_end)]
+
     return windows
 
 log = logging.getLogger(__name__)

@@ -190,31 +190,33 @@ def compute_shot_relevance(
     shot_boundaries: np.ndarray,    # [N, 2] (start, end) in seconds
     moment_start: float,
     moment_end: float,
-    overlap_threshold: float = 0.5,
+    soft: bool = True,
+    binary_threshold: float = 0.5,
 ) -> np.ndarray:
-    """Per-shot binary relevance.
+    """Per-shot relevance (intersection over shot duration).
 
-    Shot is positive if (intersection / shot_duration) >= overlap_threshold.
-    If no shot meets the threshold, the shot with the most overlap is forced positive.
+    Default (soft=True): float32 array [N] in [0.0, 1.0] giving the fraction of
+    each shot that overlaps with the moment. Smoother training signal than binary
+    labels — a shot 30% inside the moment contributes a partial gradient.
 
-    Returns float32 array [N] in {0.0, 1.0}.
+    Set soft=False to get binary labels (1 iff overlap_ratio >= binary_threshold,
+    with the most-overlapping shot forced to 1 if none clear the threshold).
     """
     n = shot_boundaries.shape[0]
     rel = np.zeros(n, dtype=np.float32)
-    overlaps = np.zeros(n, dtype=np.float32)
 
     for i, (s, e) in enumerate(shot_boundaries):
         inter = max(0.0, min(float(e), moment_end) - max(float(s), moment_start))
         shot_dur = max(1e-6, float(e) - float(s))
-        ratio = inter / shot_dur
-        overlaps[i] = inter
-        if ratio >= overlap_threshold:
-            rel[i] = 1.0
+        rel[i] = float(inter / shot_dur)  # always in [0, 1]
 
-    if rel.sum() == 0 and n > 0 and overlaps.max() > 0:
-        rel[int(np.argmax(overlaps))] = 1.0
+    if soft:
+        return rel
 
-    return rel
+    binary = (rel >= binary_threshold).astype(np.float32)
+    if binary.sum() == 0 and n > 0 and rel.max() > 0:
+        binary[int(np.argmax(rel))] = 1.0
+    return binary
 
 
 def normalize_boundary(
@@ -255,13 +257,13 @@ class CharadesSTADataset(Dataset):
         features_dir: str,
         query_cache_path: str,
         max_shots: int = 64,
-        overlap_threshold: float = 0.5,
+        soft_relevance: bool = True,
         require_features: bool = True,
         cache_features_in_ram: bool = False,
     ):
         self.features_dir = features_dir
         self.max_shots = max_shots
-        self.overlap_threshold = overlap_threshold
+        self.soft_relevance = soft_relevance
         self.cache_features_in_ram = cache_features_in_ram
         self._ram_cache: Dict[str, ShotFeatures] = {}
 
@@ -329,7 +331,7 @@ class CharadesSTADataset(Dataset):
         caption = feats.caption_features[:n]
 
         gt_rel = compute_shot_relevance(
-            sb, r["start_sec"], r["end_sec"], self.overlap_threshold
+            sb, r["start_sec"], r["end_sec"], soft=self.soft_relevance
         )
         gt_bnd = normalize_boundary(r["start_sec"], r["end_sec"], feats.duration)
 

@@ -62,6 +62,23 @@ def set_seed(seed: int) -> None:
         torch.cuda.manual_seed_all(seed)
 
 
+def split_train_val(records, val_ratio: float, seed: int):
+    """Split annotation records by VIDEO_ID into (train, val).
+
+    Splitting by video_id (not by query line) prevents leakage: otherwise the
+    same video's frames could appear in both train and val with different
+    queries, and the model would memorize the visual features per video.
+    """
+    rng = random.Random(seed)
+    video_ids = sorted({r["video_id"] for r in records})
+    rng.shuffle(video_ids)
+    n_val = max(1, int(len(video_ids) * val_ratio))
+    val_vids = set(video_ids[:n_val])
+    train = [r for r in records if r["video_id"] not in val_vids]
+    val = [r for r in records if r["video_id"] in val_vids]
+    return train, val
+
+
 def cosine_warmup_lr(step: int, total: int, warmup: int, base_lr: float, min_lr: float = 1e-6) -> float:
     if step < warmup:
         return base_lr * (step + 1) / max(1, warmup)
@@ -135,37 +152,33 @@ def train(args: argparse.Namespace) -> None:
     with open(os.path.join(args.out_dir, "config.json"), "w") as f:
         json.dump(vars(args), f, indent=2)
 
-    # Datasets
-    train_recs = parse_annotations(args.train_ann)
+    # Datasets — train/val/test with VIDEO-LEVEL split for val to avoid leakage.
+    all_train_recs = parse_annotations(args.train_ann)
     test_recs = parse_annotations(args.test_ann)
-    train_ds = CharadesSTADataset(
-        annotations=train_recs,
+    train_recs, val_recs = split_train_val(all_train_recs, args.val_ratio, args.val_seed)
+    log.info(
+        f"Split (by video_id, seed={args.val_seed}, val_ratio={args.val_ratio}): "
+        f"train={len(train_recs)} val={len(val_recs)} test={len(test_recs)}"
+    )
+
+    ds_kwargs = dict(
         features_dir=args.features_dir,
         query_cache_path=args.query_cache,
         max_shots=args.max_shots,
     )
-    test_ds = CharadesSTADataset(
-        annotations=test_recs,
-        features_dir=args.features_dir,
-        query_cache_path=args.query_cache,
-        max_shots=args.max_shots,
-    )
-    train_loader = DataLoader(
-        train_ds,
+    train_ds = CharadesSTADataset(annotations=train_recs, **ds_kwargs)
+    val_ds   = CharadesSTADataset(annotations=val_recs,   **ds_kwargs)
+    test_ds  = CharadesSTADataset(annotations=test_recs,  **ds_kwargs)
+
+    loader_kwargs = dict(
         batch_size=args.batch_size,
-        shuffle=True,
         num_workers=args.num_workers,
         collate_fn=grounding_collate,
         pin_memory=(args.device == "cuda"),
     )
-    test_loader = DataLoader(
-        test_ds,
-        batch_size=args.batch_size,
-        shuffle=False,
-        num_workers=args.num_workers,
-        collate_fn=grounding_collate,
-        pin_memory=(args.device == "cuda"),
-    )
+    train_loader = DataLoader(train_ds, shuffle=True,  **loader_kwargs)
+    val_loader   = DataLoader(val_ds,   shuffle=False, **loader_kwargs)
+    test_loader  = DataLoader(test_ds,  shuffle=False, **loader_kwargs)
 
     # Model
     cfg = GroundingConfig(
@@ -194,7 +207,7 @@ def train(args: argparse.Namespace) -> None:
 
     # Resume
     start_epoch = 0
-    best_r05 = 0.0
+    best_r05 = -1.0  # negative sentinel so the first eval always wins and writes best.pt
     if args.resume and os.path.isfile(args.resume):
         ckpt = torch.load(args.resume, map_location=args.device)
         model.load_state_dict(ckpt["model"])
@@ -284,11 +297,11 @@ def train(args: argparse.Namespace) -> None:
             train_log_f.flush()
             global_step += 1
 
-        # Eval
+        # Eval on VAL set for early stopping (test is held out till the end).
         if (epoch + 1) % args.eval_every == 0 or epoch == args.epochs - 1:
-            metrics = evaluate(model, test_loader, args.device, cfg)
+            metrics = evaluate(model, val_loader, args.device, cfg)
             log.info(
-                f"[ep {epoch}] eval  "
+                f"[ep {epoch}] val  "
                 f"R@0.3={metrics['R@1@IoU=0.3']:.4f}  "
                 f"R@0.5={metrics['R@1@IoU=0.5']:.4f}  "
                 f"R@0.7={metrics['R@1@IoU=0.7']:.4f}  "
@@ -308,7 +321,7 @@ def train(args: argparse.Namespace) -> None:
                     os.path.join(args.out_dir, "best.pt"),
                     model, optimizer, epoch, best_r05, cfg,
                 )
-                log.info(f"  saved best.pt (R@0.5={best_r05:.4f})")
+                log.info(f"  saved best.pt (val R@0.5={best_r05:.4f})")
 
         # Always save last (checkpoint after each epoch for resume)
         save_checkpoint(
@@ -319,7 +332,29 @@ def train(args: argparse.Namespace) -> None:
 
     train_log_f.close()
     val_log_f.close()
-    log.info(f"Training complete. Best R@1@IoU=0.5 = {best_r05:.4f}")
+    log.info(f"Training complete. Best val R@1@IoU=0.5 = {best_r05:.4f}")
+
+    # Final test evaluation — load best.pt (or fall back to last.pt) and run on
+    # held-out test set ONCE. This number is the one you report in the thesis.
+    best_path = os.path.join(args.out_dir, "best.pt")
+    last_path = os.path.join(args.out_dir, "last.pt")
+    ckpt_path = best_path if os.path.isfile(best_path) else last_path
+    if os.path.isfile(ckpt_path):
+        log.info(f"Loading {os.path.basename(ckpt_path)} for final test eval...")
+        ckpt = torch.load(ckpt_path, map_location=args.device)
+        model.load_state_dict(ckpt["model"])
+        test_metrics = evaluate(model, test_loader, args.device, cfg)
+        log.info(
+            f"=== FINAL TEST (held-out, from {os.path.basename(ckpt_path)}) ===  "
+            f"R@0.3={test_metrics['R@1@IoU=0.3']:.4f}  "
+            f"R@0.5={test_metrics['R@1@IoU=0.5']:.4f}  "
+            f"R@0.7={test_metrics['R@1@IoU=0.7']:.4f}  "
+            f"mIoU={test_metrics['mIoU']:.4f}"
+        )
+        with open(os.path.join(args.out_dir, "test_metrics.json"), "w") as f:
+            json.dump(test_metrics, f, indent=2)
+    else:
+        log.warning("No checkpoint found for final test eval.")
 
 
 def build_argparser() -> argparse.ArgumentParser:
@@ -350,6 +385,11 @@ def build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--w-l1", type=float, default=1.0)
     p.add_argument("--w-iou", type=float, default=0.5)
     p.add_argument("--mixed-precision", action="store_true", help="fp16 AMP (CUDA only)")
+    # Validation split (carved from train_ann; test_ann stays held out)
+    p.add_argument("--val-ratio", type=float, default=0.1,
+                   help="Fraction of train videos held out for validation/early stopping")
+    p.add_argument("--val-seed", type=int, default=42,
+                   help="Seed for the deterministic train/val video_id split")
     # Misc
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--num-workers", type=int, default=2)

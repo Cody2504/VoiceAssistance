@@ -10,12 +10,10 @@ Why Whisper instead of ZipFormer for this thesis:
   - More accurate on noisy/conversational audio, multilingual
   - GPU-friendly via `transformers`; Whisper-base (~74M) is ~3-5× realtime on T4
 
-**Critical**: Whisper hallucinates canned phrases ("Thank you", "I'm sorry", musical
-filler) on silent or near-silent audio. We mitigate two ways:
-  1. Pre-Whisper RMS-energy check — if the segment is below `silence_rms_threshold`,
-     skip Whisper entirely (returns ""). Big speed win on silent datasets (Charades).
-  2. Post-Whisper hallucination filter — normalize and match against a known list of
-     phrases Whisper emits on silence.
+**Defense against silence-induced hallucinations**: pre-Whisper RMS-energy check.
+If the segment is below `silence_rms_threshold`, skip Whisper entirely (returns "").
+This is the principled fix — no heuristic keyword filtering of the output, which
+would risk false-positives on real short utterances ("Okay", "Mm", etc.).
 
 Usage:
     asr = WhisperASR(model_name="openai/whisper-base", device="cuda")
@@ -23,7 +21,6 @@ Usage:
 """
 import logging
 import os
-import re
 import subprocess
 import tempfile
 import wave
@@ -32,39 +29,6 @@ from typing import Optional
 import numpy as np
 
 log = logging.getLogger(__name__)
-
-
-# Common Whisper hallucinations on silent/near-silent audio. Normalized
-# (lowercase, punctuation-stripped) and matched as exact-equality.
-WHISPER_HALLUCINATIONS = {
-    "thank you", "thanks for watching", "thanks", "thank you so much",
-    "thank you for watching",
-    "okay", "ok", "alright", "all right",
-    "mm", "mmhm", "hmm", "uh", "um", "uhh", "oh", "ah",
-    "yeah", "yes", "no", "right", "yeah yeah",
-    "im sorry", "sorry", "excuse me",
-    "you", "the", "a", "and", "in", "on", "of",
-    "bye", "goodbye", "the end", "subscribe", "bell",
-    "i", "im", "we", "they",
-    "music", "applause", "laughter",
-}
-
-
-def _normalize_for_hallucination_match(text: str) -> str:
-    """Lowercase, drop apostrophes (so 'I'm' → 'im'), other punct → space, collapse whitespace."""
-    s = text.lower()
-    s = re.sub(r"['’]", "", s)         # ASCII + smart apostrophes → ""
-    s = re.sub(r"[^\w\s]", " ", s)          # remaining punctuation → space
-    s = re.sub(r"\s+", " ", s).strip()
-    return s
-
-
-def _is_hallucination(text: str) -> bool:
-    """Return True if `text` is one of Whisper's known silent-audio artifacts."""
-    norm = _normalize_for_hallucination_match(text)
-    if not norm or len(norm) <= 2:
-        return True
-    return norm in WHISPER_HALLUCINATIONS
 
 
 class WhisperASR:
@@ -84,7 +48,6 @@ class WhisperASR:
         self._model = None
         self._processor = None
         self._n_silent = 0
-        self._n_hallucinated = 0
         self._n_transcribed = 0
 
     def _resolve_device(self) -> str:
@@ -119,7 +82,9 @@ class WhisperASR:
         self, video_path: str, start_sec: float = 0.0, end_sec: Optional[float] = None
     ) -> Optional[str]:
         """Pull a 16kHz mono WAV segment via ffmpeg."""
-        out = tempfile.mktemp(suffix=".wav")
+        # mkstemp returns (fd, path); close the fd immediately, ffmpeg writes to the path.
+        fd, out = tempfile.mkstemp(suffix=".wav")
+        os.close(fd)
         cmd = ["ffmpeg", "-y", "-i", video_path, "-ss", str(start_sec)]
         if end_sec is not None:
             cmd.extend(["-t", str(end_sec - start_sec)])
@@ -182,11 +147,8 @@ class WhisperASR:
                     task="transcribe",
                 )
             text = self._processor.batch_decode(ids, skip_special_tokens=True)[0].strip()
-
-            if _is_hallucination(text):
-                self._n_hallucinated += 1
+            if not text:
                 return ""
-
             self._n_transcribed += 1
             return text
         except Exception as e:
@@ -200,11 +162,10 @@ class WhisperASR:
                     pass
 
     def stats(self) -> dict:
-        """Per-instance counters: how many windows were silent / hallucinated / real."""
-        total = self._n_silent + self._n_hallucinated + self._n_transcribed
+        """Per-instance counters: how many windows were silent / transcribed."""
+        total = self._n_silent + self._n_transcribed
         return {
             "silent": self._n_silent,
-            "hallucinated": self._n_hallucinated,
             "transcribed": self._n_transcribed,
             "total": total,
         }

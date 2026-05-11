@@ -292,13 +292,13 @@ class YouCook2Dataset(Dataset):
         features_dir: str,
         query_cache_path: str,
         max_shots: int = 256,
-        overlap_threshold: float = 0.5,
+        soft_relevance: bool = True,
         require_features: bool = True,
         cache_features_in_ram: bool = False,
     ):
         self.features_dir = features_dir
         self.max_shots = max_shots
-        self.overlap_threshold = overlap_threshold
+        self.soft_relevance = soft_relevance
         self.cache_features_in_ram = cache_features_in_ram
         self._ram_cache: Dict[str, ShotFeatures] = {}
 
@@ -364,7 +364,7 @@ class YouCook2Dataset(Dataset):
         caption = feats.caption_features[:n]
 
         gt_rel = compute_shot_relevance(
-            sb, r["start_sec"], r["end_sec"], self.overlap_threshold
+            sb, r["start_sec"], r["end_sec"], soft=self.soft_relevance
         )
         gt_bnd = normalize_boundary(r["start_sec"], r["end_sec"], feats.duration)
 
