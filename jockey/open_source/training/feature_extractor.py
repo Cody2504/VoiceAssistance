@@ -38,6 +38,26 @@ import numpy as np
 from jockey.open_source.config import config as default_config, PipelineConfig
 from jockey.open_source.indexer import detect_shots, extract_frames, _get_video_duration
 
+
+def uniform_windows(duration: float, window_sec: float) -> List[tuple]:
+    """Split a video duration into fixed-length windows.
+
+    For continuous single-shot footage (Charades, ego-centric, user uploads) where
+    PySceneDetect collapses to a single boundary. Temporal-grounding literature
+    (Moment-DETR, QD-DETR, UniVTG) operates on uniform clips like these.
+
+    Returns list of (start_sec, end_sec). Final window may be shorter than window_sec.
+    """
+    if duration <= 0:
+        return [(0.0, max(0.1, duration))]
+    windows: List[tuple] = []
+    t = 0.0
+    while t < duration - 1e-3:
+        end = min(t + window_sec, duration)
+        windows.append((float(t), float(end)))
+        t = end
+    return windows
+
 log = logging.getLogger(__name__)
 
 
@@ -119,11 +139,13 @@ class FeatureExtractor:
         skip_audio: bool = False,
         skip_asr: bool = False,
         skip_metadata: bool = False,
+        uniform_window_sec: Optional[float] = None,
     ):
         self.config = config or default_config
         self.skip_audio = skip_audio
         self.skip_asr = skip_asr
         self.skip_metadata = skip_metadata
+        self.uniform_window_sec = uniform_window_sec  # if set, overrides PySceneDetect
 
         self._viclip = None
         self._audio_enc = None
@@ -200,9 +222,17 @@ class FeatureExtractor:
         t0 = time.time()
 
         duration = _get_video_duration(video_path)
-        shots = detect_shots(video_path, threshold=self.config.shot_detection_threshold)
-        n = len(shots)
-        log.info(f"  Detected {n} shots (duration {duration:.1f}s)")
+        if self.uniform_window_sec is not None:
+            shots = uniform_windows(duration, self.uniform_window_sec)
+            n = len(shots)
+            log.info(
+                f"  Uniform windows: {n} × {self.uniform_window_sec:.1f}s "
+                f"(duration {duration:.1f}s)"
+            )
+        else:
+            shots = detect_shots(video_path, threshold=self.config.shot_detection_threshold)
+            n = len(shots)
+            log.info(f"  Detected {n} shots (duration {duration:.1f}s)")
 
         # Allocate output buffers
         v_dim = self.config.viclip_embedding_dim
@@ -305,6 +335,7 @@ def extract_video(
     skip_audio: bool = False,
     skip_asr: bool = False,
     skip_metadata: bool = False,
+    uniform_window_sec: Optional[float] = None,
     config: Optional[PipelineConfig] = None,
 ) -> ShotFeatures:
     """Extract features from one video and save to disk. Convenience wrapper."""
@@ -313,6 +344,7 @@ def extract_video(
         skip_audio=skip_audio,
         skip_asr=skip_asr,
         skip_metadata=skip_metadata,
+        uniform_window_sec=uniform_window_sec,
     )
     feats = extractor.extract(
         video_path,
@@ -347,6 +379,16 @@ def main():
     parser.add_argument("--skip-audio", action="store_true", help="Skip audio (use zeros)")
     parser.add_argument("--skip-asr", action="store_true", help="Skip ASR (empty transcripts)")
     parser.add_argument("--skip-metadata", action="store_true", help="Skip [GLOBAL] metadata emb")
+    parser.add_argument(
+        "--uniform-window-sec",
+        type=float,
+        default=None,
+        help=(
+            "Override shot detection with fixed N-second windows. Required for "
+            "continuous single-shot footage like Charades, ego-centric, user uploads. "
+            "Typical: 1.0-2.0 for Charades-STA."
+        ),
+    )
     args = parser.parse_args()
 
     feats = extract_video(
@@ -360,6 +402,7 @@ def main():
         skip_audio=args.skip_audio,
         skip_asr=args.skip_asr,
         skip_metadata=args.skip_metadata,
+        uniform_window_sec=args.uniform_window_sec,
     )
     print(
         f"Saved {feats.num_shots} shots ({feats.duration:.1f}s) → {args.out}"

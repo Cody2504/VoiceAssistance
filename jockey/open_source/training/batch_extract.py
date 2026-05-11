@@ -78,6 +78,12 @@ def main():
         action="store_true",
         help="Skip videos whose <video_id>.npz already exists in --out-dir",
     )
+    p.add_argument(
+        "--uniform-window-sec",
+        type=float,
+        default=None,
+        help="Use fixed-length windows instead of shot detection. Use 2.0 for Charades-STA.",
+    )
     p.add_argument("--limit", type=int, default=None, help="Process at most N videos")
     args = p.parse_args()
 
@@ -96,6 +102,7 @@ def main():
         skip_audio=args.skip_audio,
         skip_asr=args.skip_asr,
         skip_metadata=args.skip_metadata,
+        uniform_window_sec=args.uniform_window_sec,
     )
 
     n_ok = n_skip = n_fail = 0
