@@ -47,16 +47,32 @@ from jockey.open_source.training.feature_extractor import ShotFeatures
 log = logging.getLogger(__name__)
 
 
-# Canonical mirrors. Verify before each thesis run; mirrors do change.
+# Canonical mirrors. The original jiyanggao/TALL paths now 404; using the
+# Alvin-Zeng/DRN mirror (verified 2026-05-11: 12,408 train / 3,720 test queries,
+# matches the original split sizes). Mirrors do shift — fall back through the
+# list below before failing.
 DEFAULT_ANNOTATION_URLS: Dict[str, str] = {
     "train": (
-        "https://raw.githubusercontent.com/jiyanggao/TALL/master/"
-        "exp_data/Charades_v1.0_localization/charades_sta_train.txt"
+        "https://raw.githubusercontent.com/Alvin-Zeng/DRN/master/"
+        "data/dataset/Charades/Charades_sta_train.txt"
     ),
     "test": (
-        "https://raw.githubusercontent.com/jiyanggao/TALL/master/"
-        "exp_data/Charades_v1.0_localization/charades_sta_test.txt"
+        "https://raw.githubusercontent.com/Alvin-Zeng/DRN/master/"
+        "data/dataset/Charades/Charades_sta_test.txt"
     ),
+}
+
+# Fallback mirrors tried in order if the primary 404s.
+FALLBACK_ANNOTATION_URLS: Dict[str, List[str]] = {
+    "train": [
+        # Alternative public mirrors that have hosted Charades-STA splits:
+        "https://raw.githubusercontent.com/microsoft/2D-TAN/main/data/Charades/charades_sta_train.txt",
+        "https://raw.githubusercontent.com/26hzhang/VSLNet/master/data/dataset/charades_sta/charades_sta_train.txt",
+    ],
+    "test": [
+        "https://raw.githubusercontent.com/microsoft/2D-TAN/main/data/Charades/charades_sta_test.txt",
+        "https://raw.githubusercontent.com/26hzhang/VSLNet/master/data/dataset/charades_sta/charades_sta_test.txt",
+    ],
 }
 
 
@@ -64,31 +80,61 @@ DEFAULT_ANNOTATION_URLS: Dict[str, str] = {
 # Annotation IO
 # ---------------------------------------------------------------------------
 
+def _try_download(url: str, dest: str) -> bool:
+    """Attempt to download `url` to `dest`. Return True on success."""
+    try:
+        urllib.request.urlretrieve(url, dest)
+        # Sanity: file should be non-trivial and look like the right format.
+        size = os.path.getsize(dest)
+        if size < 1024:
+            log.warning(f"  {url} returned only {size} bytes — likely wrong content")
+            os.remove(dest)
+            return False
+        return True
+    except Exception as e:
+        log.warning(f"  failed: {url} ({e})")
+        return False
+
+
 def download_annotations(
     out_dir: str,
     urls: Optional[Dict[str, str]] = None,
 ) -> Dict[str, str]:
     """Download Charades-STA train/test annotation .txt files.
 
-    Returns a {split: local_path} mapping. If a file already exists, it is reused.
+    Tries primary mirror first (`DEFAULT_ANNOTATION_URLS`), then `FALLBACK_ANNOTATION_URLS`.
+    Returns a {split: local_path} mapping. Existing files are reused without re-downloading.
     """
-    urls = urls or DEFAULT_ANNOTATION_URLS
+    primary = urls or DEFAULT_ANNOTATION_URLS
     os.makedirs(out_dir, exist_ok=True)
     paths: Dict[str, str] = {}
-    for split, url in urls.items():
+
+    for split, primary_url in primary.items():
         local = os.path.join(out_dir, f"charades_sta_{split}.txt")
-        if not os.path.isfile(local):
-            log.info(f"Downloading Charades-STA {split} annotations: {url}")
-            try:
-                urllib.request.urlretrieve(url, local)
-            except Exception as e:
-                raise RuntimeError(
-                    f"Failed to download {url}: {e}\n"
-                    f"Mirror may have moved. Try the official source: "
-                    f"https://github.com/jiyanggao/TALL"
-                ) from e
-        else:
+        if os.path.isfile(local) and os.path.getsize(local) > 1024:
             log.info(f"Found existing {split} annotations: {local}")
+            paths[split] = local
+            continue
+
+        candidates = [primary_url] + FALLBACK_ANNOTATION_URLS.get(split, [])
+        success = False
+        for url in candidates:
+            log.info(f"Downloading Charades-STA {split} from: {url}")
+            if _try_download(url, local):
+                log.info(f"  saved → {local} ({os.path.getsize(local)/1024:.1f} KB)")
+                success = True
+                break
+
+        if not success:
+            raise RuntimeError(
+                f"Failed to download Charades-STA {split} annotations from any of:\n"
+                + "\n".join(f"  - {u}" for u in candidates)
+                + "\n\nAll mirrors 404'd. Manual download options:\n"
+                "  1. https://github.com/Alvin-Zeng/DRN/tree/master/data/dataset/Charades\n"
+                "  2. https://github.com/microsoft/2D-TAN/tree/main/data/Charades\n"
+                "  3. https://prior.allenai.org/projects/charades (registration required)\n"
+                f"Save as: {local}"
+            )
         paths[split] = local
     return paths
 
