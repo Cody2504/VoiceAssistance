@@ -106,13 +106,32 @@ def main():
         help="Only embed queries whose video_id has a feature .npz in this dir "
              "(useful for sanity-check runs over a small subset of videos).",
     )
+    p.add_argument(
+        "--encoder",
+        choices=["clip", "openai"],
+        default="clip",
+        help="Query text encoder. 'clip' (default, 768-d, aligned with CLIP visual — "
+             "USE THIS for the grounding head). 'openai' = text-embedding-3-large via "
+             "OpenRouter, 3072-d (kept as opt-in for ablation comparison; do not use as "
+             "default — it breaks query↔visual alignment).",
+    )
     args = p.parse_args()
 
     queries = collect_unique_queries(args.annotations, features_dir_filter=args.features_dir_filter)
     log.info(f"{len(queries)} unique queries across {len(args.annotations)} annotation files")
 
+    expected_dim = 768 if args.encoder == "clip" else 3072
+
     cache = load_existing_cache(args.out)
     log.info(f"Existing cache: {len(cache)} queries")
+    if cache:
+        sample_dim = int(next(iter(cache.values())).shape[0])
+        if sample_dim != expected_dim:
+            raise SystemExit(
+                f"Existing cache at {args.out} is {sample_dim}-d, but --encoder={args.encoder} "
+                f"produces {expected_dim}-d. Delete the old cache and re-run, or use the "
+                f"matching --encoder. (Hint: `rm {args.out}` then re-run with --encoder {args.encoder}.)"
+            )
 
     todo = [q for q in queries if q not in cache]
     if args.limit is not None:
@@ -124,39 +143,62 @@ def main():
         log.info(f"Nothing to do. Cache saved at {args.out} ({len(cache)} queries)")
         return
 
-    from jockey.open_source.search import TextEmbedder
-
-    embedder = TextEmbedder(
-        api_key=default_config.openrouter_api_key,
-        model=default_config.text_embedding_model,
-        base_url=default_config.openrouter_base_url,
-    )
-
     t0 = time.time()
-    n_ok = n_fail = 0
-    for i, q in enumerate(todo, 1):
-        try:
-            emb = embedder.encode(q).astype(np.float32)
-            cache[q] = emb
-            n_ok += 1
-        except Exception as e:
-            log.warning(f"  failed '{q[:60]}...': {e}")
-            n_fail += 1
 
-        if i % args.checkpoint_every == 0:
-            save_cache(cache, args.out)
-            elapsed = time.time() - t0
-            log.info(
-                f"[{i}/{len(todo)}] checkpoint saved "
-                f"({elapsed:.1f}s, ok={n_ok} fail={n_fail})"
-            )
+    if args.encoder == "clip":
+        # CLIP text encoder — aligned with CLIP visual, the right choice for queries
+        # in the grounding head. 768-d, runs locally (no API), very fast.
+        from jockey.open_source.viclip_embedder import ViCLIPEmbedder
+        clip = ViCLIPEmbedder(
+            model_name_or_path=default_config.viclip_model_name,
+            device=default_config.viclip_device,
+        )
+        log.info(f"Embedding {len(todo)} queries with CLIP text encoder (768-d)...")
+        # Batch in chunks of 256 for memory headroom.
+        chunk = 256
+        n_ok = 0
+        for i in range(0, len(todo), chunk):
+            batch_q = todo[i:i + chunk]
+            try:
+                embs = clip.encode_text_batch(batch_q)
+                for q, e in zip(batch_q, embs):
+                    cache[q] = e.astype(np.float32)
+                n_ok += len(batch_q)
+            except Exception as e:
+                log.warning(f"  CLIP batch {i//chunk} failed: {e}")
+            if (i // chunk) % max(1, args.checkpoint_every // chunk) == 0:
+                save_cache(cache, args.out)
+                log.info(f"[{n_ok}/{len(todo)}] checkpoint ({time.time()-t0:.1f}s)")
+        save_cache(cache, args.out)
+        log.info(
+            f"Done (CLIP-text, 768-d). cached={len(cache)} new={n_ok} "
+            f"elapsed={time.time()-t0:.1f}s → {args.out}"
+        )
 
-    save_cache(cache, args.out)
-    elapsed = time.time() - t0
-    log.info(
-        f"Done. cached={len(cache)} new_ok={n_ok} new_fail={n_fail} "
-        f"elapsed={elapsed:.1f}s → {args.out}"
-    )
+    else:  # encoder == "openai"
+        from jockey.open_source.search import TextEmbedder
+        embedder = TextEmbedder(
+            api_key=default_config.openrouter_api_key,
+            model=default_config.text_embedding_model,
+            base_url=default_config.openrouter_base_url,
+        )
+        log.info(f"Embedding {len(todo)} queries with text-embedding-3-large (3072-d)...")
+        n_ok = n_fail = 0
+        for i, q in enumerate(todo, 1):
+            try:
+                cache[q] = embedder.encode(q).astype(np.float32)
+                n_ok += 1
+            except Exception as e:
+                log.warning(f"  failed '{q[:60]}...': {e}")
+                n_fail += 1
+            if i % args.checkpoint_every == 0:
+                save_cache(cache, args.out)
+                log.info(f"[{i}/{len(todo)}] checkpoint ({time.time()-t0:.1f}s ok={n_ok} fail={n_fail})")
+        save_cache(cache, args.out)
+        log.info(
+            f"Done (text-emb-3-large, 3072-d). cached={len(cache)} new_ok={n_ok} "
+            f"new_fail={n_fail} elapsed={time.time()-t0:.1f}s → {args.out}"
+        )
 
 
 if __name__ == "__main__":

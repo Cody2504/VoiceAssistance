@@ -326,10 +326,15 @@ class YouCook2Dataset(Dataset):
         self.query_to_emb: Dict[str, np.ndarray] = {
             str(k): v for k, v in zip(cache["queries"], cache["embeddings"])
         }
-        log.info(
-            f"YouCook2Dataset: {len(self.annotations)} examples, "
-            f"{len(self.query_to_emb)} cached query embeddings."
-        )
+        if self.query_to_emb:
+            sample_dim = next(iter(self.query_to_emb.values())).shape[0]
+            log.info(
+                f"YouCook2Dataset: {len(self.annotations)} examples, "
+                f"{len(self.query_to_emb)} cached query embeddings "
+                f"(dim={sample_dim} — must match GroundingConfig.query_dim)."
+            )
+        else:
+            log.warning(f"YouCook2Dataset: empty query cache at {query_cache_path}")
 
     def _feature_path(self, video_id: str) -> str:
         return os.path.join(self.features_dir, f"{video_id}.npz")

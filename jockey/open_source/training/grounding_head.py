@@ -44,12 +44,21 @@ import torch.nn.functional as F
 
 @dataclass
 class GroundingConfig:
-    """Configuration for the grounding head."""
+    """Configuration for the grounding head.
+
+    Note on dimensions and spaces:
+        - visual_dim/audio_dim/caption_dim come from the frozen encoders.
+        - query_dim must match the encoder used in `precompute_queries.py`.
+          Default 768 = CLIP-text (aligned with CLIP-visual → free query↔shot
+          alignment, the architecturally correct choice). Set query_dim=3072
+          only if you intentionally embed queries with text-embedding-3-large.
+    """
 
     visual_dim: int = 768
     audio_dim: int = 768
     caption_dim: int = 3072
-    query_dim: int = 3072
+    query_dim: int = 768   # CLIP-text by default — aligned with visual features
+    global_dim: int = 3072  # MetadataEncoder uses text-embedding-3-large (separate from query)
     hidden_dim: int = 512
     num_layers: int = 4
     num_heads: int = 8
@@ -92,7 +101,7 @@ class GroundingHead(nn.Module):
         self.proj_audio = nn.Linear(cfg.audio_dim, h) if cfg.use_audio else None
         self.proj_caption = nn.Linear(cfg.caption_dim, h) if cfg.use_caption else None
         self.proj_query = nn.Linear(cfg.query_dim, h)
-        self.proj_global = nn.Linear(cfg.query_dim, h) if cfg.use_global else None
+        self.proj_global = nn.Linear(cfg.global_dim, h) if cfg.use_global else None
 
         # Shot-level normalization after sum-fusion
         self.shot_norm = nn.LayerNorm(h)

@@ -217,7 +217,8 @@ def train(args: argparse.Namespace) -> None:
     warmup_steps = int(total_steps * args.warmup_ratio)
 
     use_amp = args.mixed_precision and args.device == "cuda"
-    scaler = torch.cuda.amp.GradScaler() if use_amp else None
+    # torch.amp.GradScaler is the PyTorch 2.x API; the old torch.cuda.amp.* is deprecated.
+    scaler = torch.amp.GradScaler("cuda") if use_amp else None
 
     # Resume
     start_epoch = 0
@@ -254,7 +255,7 @@ def train(args: argparse.Namespace) -> None:
             optimizer.zero_grad(set_to_none=True)
 
             if use_amp:
-                with torch.cuda.amp.autocast():
+                with torch.amp.autocast(device_type="cuda"):
                     rel_logits, bnd = model(
                         visual=batch["visual"],
                         query=batch["query"],
@@ -395,9 +396,13 @@ def build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--weight-decay", type=float, default=1e-4)
     p.add_argument("--warmup-ratio", type=float, default=0.05)
     p.add_argument("--grad-clip", type=float, default=1.0)
+    # Loss weights — defaults follow Moment-DETR/QD-DETR conventions:
+    # boundary L1 is weighted 10× larger than the BCE relevance loss so the
+    # boundary head receives proportional gradient, escaping the "predict the
+    # mean moment" failure mode observed with w_l1=1.0 / w_iou=0.5.
     p.add_argument("--w-rel", type=float, default=1.0)
-    p.add_argument("--w-l1", type=float, default=1.0)
-    p.add_argument("--w-iou", type=float, default=0.5)
+    p.add_argument("--w-l1", type=float, default=10.0)
+    p.add_argument("--w-iou", type=float, default=1.0)
     p.add_argument("--mixed-precision", action="store_true", help="fp16 AMP (CUDA only)")
     # Validation split (carved from train_ann; test_ann stays held out)
     p.add_argument("--val-ratio", type=float, default=0.1,

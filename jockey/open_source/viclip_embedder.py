@@ -204,6 +204,43 @@ class ViCLIPEmbedder:
             offset += n
         return result
 
+    def encode_text_batch(self, texts):
+        """Encode multiple text strings into CLIP-text embeddings in one forward.
+
+        CLIP text is aligned with CLIP vision in the same dot-product space — use
+        this (NOT text-embedding-3-large) for QUERY embeddings in the grounding
+        head, so the query lives in the same space as the visual features.
+
+        Args:
+            texts: List of strings.
+
+        Returns:
+            np.ndarray [N, 768] L2-normalized CLIP text embeddings.
+        """
+        self._lazy_load()
+        n = len(texts)
+        if n == 0:
+            return np.zeros((0, EMBEDDING_DIM), dtype=np.float32)
+
+        if self._model == "placeholder":
+            r = np.random.randn(n, EMBEDDING_DIM).astype(np.float32)
+            return r / np.linalg.norm(r, axis=1, keepdims=True).clip(min=1e-12)
+
+        import torch
+
+        # Replace empty strings with a space — tokenizer chokes on truly empty input.
+        safe = [t if (t and t.strip()) else " " for t in texts]
+        with torch.no_grad():
+            inputs = self._tokenizer(
+                safe, return_tensors="pt", padding=True, truncation=True, max_length=77,
+            )
+            inputs = {k: v.to(self.device) for k, v in inputs.items()}
+            output = self._model.get_text_features(**inputs)
+            features = self._extract_features(output, modality="text")  # [N, 768]
+            emb = features.cpu().numpy().astype(np.float32)
+        emb = emb / np.linalg.norm(emb, axis=1, keepdims=True).clip(min=1e-12)
+        return emb
+
     def encode_text(self, text: str) -> np.ndarray:
         """Encode a text query into a normalized embedding vector.
 
