@@ -23,7 +23,11 @@ from typing import Dict, List
 import numpy as np
 
 from jockey.open_source.config import config as default_config
-from jockey.open_source.training.charades_sta import parse_annotations, unique_queries
+from jockey.open_source.training.charades_sta import (
+    parse_annotations as parse_charades,
+    unique_queries,
+)
+from jockey.open_source.training.youcook2 import parse_annotations as parse_youcook2
 
 log = logging.getLogger(__name__)
 
@@ -44,10 +48,17 @@ def save_cache(cache: Dict[str, np.ndarray], path: str) -> None:
     np.savez_compressed(path, queries=queries, embeddings=embeddings)
 
 
+def _parse_any(path: str) -> List[Dict]:
+    """Auto-detect format: .txt → Charades-STA; .json → YouCook2."""
+    if path.lower().endswith(".json"):
+        return parse_youcook2(path)
+    return parse_charades(path)
+
+
 def collect_unique_queries(annotation_paths: List[str]) -> List[str]:
     all_records = []
     for p in annotation_paths:
-        all_records.extend(parse_annotations(p))
+        all_records.extend(_parse_any(p))
     return unique_queries(all_records)
 
 
