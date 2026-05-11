@@ -145,6 +145,65 @@ class ViCLIPEmbedder:
                 return val
         raise TypeError(f"Cannot extract {modality} features from {type(output).__name__}")
 
+    def encode_video_batch(self, frames_list):
+        """Encode multiple shots' frames in a single CLIP forward pass.
+
+        Args:
+            frames_list: List of N_shots arrays, each [N_frames, H, W, 3] uint8 RGB.
+
+        Returns:
+            np.ndarray [N_shots, 768] of L2-normalized per-shot embeddings.
+        """
+        self._lazy_load()
+        n_shots = len(frames_list)
+        if n_shots == 0:
+            return np.zeros((0, EMBEDDING_DIM), dtype=np.float32)
+
+        import torch
+        from PIL import Image
+
+        # Flatten all frames across shots; remember per-shot counts to re-group.
+        # Done first so the placeholder branch can respect None/empty shots the same way.
+        flat_pil = []
+        shot_counts = []
+        for frames in frames_list:
+            if frames is None or frames.size == 0:
+                shot_counts.append(0)
+                continue
+            shot_counts.append(int(frames.shape[0]))
+            for f in frames:
+                flat_pil.append(Image.fromarray(f))
+
+        if self._model == "placeholder":
+            out = np.zeros((n_shots, EMBEDDING_DIM), dtype=np.float32)
+            for i, n in enumerate(shot_counts):
+                if n == 0:
+                    continue
+                r = np.random.randn(EMBEDDING_DIM).astype(np.float32)
+                out[i] = r / max(np.linalg.norm(r), 1e-12)
+            return out
+
+        result = np.zeros((n_shots, EMBEDDING_DIM), dtype=np.float32)
+        if not flat_pil:
+            return result
+
+        with torch.no_grad():
+            inputs = self._processor(images=flat_pil, return_tensors="pt")
+            inputs = {k: v.to(self.device) for k, v in inputs.items()}
+            output = self._model.get_image_features(**inputs)
+            frame_features = self._extract_features(output, modality="image")  # [TotalFrames, 768]
+
+        # Group frames back into shots and mean-pool per shot.
+        offset = 0
+        for i, n in enumerate(shot_counts):
+            if n == 0:
+                continue
+            shot_emb = frame_features[offset:offset + n].mean(dim=0).cpu().numpy().astype(np.float32)
+            norm = np.linalg.norm(shot_emb)
+            result[i] = shot_emb / max(norm, 1e-12)
+            offset += n
+        return result
+
     def encode_text(self, text: str) -> np.ndarray:
         """Encode a text query into a normalized embedding vector.
 

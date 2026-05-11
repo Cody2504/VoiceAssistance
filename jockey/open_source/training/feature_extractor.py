@@ -29,7 +29,10 @@ The encoders stay frozen — this module does no training.
 import argparse
 import logging
 import os
+import subprocess
+import tempfile
 import time
+import wave
 from dataclasses import dataclass
 from typing import List, Optional
 
@@ -37,6 +40,50 @@ import numpy as np
 
 from jockey.open_source.config import config as default_config, PipelineConfig
 from jockey.open_source.indexer import detect_shots, extract_frames, _get_video_duration
+
+
+def _load_full_audio_16k_mono(video_path: str) -> Optional[np.ndarray]:
+    """Single-pass ffmpeg: decode entire video's audio to a 16kHz mono float32 array.
+
+    Called ONCE per video — replaces N per-shot ffmpeg invocations that the audio
+    encoder and Whisper each did. Slice the returned array in memory per window.
+
+    Returns None if ffmpeg fails or the video has no audio track.
+    """
+    fd, wav_path = tempfile.mkstemp(suffix=".wav")
+    os.close(fd)
+    cmd = [
+        "ffmpeg", "-y", "-i", video_path,
+        "-ar", "16000", "-ac", "1", "-f", "wav",
+        "-loglevel", "quiet", wav_path,
+    ]
+    try:
+        subprocess.run(cmd, check=True, capture_output=True)
+        with wave.open(wav_path, "rb") as wf:
+            num_samples = wf.getnframes()
+            raw = wf.readframes(num_samples)
+        samples = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
+        return samples
+    except (subprocess.CalledProcessError, FileNotFoundError, wave.Error) as e:
+        log.warning(f"Full-audio ffmpeg extraction failed for {video_path}: {e}")
+        return None
+    finally:
+        if os.path.isfile(wav_path):
+            try:
+                os.remove(wav_path)
+            except OSError:
+                pass
+
+
+def _slice_audio(samples: Optional[np.ndarray], start_sec: float, end_sec: float, sr: int = 16000) -> Optional[np.ndarray]:
+    """Slice pre-loaded samples by time window. Returns None if samples is None."""
+    if samples is None:
+        return None
+    a = max(0, int(start_sec * sr))
+    b = min(samples.shape[0], int(end_sec * sr))
+    if b <= a:
+        return None
+    return samples[a:b]
 
 
 def uniform_windows(
@@ -284,45 +331,44 @@ class FeatureExtractor:
         t_dim = self.config.text_embedding_dim
 
         shot_boundaries = np.array(shots, dtype=np.float32)
-        visual_feats = np.zeros((n, v_dim), dtype=np.float32)
-        audio_feats = np.zeros((n, a_dim), dtype=np.float32)
         caption_feats = np.zeros((n, t_dim), dtype=np.float32)
-        asr_transcripts: List[str] = []
 
         viclip = self._load_viclip()
         audio_enc = self._load_audio()
         asr = self._load_asr()
         text_emb = self._load_text_emb()
 
-        # Pass 1: visual + audio + ASR per shot. Defer text embedding to a single batch call.
-        for i, (start, end) in enumerate(shots):
+        # --- Pass A: collect frame batches per shot ---
+        frame_batches: List[np.ndarray] = []
+        for start, end in shots:
             frames = extract_frames(
                 video_path, start, end, max_frames=self.config.max_frames_per_shot
             )
-            visual_feats[i] = viclip.encode_video(frames)
+            frame_batches.append(frames)
 
-            if audio_enc is not None:
-                try:
-                    audio_feats[i] = audio_enc.encode_audio(
-                        video_path, start_sec=start, end_sec=end
-                    )
-                except Exception as e:
-                    log.warning(f"  shot {i}: audio encode failed: {e}")
+        # --- Pass B: extract full audio ONCE, slice per shot in memory ---
+        need_audio = audio_enc is not None or asr is not None
+        full_audio = _load_full_audio_16k_mono(video_path) if need_audio else None
+        audio_clips: List[Optional[np.ndarray]] = [
+            _slice_audio(full_audio, s, e) for (s, e) in shots
+        ]
 
-            transcript = ""
-            if asr is not None:
-                try:
-                    transcript = asr.transcribe(
-                        video_path, start_sec=start, end_sec=end
-                    ) or ""
-                except Exception as e:
-                    log.warning(f"  shot {i}: ASR failed: {e}")
-            asr_transcripts.append(transcript)
+        # --- Pass C: batched encoder forwards ---
+        visual_feats = viclip.encode_video_batch(frame_batches)            # [N, 768]
+        audio_feats = (
+            audio_enc.encode_audio_batch(audio_clips) if audio_enc is not None
+            else np.zeros((n, a_dim), dtype=np.float32)
+        )
+        asr_transcripts: List[str] = (
+            asr.transcribe_batch(audio_clips) if asr is not None else [""] * n
+        )
 
-            asr_preview = f" asr='{transcript[:40]}...'" if transcript else ""
-            log.info(f"  shot {i:3d}: [{start:7.2f}-{end:7.2f}s]{asr_preview}")
+        # Per-shot logging (compact, after the batched work)
+        for i, (start, end) in enumerate(shots):
+            preview = f" asr='{asr_transcripts[i][:40]}...'" if asr_transcripts[i] else ""
+            log.info(f"  shot {i:3d}: [{start:7.2f}-{end:7.2f}s]{preview}")
 
-        # Pass 2: batch-embed all captions in a single API call (huge speedup vs N calls).
+        # --- Pass D: batch-embed all captions in a single API call ---
         texts_to_embed = [
             t if t else f"{title or video_id} shot {i}"
             for i, t in enumerate(asr_transcripts)

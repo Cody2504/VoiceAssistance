@@ -81,8 +81,8 @@ class WhisperASR:
     def _extract_audio_wav(
         self, video_path: str, start_sec: float = 0.0, end_sec: Optional[float] = None
     ) -> Optional[str]:
-        """Pull a 16kHz mono WAV segment via ffmpeg."""
-        # mkstemp returns (fd, path); close the fd immediately, ffmpeg writes to the path.
+        """Pull a 16kHz mono WAV segment via ffmpeg. (Kept for backward-compat;
+        batched path uses pre-loaded sample arrays via transcribe_batch.)"""
         fd, out = tempfile.mkstemp(suffix=".wav")
         os.close(fd)
         cmd = ["ffmpeg", "-y", "-i", video_path, "-ss", str(start_sec)]
@@ -160,6 +160,63 @@ class WhisperASR:
                     os.remove(audio_path)
                 except OSError:
                     pass
+
+    def transcribe_batch(self, samples_list, sampling_rate: int = 16000):
+        """Transcribe multiple pre-loaded audio clips in a single Whisper forward.
+
+        Per-item silence detection (RMS) skips silent clips before any GPU work.
+        Empty / silent clips return "" at their index.
+
+        Args:
+            samples_list: List of N 1D float32 arrays (16kHz mono).
+
+        Returns:
+            List[str] of length N. Empty strings for silent / failed clips.
+        """
+        self._lazy_load()
+        n = len(samples_list)
+        results = [""] * n
+        if self._model == "unavailable" or n == 0:
+            return results
+
+        # Pre-filter by silence — skip Whisper entirely on silent windows.
+        non_silent_idx, non_silent = [], []
+        for i, s in enumerate(samples_list):
+            if s is None or len(s) < 1600:
+                continue
+            arr = np.asarray(s, dtype=np.float32)
+            rms = float(np.sqrt(np.mean(arr ** 2)))
+            if rms < self.silence_rms_threshold:
+                self._n_silent += 1
+                continue
+            non_silent_idx.append(i)
+            non_silent.append(arr)
+
+        if not non_silent:
+            return results
+
+        try:
+            import torch
+            inputs = self._processor(
+                non_silent, sampling_rate=sampling_rate, return_tensors="pt"
+            )
+            input_features = inputs.input_features.to(self.device)
+            with torch.no_grad():
+                ids = self._model.generate(
+                    input_features,
+                    max_new_tokens=128,
+                    language=self.language,
+                    task="transcribe",
+                )
+            texts = self._processor.batch_decode(ids, skip_special_tokens=True)
+            for idx, text in zip(non_silent_idx, texts):
+                text = text.strip()
+                if text:
+                    results[idx] = text
+                    self._n_transcribed += 1
+        except Exception as e:
+            log.warning(f"transcribe_batch failed: {e}")
+        return results
 
     def stats(self) -> dict:
         """Per-instance counters: how many windows were silent / transcribed."""
