@@ -63,20 +63,45 @@ class TextEmbedder:
         Returns:
             Normalized embedding vector [3072] for text-embedding-3-large.
         """
+        return self.encode_batch([text])[0]
+
+    def encode_batch(self, texts: List[str]) -> List[np.ndarray]:
+        """Encode multiple texts in a single API call.
+
+        OpenAI / text-embedding-3-large accepts up to 2048 inputs per request.
+        Batching is essential for feature extraction (16-30 windows per video × 6700 videos
+        → 100k+ embeddings; serial calls take 30+ hours, batched takes ~1).
+
+        Returns list of normalized embedding vectors, one per input text.
+        """
         self._lazy_load()
 
+        # Replace empty / whitespace-only inputs with a single space to satisfy API.
+        safe_texts = [t if (t and t.strip()) else " " for t in texts]
+
         if self._client == "unavailable":
-            emb = np.random.randn(3072).astype(np.float32)
-            return emb / np.linalg.norm(emb)
+            return [
+                np.random.randn(3072).astype(np.float32) / np.sqrt(3072)
+                for _ in safe_texts
+            ]
 
         try:
-            response = self._client.embeddings.create(input=text, model=self.model)
-            emb = np.array(response.data[0].embedding, dtype=np.float32)
-            return emb / np.linalg.norm(emb)
+            response = self._client.embeddings.create(input=safe_texts, model=self.model)
+            out: List[np.ndarray] = []
+            for d in response.data:
+                e = np.array(d.embedding, dtype=np.float32)
+                n = np.linalg.norm(e)
+                out.append(e / n if n > 0 else e)
+            return out
         except Exception as e:
-            log.warning(f"OpenRouter embedding call failed: {e}. Using random fallback.")
-            emb = np.random.randn(3072).astype(np.float32)
-            return emb / np.linalg.norm(emb)
+            log.warning(
+                f"OpenRouter batch embedding call failed ({len(safe_texts)} texts): {e}. "
+                f"Using random fallback for this batch."
+            )
+            return [
+                np.random.randn(3072).astype(np.float32) / np.sqrt(3072)
+                for _ in safe_texts
+            ]
 
 
 class VideoSearch:

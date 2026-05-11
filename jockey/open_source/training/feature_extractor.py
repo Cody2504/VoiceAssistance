@@ -178,9 +178,31 @@ class FeatureExtractor:
     def _load_asr(self):
         if self.skip_asr:
             return None
-        if self._asr is None:
+        if self._asr is not None:
+            return self._asr
+
+        backend = getattr(self.config, "asr_backend", "whisper").lower()
+        if backend == "none":
+            self._asr = None
+            return None
+        if backend == "whisper":
+            from jockey.open_source.asr_whisper import WhisperASR
+            self._asr = WhisperASR(
+                model_name=self.config.whisper_model,
+                device=self.config.whisper_device,
+                language=self.config.whisper_language,
+            )
+        elif backend == "zipformer":
             from jockey.open_source.asr import ASREngine
             self._asr = ASREngine(model_dir=self.config.zipformer_model_dir)
+        else:
+            log.warning(f"Unknown asr_backend '{backend}', falling back to whisper.")
+            from jockey.open_source.asr_whisper import WhisperASR
+            self._asr = WhisperASR(
+                model_name=self.config.whisper_model,
+                device=self.config.whisper_device,
+                language=self.config.whisper_language,
+            )
         return self._asr
 
     def _load_text_emb(self):
@@ -250,14 +272,13 @@ class FeatureExtractor:
         asr = self._load_asr()
         text_emb = self._load_text_emb()
 
+        # Pass 1: visual + audio + ASR per shot. Defer text embedding to a single batch call.
         for i, (start, end) in enumerate(shots):
-            # Visual
             frames = extract_frames(
                 video_path, start, end, max_frames=self.config.max_frames_per_shot
             )
             visual_feats[i] = viclip.encode_video(frames)
 
-            # Audio
             if audio_enc is not None:
                 try:
                     audio_feats[i] = audio_enc.encode_audio(
@@ -266,7 +287,6 @@ class FeatureExtractor:
                 except Exception as e:
                     log.warning(f"  shot {i}: audio encode failed: {e}")
 
-            # ASR
             transcript = ""
             if asr is not None:
                 try:
@@ -277,15 +297,20 @@ class FeatureExtractor:
                     log.warning(f"  shot {i}: ASR failed: {e}")
             asr_transcripts.append(transcript)
 
-            # Caption text embedding (uses ASR text; falls back to title placeholder)
-            text_to_embed = transcript if transcript else f"{title or video_id} shot {i}"
-            try:
-                caption_feats[i] = text_emb.encode(text_to_embed)
-            except Exception as e:
-                log.warning(f"  shot {i}: caption emb failed: {e}")
-
             asr_preview = f" asr='{transcript[:40]}...'" if transcript else ""
             log.info(f"  shot {i:3d}: [{start:7.2f}-{end:7.2f}s]{asr_preview}")
+
+        # Pass 2: batch-embed all captions in a single API call (huge speedup vs N calls).
+        texts_to_embed = [
+            t if t else f"{title or video_id} shot {i}"
+            for i, t in enumerate(asr_transcripts)
+        ]
+        try:
+            batch_embs = text_emb.encode_batch(texts_to_embed)
+            for i, emb in enumerate(batch_embs):
+                caption_feats[i] = emb
+        except Exception as e:
+            log.warning(f"  batch caption emb failed: {e} — caption features left as zeros")
 
         # Global metadata embedding
         global_emb = np.zeros(t_dim, dtype=np.float32)

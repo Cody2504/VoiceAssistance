@@ -95,7 +95,12 @@ class PipelineConfig:
     mediafm_device: str = os.environ.get("MEDIAFM_DEVICE", _auto_device())
     mediafm_checkpoint: Optional[str] = os.environ.get("MEDIAFM_CHECKPOINT", None)
 
-    # --- ZipFormer ASR ---
+    # --- ASR ---
+    # Backend: "whisper" (default, via HF transformers) | "zipformer" (sherpa-onnx) | "none"
+    asr_backend: str = os.environ.get("ASR_BACKEND", "whisper")
+    whisper_model: str = os.environ.get("WHISPER_MODEL", "openai/whisper-base")
+    whisper_device: str = os.environ.get("WHISPER_DEVICE", _auto_device())
+    whisper_language: str = os.environ.get("WHISPER_LANGUAGE", "en")
     zipformer_model_dir: str = os.environ.get(
         "ZIPFORMER_MODEL_DIR",
         os.path.join(os.path.dirname(__file__), "models", "zipformer")
