@@ -55,10 +55,33 @@ def _parse_any(path: str) -> List[Dict]:
     return parse_charades(path)
 
 
-def collect_unique_queries(annotation_paths: List[str]) -> List[str]:
+def collect_unique_queries(
+    annotation_paths: List[str],
+    features_dir_filter: str = "",
+) -> List[str]:
+    """Collect unique queries across annotation files.
+
+    If `features_dir_filter` is set, only keep queries whose video_id has a
+    matching <video_id>.npz in that directory. Useful for sanity-check runs
+    where you've extracted features for a subset of videos.
+    """
     all_records = []
     for p in annotation_paths:
         all_records.extend(_parse_any(p))
+
+    if features_dir_filter:
+        available = {
+            os.path.splitext(f)[0]
+            for f in os.listdir(features_dir_filter)
+            if f.endswith(".npz") and not f.startswith("query")
+        }
+        before = len(all_records)
+        all_records = [r for r in all_records if r["video_id"] in available]
+        log.info(
+            f"Features-filter: kept {len(all_records)}/{before} records "
+            f"({len(available)} videos with features in {features_dir_filter})"
+        )
+
     return unique_queries(all_records)
 
 
@@ -77,9 +100,15 @@ def main():
     p.add_argument("--checkpoint-every", type=int, default=100,
                    help="Save cache to disk every N queries.")
     p.add_argument("--limit", type=int, default=None, help="Embed at most N new queries.")
+    p.add_argument(
+        "--features-dir-filter",
+        default="",
+        help="Only embed queries whose video_id has a feature .npz in this dir "
+             "(useful for sanity-check runs over a small subset of videos).",
+    )
     args = p.parse_args()
 
-    queries = collect_unique_queries(args.annotations)
+    queries = collect_unique_queries(args.annotations, features_dir_filter=args.features_dir_filter)
     log.info(f"{len(queries)} unique queries across {len(args.annotations)} annotation files")
 
     cache = load_existing_cache(args.out)

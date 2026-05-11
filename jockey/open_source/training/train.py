@@ -109,6 +109,14 @@ def evaluate(model: GroundingHead, loader: DataLoader, device: str, cfg: Groundi
         )
         all_pred.append(bnd.cpu())
         all_gt.append(batch["gt_boundary"].cpu())
+    if not all_pred:
+        # Empty loader — return NaN metrics so callers can detect "no eval data"
+        return {
+            "R@1@IoU=0.3": float("nan"),
+            "R@1@IoU=0.5": float("nan"),
+            "R@1@IoU=0.7": float("nan"),
+            "mIoU": float("nan"),
+        }
     pred = torch.cat(all_pred, dim=0)
     gt = torch.cat(all_gt, dim=0)
     return {
@@ -158,8 +166,14 @@ def train(args: argparse.Namespace) -> None:
     train_recs, val_recs = split_train_val(all_train_recs, args.val_ratio, args.val_seed)
     log.info(
         f"Split (by video_id, seed={args.val_seed}, val_ratio={args.val_ratio}): "
-        f"train={len(train_recs)} val={len(val_recs)} test={len(test_recs)}"
+        f"train={len(train_recs)} val={len(val_recs)} test={len(test_recs)} "
+        f"(pre-feature-existence-filter)"
     )
+    if not train_recs:
+        raise RuntimeError(
+            "No training records after train/val split. "
+            "Check that --train-ann is valid and not empty."
+        )
 
     ds_kwargs = dict(
         features_dir=args.features_dir,
