@@ -24,6 +24,7 @@ Outputs (in --out-dir):
 """
 import argparse
 import csv
+import hashlib
 import json
 import logging
 import math
@@ -62,20 +63,32 @@ def set_seed(seed: int) -> None:
         torch.cuda.manual_seed_all(seed)
 
 
+def _video_split_score(video_id: str, seed: int) -> float:
+    """Stable [0, 1) score per (video_id, seed). MD5-based so it does NOT depend
+    on the size or ordering of the surrounding corpus — critical for incremental
+    training rounds where the train corpus grows over time."""
+    h = hashlib.md5(f"{video_id}|{seed}".encode("utf-8")).hexdigest()
+    return int(h[:8], 16) / 0x100000000  # first 32 bits → [0, 1)
+
+
 def split_train_val(records, val_ratio: float, seed: int):
     """Split annotation records by VIDEO_ID into (train, val).
 
     Splitting by video_id (not by query line) prevents leakage: otherwise the
     same video's frames could appear in both train and val with different
     queries, and the model would memorize the visual features per video.
+
+    The split is HASH-STABLE: video VID with score < val_ratio always lands in
+    val, regardless of how many other videos are in `records`. This means you
+    can extract 1000 more videos and re-train — the val set won't migrate.
     """
-    rng = random.Random(seed)
-    video_ids = sorted({r["video_id"] for r in records})
-    rng.shuffle(video_ids)
-    n_val = max(1, int(len(video_ids) * val_ratio))
-    val_vids = set(video_ids[:n_val])
-    train = [r for r in records if r["video_id"] not in val_vids]
-    val = [r for r in records if r["video_id"] in val_vids]
+    train, val = [], []
+    for r in records:
+        score = _video_split_score(r["video_id"], seed)
+        if score < val_ratio:
+            val.append(r)
+        else:
+            train.append(r)
     return train, val
 
 
@@ -240,9 +253,18 @@ def train(args: argparse.Namespace) -> None:
         "epoch,r03,r05,r07,mIoU",
     )
 
+    # Resolve total target epochs. `--add-epochs N` means "train N more from where
+    # we resumed", overriding `--epochs`. Lets incremental rounds say "+30 epochs"
+    # without having to track cumulative epoch counts manually.
+    if args.add_epochs is not None and args.add_epochs > 0:
+        target_epochs = start_epoch + args.add_epochs
+        log.info(f"--add-epochs {args.add_epochs}: will train epochs {start_epoch}..{target_epochs-1}")
+    else:
+        target_epochs = args.epochs
+
     global_step = start_epoch * len(train_loader)
 
-    for epoch in range(start_epoch, args.epochs):
+    for epoch in range(start_epoch, target_epochs):
         model.train()
         t_ep = time.time()
         for step, batch in enumerate(train_loader):
@@ -391,7 +413,11 @@ def build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--no-global", action="store_true", help="Ablation: drop [GLOBAL] token")
     # Optimization
     p.add_argument("--batch-size", type=int, default=16)
-    p.add_argument("--epochs", type=int, default=30)
+    p.add_argument("--epochs", type=int, default=30,
+                   help="Target final epoch count (absolute, not incremental).")
+    p.add_argument("--add-epochs", type=int, default=None,
+                   help="Train this many MORE epochs from the resume point. "
+                        "Overrides --epochs when set. Useful for incremental rounds.")
     p.add_argument("--lr", type=float, default=1e-4)
     p.add_argument("--weight-decay", type=float, default=1e-4)
     p.add_argument("--warmup-ratio", type=float, default=0.05)
