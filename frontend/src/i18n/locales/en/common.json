@@ -1,0 +1,14 @@
+{
+  "app": { "name": "tl-jockey" },
+  "auth": {
+    "login": "Sign in",
+    "register": "Create account",
+    "email": "Email",
+    "password": "Password"
+  },
+  "library": {
+    "title": "Your videos",
+    "upload": "Upload video",
+    "empty": "No videos yet. Drop one above to get started."
+  }
+}

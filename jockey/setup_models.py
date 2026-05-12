@@ -37,6 +37,10 @@ if os.path.isfile(_env_path):
                 key, _, value = line.partition("=")
                 os.environ.setdefault(key.strip(), value.strip())
 
+# Ensure HF_TOKEN is set so huggingface_hub picks it up for authenticated downloads
+if os.environ.get("HF_API_KEY") and not os.environ.get("HF_TOKEN"):
+    os.environ["HF_TOKEN"] = os.environ["HF_API_KEY"]
+
 # Models to download
 MODELS = {
     "clip": {
@@ -125,6 +129,7 @@ def download_models(device: str = "cpu"):
                 repo_id=repo_id,
                 token=hf_token or None,
                 local_dir_use_symlinks=False,
+                ignore_patterns=["*.bin", "*.msgpack", "*.h5", "*.ot"],
             )
             log.info(f"    OK - Cached at: {path}")
         except Exception as e:

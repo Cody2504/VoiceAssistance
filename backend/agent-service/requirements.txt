@@ -1,0 +1,14 @@
+-r /shared/requirements.txt
+
+# LangChain / LangGraph (pinned to known-working versions for the existing jockey_graph.py)
+langchain==0.3.7
+langchain-core==0.3.18
+langchain-openai==0.2.8
+langgraph==0.2.45
+openai==1.51.2
+
+# SSE response helper
+sse-starlette==2.1.3
+
+# aiosqlite for LangGraph checkpointer
+aiosqlite==0.20.0

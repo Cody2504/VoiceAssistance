@@ -1,93 +1,69 @@
 # Jockey
 
-Jockey is a conversational video agent built on top of the [Twelve Labs APIs](https://docs.twelvelabs.io/docs/introduction) and [LangGraph](https://python.langchain.com/v0.1/docs/langgraph/).
-
-Join Twelve Labs' [Multimodal Minds Discord](https://discord.gg/4p9QaBvT6r) server if you have questions or encounter issues when working with Jockey!
+Jockey is a conversational video agent built with [LangGraph](https://python.langchain.com/v0.1/docs/langgraph/). It mirrors the architectural decisions of Twelve Labs' Marengo (video retrieval) and Pegasus (video text generation), but runs on **self-hosted open-source models** — CLIP-L / ViCLIP for indexing, Qdrant for vector storage, Qwen3-VL-8B (via OpenRouter) for VLM tasks, and [TRACE](https://github.com/gyxxyg/TRACE) for temporal moment grounding.
 
 ## Description
 
 **ATTENTION**: Jockey is in alpha development and may break or behave unexpectedly!
 
-Jockey combines the capabilities of existing Large Language Models (LLMs) with [Twelve Labs' APIs](https://docs.twelvelabs.io/docs/introduction) using [LangGraph](https://python.langchain.com/v0.1/docs/langgraph/). This allows workloads to be allocated to the appropriate foundation models for handling complex video workflows. LLMs are used to logically plan execution steps and interact with users, while video-related tasks are passed to [Twelve Labs APIs](https://docs.twelvelabs.io/docs/introduction), powered by video-foundation models (VFMs), to work with video natively, without the need for intermediary representations like pre-generated captions.
+Jockey combines a planner / supervisor / worker LangGraph topology with three workers:
+
+- **video-search** — corpus retrieval (`simple-video-search`) and intra-video moment localization (`find-moment`)
+- **video-text-generation** — `gist`, `summarize`, `freeform` Q&A over a single video
+- **video-editing** — `combine-clips` and `remove-segment` via ffmpeg
+
+The retrieval and grounding paths run locally; only the VLM-based summary path calls a hosted LLM. There is no dependency on the closed TwelveLabs SaaS.
 
 ## Quickstart
 
 ### Dependencies
 
-- [FFMPEG](https://ffmpeg.org/): Must have `ffmpeg` accessible in `$PATH` for the Video Editing worker.
-- [Docker](https://www.docker.com/): Required for running the Jockey API server.
-- [Docker Compose](https://docs.docker.com/compose/): Required for running the Jockey API server.
-  - Needs to accessible via:
-    
-    ```bash
-    docker compose
-    ```
+- [FFMPEG](https://ffmpeg.org/): `ffmpeg` accessible in `$PATH` (used by the video-editing worker).
+- [Docker](https://www.docker.com/) + [Docker Compose](https://docs.docker.com/compose/): required for running the LangGraph API server and Qdrant.
+- An [OpenRouter API key](https://openrouter.ai/keys) — used by both `VideoQA` (Qwen3-VL-8B summary/gist/freeform) and the text-embedding fallback.
+- An LLM provider key for the planner / supervisor / worker LLMs (Azure or OpenAI).
+- For the `find_moment` tool: a CUDA-capable GPU (Colab T4 16 GB or better). 4-bit quantization keeps the TRACE 7B grounding model within T4 budget.
 
-    Depending on your install method it may only be accessible with:
+### Setup
 
-    ```bash
-    docker-compose
-    ```
+```bash
+git clone https://github.com/HaiVD16/tl-jockey.git
+cd tl-jockey
 
-    which can cause issues with the `langgraph-cli`. In such a case, you can install [Docker Desktop](https://www.docker.com/products/docker-desktop/) to easily make the above a valid system command.
+python3 -m venv venv
+source venv/bin/activate
 
-- Required Python Packages (For Local Dev): [requirements.txt](requirements.txt)
-- Twelve Labs API Key: [Twelve Labs Dashboard](https://dashboard.twelvelabs.io/)
-- LLM Provider API Key (Currently Azure or Open AI only)
+pip install -r requirements.txt
+# Or if you only want the LangGraph agent path without grounding:
+# pip install -e .[open-source]
+```
 
-### Setup Steps (Mac OSX)
+For the `find_moment` tool, additionally clone and install the TRACE GitHub repo so its custom `TraceMistralForCausalLM` architecture is registered:
 
-1. Install the external dependencies listed above ([FFMPEG](https://ffmpeg.org/), [Docker](https://www.docker.com/), [Docker Compose](https://docs.docker.com/compose/))
-2. Grab the repo using this command:
+```bash
+git clone https://github.com/gyxxyg/TRACE.git
+cd TRACE && pip install -r requirements.txt && pip install -e .
+cd ..
+```
 
-    ```bash 
-    git clone https://github.com/twelvelabs-io/tl-jockey.git
-    ```
+Set up your `.env` (see [`example.env`](example.env) for the full list):
 
-3. Enter the `tl-jockey` directory: 
+```toml
+OPENROUTER_API_KEY=<YOUR OPENROUTER KEY>
+HF_API_KEY=<YOUR HF TOKEN>          # optional but helps download throughput
 
-    ```bash
-    cd tl-jockey
-    ```
-4. Create a virtual environment: 
+LLM_PROVIDER=OPENAI                 # AZURE | OPENAI
+OPENAI_API_KEY=<YOUR OPENAI KEY>    # only if LLM_PROVIDER=OPENAI
 
-    ```bash 
-    python3 -m venv venv
-    ```
+HOST_PUBLIC_DIR=/tmp/jockey_videos  # output dir for rendered clips
 
-5. Activate your virtual environment: 
+QDRANT_URL=localhost
+QDRANT_PORT=6333
 
-    ```bash 
-    source venv/bin/activate
-    ```
+GROUNDING_BACKEND=trace             # trace | qd_detr | off
+```
 
-6. Install Python package requirements:
-
-    ```bash
-    pip3 install -r requirements.txt
-    ```
-
-7. Create your `.env` file and add the correct variables:
-
-    ```toml
-    AZURE_OPENAI_ENDPOINT=<IF USING AZURE GPTs>
-    AZURE_OPENAI_API_KEY=<IF USING AZURE GPTs>
-    OPENAI_API_VERSION=<IF USING AZURE GPTs>
-    OPENAI_API_KEY=<IF USING OPEN AI GPTs>
-    # Determines which Langchain classes are used to construct Jockey LLM instances.
-    LLM_PROVIDER=<MUST BE ONE OF [AZURE, OPENAI]>
-    TWELVE_LABS_API_KEY=<YOUR TWELVE LABS API KEY>
-    # This variable is used to persist and make rendered video servable from within the LangGraph API container.
-    # Please make sure this directory exists on the host machine.
-    # Please make sure this directory is available as a File Sharing resource in Docker For Mac.
-    HOST_PUBLIC_DIR=<VOLUME MOUNTED TO LANGGRAPH API SERVER CONTAINER WHERE RENDERED VIDEOS GO>
-    # This variable is a placeholder that will be used by an upcoming Jockey core worker it currently doesn't impact anything.
-    # Please make sure this directory exists on the host machine.
-    # Please make sure this directory is available as a File Sharing resource in Docker For Mac.
-    HOST_VECTOR_DB_DIR=<VOLUME MOUNTED TO LANGGRAPH API SERVER CONTAINER WHERE VECTOR DB GOES>
-    ```
-
-    Make sure your `.env` file is somewhere in the directory tree of the `tl-jockey` directory.
+Make sure your `.env` file is somewhere in the working directory tree.
 
 ### Deploying in the Terminal
 

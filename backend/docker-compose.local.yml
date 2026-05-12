@@ -1,0 +1,34 @@
+services:
+  iam:
+    volumes:
+      - ./iam:/app
+      - ./cm_shared:/shared/cm_shared
+    command: ["sh", "-c", "alembic upgrade head && uvicorn main.main:app --host 0.0.0.0 --port 1100 --reload"]
+
+  video-service:
+    volumes:
+      - ./video-service:/app
+      - ./cm_shared:/shared/cm_shared
+      - ./jockey:/workspace/jockey
+      - ./.models:/models
+    command: ["sh", "-c", "alembic upgrade head && uvicorn main.main:app --host 0.0.0.0 --port 1101 --reload"]
+
+  video-worker:
+    volumes:
+      - ./video-service:/app
+      - ./cm_shared:/shared/cm_shared
+      - ./jockey:/workspace/jockey
+      - ./.models:/models
+
+  agent-service:
+    volumes:
+      - ./agent-service:/app
+      - ./cm_shared:/shared/cm_shared
+      - ./jockey:/workspace/jockey
+    command: ["sh", "-c", "alembic upgrade head && uvicorn main.main:app --host 0.0.0.0 --port 1102 --reload"]
+
+  token-usage:
+    volumes:
+      - ./token-usage:/app
+      - ./cm_shared:/shared/cm_shared
+    command: ["sh", "-c", "alembic upgrade head && uvicorn main.main:app --host 0.0.0.0 --port 1103 --reload"]

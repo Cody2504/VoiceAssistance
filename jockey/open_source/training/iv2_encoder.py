@@ -108,7 +108,13 @@ class InternVideo2Encoder:
         }.get(self.dtype_str, torch.float16)
 
     def _load_model(self):
-        """Lazy-load the model. Falls back to placeholder on any failure."""
+        """Lazy-load the model.
+
+        Placeholder fallback is reserved for the genuine dev case where neither
+        `torch` nor `transformers` is installed. Any other failure (gated repo,
+        404, network, OOM) raises — silent garbage-feature production is worse
+        than a clear error.
+        """
         if self._model is not None:
             return
 
@@ -118,42 +124,38 @@ class InternVideo2Encoder:
         try:
             import torch
             from transformers import AutoModel, AutoTokenizer
-
-            self._torch_dtype = self._torch_dtype_from_str()
-            self._model = AutoModel.from_pretrained(
-                self.model_name_or_path,
-                trust_remote_code=True,
-                torch_dtype=self._torch_dtype,
-                token=self._hf_token,
-            ).to(device).eval()
-
-            # Tokenizer for the text tower. Some InternVideo2 configs ship the
-            # tokenizer separately (BertTokenizer); others bundle it.
-            try:
-                self._tokenizer = AutoTokenizer.from_pretrained(
-                    self.model_name_or_path,
-                    trust_remote_code=True,
-                    token=self._hf_token,
-                )
-            except Exception as e:
-                log.warning(
-                    f"AutoTokenizer failed for {self.model_name_or_path}: {e}. "
-                    f"Text encoding will use the model's bundled tokenize fn if present."
-                )
-                self._tokenizer = None
-
-            n_params = sum(p.numel() for p in self._model.parameters())
-            log.info(f"InternVideo2 loaded: {n_params/1e6:.1f}M params on {device}")
-            self._check_dim()
-        except Exception as e:
+        except ImportError as e:
             log.warning(
-                f"InternVideo2 load failed: {e}\n"
-                f"  → Falling back to PLACEHOLDER mode (random embeddings). "
-                f"This lets you unit-test downstream code, but features are noise.\n"
-                f"  → To actually load the model, see the docstring at the top of "
-                f"this file (PATH A / PATH B)."
+                f"torch/transformers not importable ({e}). Falling back to PLACEHOLDER "
+                f"mode (random embeddings). Install training deps to load the real model."
             )
             self._model = "placeholder"
+            return
+
+        self._torch_dtype = self._torch_dtype_from_str()
+        self._model = AutoModel.from_pretrained(
+            self.model_name_or_path,
+            trust_remote_code=True,
+            torch_dtype=self._torch_dtype,
+            token=self._hf_token,
+        ).to(device).eval()
+
+        try:
+            self._tokenizer = AutoTokenizer.from_pretrained(
+                self.model_name_or_path,
+                trust_remote_code=True,
+                token=self._hf_token,
+            )
+        except Exception as e:
+            log.warning(
+                f"AutoTokenizer failed for {self.model_name_or_path}: {e}. "
+                f"Text encoding will use the model's bundled tokenize fn if present."
+            )
+            self._tokenizer = None
+
+        n_params = sum(p.numel() for p in self._model.parameters())
+        log.info(f"InternVideo2 loaded: {n_params/1e6:.1f}M params on {device}")
+        self._check_dim()
 
     def _check_dim(self):
         """Probe the model with a dummy input to discover the embedding dim."""

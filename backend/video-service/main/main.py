@@ -1,0 +1,45 @@
+import logging
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from cm_shared.settings import get_base_settings
+from main.api.edit import router as edit_router
+from main.api.grounding import router as grounding_router
+from main.api.qa import router as qa_router
+from main.api.search import router as search_router
+from main.api.videos import router as videos_router
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(name)s | %(message)s")
+settings = get_base_settings()
+
+app = FastAPI(title="Video Service", version="0.1.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins_list,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(videos_router)
+app.include_router(grounding_router)
+app.include_router(search_router)
+app.include_router(qa_router)
+app.include_router(edit_router)
+
+
+@app.on_event("startup")
+def warm_models():
+    """Eagerly load the grounding head so the first /ground request isn't slow."""
+    try:
+        from main.pipeline.ground import _load_model
+        _load_model()
+    except Exception as exc:
+        logging.getLogger(__name__).warning("model warm-up failed (ok in CPU/dev): %s", exc)
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok", "service": "video-service"}

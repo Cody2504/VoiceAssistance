@@ -40,10 +40,27 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s | %(name)s | %(levelname)s | %(message)s",
+    format="%(asctime)s | %(levelname)s | %(message)s",
     datefmt="%H:%M:%S",
 )
 log = logging.getLogger("mediafm_pipeline")
+
+# Suppress noisy third-party loggers
+for _logger_name in (
+    "httpx", "httpcore", "huggingface_hub", "transformers",
+    "pyscenedetect", "urllib3", "filelock", "accelerate",
+    "jockey.open_source",
+):
+    logging.getLogger(_logger_name).setLevel(logging.WARNING)
+
+# Suppress transformers load reports, progress bars, and deprecation warnings
+os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")
+os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
+os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", message=".*unauthenticated.*")
 
 
 def create_test_video(output_path: str, duration: float = 10.0, scenes: int = 3) -> str:
@@ -98,7 +115,7 @@ def print_banner():
 +==============================================================+
 |         MediaFM-Inspired Video Understanding Pipeline        |
 |                                                              |
-|   Tri-Modal:  ViCLIP (video) + wav2vec2 (audio) + text      |
+|   Tri-Modal:  CLIP (video) + wav2vec2 (audio) + text      |
 |   Context:    Transformer Encoder (3L, 8H)                   |
 |   API:        OpenRouter (embeddings + VLM)                  |
 |   Video QA:   qwen/qwen3-vl-8b-instruct (via OpenRouter)    |

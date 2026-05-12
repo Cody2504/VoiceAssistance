@@ -1,0 +1,187 @@
+x-common-env: &common-env
+  DEPLOY_ENV: ${DEPLOY_ENV:-local}
+  CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS}
+  SECRET_KEY: ${SECRET_KEY}
+  JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+  ACCESS_TOKEN_TTL_MIN: ${ACCESS_TOKEN_TTL_MIN:-60}
+  REFRESH_TOKEN_TTL_DAYS: ${REFRESH_TOKEN_TTL_DAYS:-14}
+  POSTGRES_USER: ${POSTGRES_USER:-jockey}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-jockey_dev}
+  POSTGRES_DB: ${POSTGRES_DB:-jockey}
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: 5432
+  REDIS_HOST: redis
+  REDIS_PORT: 6379
+  IAM_BASE_URL: http://iam:1100
+  VIDEO_SERVICE_BASE_URL: http://video-service:1101
+  AGENT_SERVICE_BASE_URL: http://agent-service:1102
+  TOKEN_USAGE_BASE_URL: http://token-usage:1103
+
+services:
+  iam:
+    build:
+      context: .
+      dockerfile: iam/Dockerfile
+    container_name: jockey-iam
+    environment:
+      <<: *common-env
+    restart: always
+    depends_on: [postgres]
+    ports:
+      - "1100:1100"
+    networks: [jockey-net]
+
+  video-service:
+    build:
+      context: .
+      dockerfile: video-service/Dockerfile
+    container_name: jockey-video
+    environment:
+      <<: *common-env
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: 6333
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-jockey_shots}
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-jockey}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-jockey_dev_secret}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      HF_API_KEY: ${HF_API_KEY}
+      GROUNDING_CHECKPOINT: /models/grounding/best.pt
+      GROUNDING_DEVICE: ${GROUNDING_DEVICE:-cpu}
+    restart: always
+    depends_on: [postgres, redis, qdrant, minio]
+    ports:
+      - "1101:1101"
+    volumes:
+      - ./.models:/models
+    networks: [jockey-net]
+
+  video-worker:
+    build:
+      context: .
+      dockerfile: video-service/Dockerfile
+    container_name: jockey-video-worker
+    environment:
+      <<: *common-env
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: 6333
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-jockey_shots}
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-jockey}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-jockey_dev_secret}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      HF_API_KEY: ${HF_API_KEY}
+    command: ["python", "-m", "main.workers.queue_worker"]
+    restart: always
+    depends_on: [video-service, redis]
+    volumes:
+      - ./.models:/models
+    networks: [jockey-net]
+
+  agent-service:
+    build:
+      context: .
+      dockerfile: agent-service/Dockerfile
+    container_name: jockey-agent
+    environment:
+      <<: *common-env
+      LLM_PROVIDER: ${LLM_PROVIDER:-OPENAI}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_PLANNER_MODEL: ${OPENAI_PLANNER_MODEL:-gpt-4o}
+      OPENAI_WORKER_MODEL: ${OPENAI_WORKER_MODEL:-gpt-4o-mini}
+      AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT}
+      AZURE_OPENAI_API_KEY: ${AZURE_OPENAI_API_KEY}
+      OPENAI_API_VERSION: ${OPENAI_API_VERSION:-2024-08-01-preview}
+      AZURE_PLANNER_DEPLOYMENT: ${AZURE_PLANNER_DEPLOYMENT:-gpt-4o}
+      AZURE_WORKER_DEPLOYMENT: ${AZURE_WORKER_DEPLOYMENT:-gpt-4o-mini}
+      STIRRUP_SEARCH: ${STIRRUP_SEARCH:-local}
+      STIRRUP_TEXTGEN: ${STIRRUP_TEXTGEN:-local}
+      TWELVE_LABS_API_KEY: ${TWELVE_LABS_API_KEY}
+    restart: always
+    depends_on: [postgres, redis, video-service]
+    ports:
+      - "1102:1102"
+    networks: [jockey-net]
+
+  token-usage:
+    build:
+      context: .
+      dockerfile: token-usage/Dockerfile
+    container_name: jockey-token-usage
+    environment:
+      <<: *common-env
+    restart: always
+    depends_on: [postgres]
+    ports:
+      - "1103:1103"
+    networks: [jockey-net]
+
+  gateway:
+    build: ./gateway
+    container_name: jockey-gateway
+    restart: always
+    depends_on: [iam, video-service, agent-service, token-usage]
+    ports:
+      - "85:80"
+    networks: [jockey-net]
+
+  # ---- Infra (from database/docker-compose.yml, redeclared for one-shot startup) ----
+  postgres:
+    image: postgres:16.8-bullseye
+    container_name: jockey-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-jockey}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-jockey_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-jockey}
+    restart: always
+    ports: ["5432:5432"]
+    volumes: ["./.postgresdata:/var/lib/postgresql/data"]
+    networks: [jockey-net]
+
+  redis:
+    image: redis:7.4.3
+    container_name: jockey-redis
+    ports: ["6379:6379"]
+    restart: always
+    networks: [jockey-net]
+
+  qdrant:
+    image: qdrant/qdrant:v1.14.0
+    container_name: jockey-qdrant
+    ports: ["6333:6333", "6334:6334"]
+    volumes: ["./.qdrantdata:/qdrant/storage"]
+    restart: always
+    networks: [jockey-net]
+
+  minio:
+    image: minio/minio:RELEASE.2024-12-18T13-15-44Z
+    container_name: jockey-minio
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-jockey}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-jockey_dev_secret}
+    command: server /data --console-address ":9001"
+    ports: ["9000:9000", "9001:9001"]
+    volumes: ["./.miniodata:/data"]
+    restart: always
+    networks: [jockey-net]
+
+  minio-init:
+    image: minio/mc:RELEASE.2024-11-21T17-21-54Z
+    container_name: jockey-minio-init
+    depends_on: [minio]
+    entrypoint: >
+      /bin/sh -c "
+      until (/usr/bin/mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-jockey} ${MINIO_ROOT_PASSWORD:-jockey_dev_secret}) do echo 'waiting for minio'; sleep 2; done;
+      /usr/bin/mc mb --ignore-existing local/videos;
+      /usr/bin/mc mb --ignore-existing local/edits;
+      /usr/bin/mc mb --ignore-existing local/thumbs;
+      exit 0;
+      "
+    networks: [jockey-net]
+
+networks:
+  jockey-net:
+    name: jockey-net
+    driver: bridge

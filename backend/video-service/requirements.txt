@@ -1,0 +1,21 @@
+-r /shared/requirements.txt
+
+# Object storage
+boto3==1.35.50
+
+# Video / ML deps (jockey package already brings these via -e install, but we pin
+# the ones the service needs even when running without the editable install)
+torch==2.4.1
+torchvision==0.19.1
+numpy==1.26.4
+ffmpeg-python==0.2.0
+scenedetect[opencv]==0.6.4
+decord==0.6.0
+transformers==4.45.2
+qdrant-client==1.12.0
+
+# Whisper ASR
+openai-whisper==20240930
+
+# OpenRouter / OpenAI clients
+openai==1.51.2

@@ -115,6 +115,19 @@ class PipelineConfig:
     # --- Frame Sampling ---
     max_frames_per_shot: int = int(os.environ.get("MAX_FRAMES_PER_SHOT", "8"))
 
+    # --- Moment grounding (find_moment tool) ---
+    # Backend: "trace" loads Yongxin-Guo/trace-uni at 4-bit on T4 (~15 GB download,
+    #          ~10-30s/query, zero-shot Charades-STA R@0.5 ≈ 43.7).
+    # "qd_detr" loads the thesis-trained QDDETRHead checkpoint via MomentLocalizer
+    #          (~50ms/query). Requires `qd_detr_checkpoint` + precomputed features.
+    # "off" disables the find_moment tool entirely.
+    grounding_backend: str = os.environ.get("GROUNDING_BACKEND", "trace")
+    trace_model_name: str = os.environ.get("TRACE_MODEL", "Yongxin-Guo/trace-uni")
+    trace_frames_per_clip: int = int(os.environ.get("TRACE_FRAMES_PER_CLIP", "64"))
+    trace_load_in_4bit: bool = os.environ.get("TRACE_LOAD_IN_4BIT", "true").lower() in ("true", "1", "yes")
+    qd_detr_checkpoint: str = os.environ.get("QD_DETR_CHECKPOINT", "")
+    features_dir: str = os.environ.get("FEATURES_DIR", "features/charades")
+
 
 # Singleton config
 config = PipelineConfig()

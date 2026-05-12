@@ -12,7 +12,7 @@ license = { text = "MIT" }
 authors = [
     { name = "Travis Couture", email = "travis@twelvelabs.io" }
 ]
-urls = { "Homepage" = "https://github.com/twelvelabs-io/tl-jockey/" }
+urls = { "Homepage" = "https://github.com/HaiVD16/tl-jockey/" }
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
@@ -39,6 +39,15 @@ open-source = [
     "scenedetect[opencv]>=0.6.4",
     "decord>=0.6.0",
     "numpy>=1.24.0",
+    "Pillow>=10.0.0",
+    "transformers>=4.40.0",
+    "torch>=2.0.0",
+]
+grounding = [
+    # TRACE inference: 4-bit on T4 needs bitsandbytes + accelerate.
+    # The TRACE GitHub repo also needs to be installed manually — see README.
+    "bitsandbytes>=0.43.0",
+    "accelerate>=0.28.0",
 ]
 training = [
     "torch>=2.0.0",

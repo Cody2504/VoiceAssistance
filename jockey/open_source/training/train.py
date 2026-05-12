@@ -254,13 +254,23 @@ def train(args: argparse.Namespace) -> None:
     )
 
     # Resolve total target epochs. `--add-epochs N` means "train N more from where
-    # we resumed", overriding `--epochs`. Lets incremental rounds say "+30 epochs"
+    # we resumed", overriding `--epochs`. Lets incremental rounds say "+5 epochs"
     # without having to track cumulative epoch counts manually.
+    #
+    # When --add-epochs is set, switch to CONSTANT LR (no cosine decay): the cosine
+    # schedule's total-step horizon doesn't make sense for open-ended incremental
+    # training, and the previous behavior caused LR oscillation (cos(π × progress)
+    # for progress > 1 bounces between 0 and 2× base_lr).
     if args.add_epochs is not None and args.add_epochs > 0:
         target_epochs = start_epoch + args.add_epochs
-        log.info(f"--add-epochs {args.add_epochs}: will train epochs {start_epoch}..{target_epochs-1}")
+        use_lr_schedule = False
+        log.info(
+            f"--add-epochs {args.add_epochs}: epochs {start_epoch}..{target_epochs - 1}, "
+            f"constant LR = {args.lr:g} (cosine schedule disabled for incremental training)"
+        )
     else:
         target_epochs = args.epochs
+        use_lr_schedule = True
 
     global_step = start_epoch * len(train_loader)
 
@@ -270,7 +280,10 @@ def train(args: argparse.Namespace) -> None:
         for step, batch in enumerate(train_loader):
             batch = to_device(batch, args.device)
 
-            lr = cosine_warmup_lr(global_step, total_steps, warmup_steps, args.lr)
+            if use_lr_schedule:
+                lr = cosine_warmup_lr(global_step, total_steps, warmup_steps, args.lr)
+            else:
+                lr = args.lr  # constant for --add-epochs incremental training
             for pg in optimizer.param_groups:
                 pg["lr"] = lr
 

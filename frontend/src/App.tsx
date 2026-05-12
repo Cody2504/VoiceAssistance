@@ -1,31 +1,29 @@
-import React from 'react';
-import VideoAssistant from './widgets/VideoAssistant/VideoAssistant';
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route
-} from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from 'react-query';
-import { CommonProvider } from './widgets/IndexVideo/WrapperPage';
-import { ChatProvider } from './widgets/VideoAssistant/hooks/useChat';
+import { Navigate, Route, Routes } from "react-router";
 
-const queryClient = new QueryClient();
+import MainLayout from "@/layouts/MainLayout";
+import PrivateRoutes from "@/routes/PrivateRoutes";
+import Login from "@/pages/auth/Login";
+import Workspace from "@/pages/workspace/Workspace";
+import VideoDetail from "@/pages/video/VideoDetail";
+import Chat from "@/pages/chat/Chat";
+import Profile from "@/pages/profile/Profile";
 
-const App = () => {
+export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <CommonProvider>
-        <Router>
-        <ChatProvider>
-          <Routes>
-              <Route path="/" element={<VideoAssistant />} />
-              <Route path="/Chat" element={<VideoAssistant />} />
-          </Routes>
-          </ChatProvider>
-        </Router>
-      </CommonProvider>
-    </QueryClientProvider>
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route element={<PrivateRoutes />}>
+        <Route element={<MainLayout />}>
+          <Route path="/" element={<Navigate to="/workspace" replace />} />
+          <Route path="/workspace" element={<Workspace />} />
+          <Route path="/video/:videoId" element={<VideoDetail />} />
+          <Route path="/chat" element={<Chat />} />
+          <Route path="/chat/:conversationId" element={<Chat />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/library" element={<Navigate to="/workspace" replace />} />
+        </Route>
+      </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
-};
-
-export default App;
+}
