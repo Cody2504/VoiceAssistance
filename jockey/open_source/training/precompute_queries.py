@@ -108,23 +108,34 @@ def main():
     )
     p.add_argument(
         "--encoder",
-        choices=["clip", "openai"],
+        choices=["clip", "openai", "iv2"],
         default="clip",
         help="Query text encoder. 'clip' (default, 768-d, aligned with CLIP visual — "
-             "USE THIS for the grounding head). 'openai' = text-embedding-3-large via "
-             "OpenRouter, 3072-d (kept as opt-in for ablation comparison; do not use as "
-             "default — it breaks query↔visual alignment).",
+             "USE THIS for the GroundingHead/ViCLIP path). 'iv2' = InternVideo2 text "
+             "tower (dim discovered at runtime; aligned with IV2 visual — USE THIS for "
+             "qd_detr_train.py / IV2 features). 'openai' = text-embedding-3-large "
+             "via OpenRouter, 3072-d (opt-in for ablation; breaks query↔visual alignment).",
+    )
+    p.add_argument(
+        "--iv2-model",
+        default="OpenGVLab/InternVideo2-Stage2_1B-224p-f4",
+        help="HF repo for the InternVideo2 checkpoint (used only with --encoder iv2).",
+    )
+    p.add_argument(
+        "--iv2-device", default="cuda",
+        help="Device for the InternVideo2 text tower (used only with --encoder iv2).",
     )
     args = p.parse_args()
 
     queries = collect_unique_queries(args.annotations, features_dir_filter=args.features_dir_filter)
     log.info(f"{len(queries)} unique queries across {len(args.annotations)} annotation files")
 
-    expected_dim = 768 if args.encoder == "clip" else 3072
+    # iv2's text-tower dim is discovered at load time, not hardcoded.
+    expected_dim = {"clip": 768, "openai": 3072, "iv2": None}[args.encoder]
 
     cache = load_existing_cache(args.out)
     log.info(f"Existing cache: {len(cache)} queries")
-    if cache:
+    if cache and expected_dim is not None:
         sample_dim = int(next(iter(cache.values())).shape[0])
         if sample_dim != expected_dim:
             raise SystemExit(
@@ -172,6 +183,36 @@ def main():
         save_cache(cache, args.out)
         log.info(
             f"Done (CLIP-text, 768-d). cached={len(cache)} new={n_ok} "
+            f"elapsed={time.time()-t0:.1f}s → {args.out}"
+        )
+
+    elif args.encoder == "iv2":
+        # InternVideo2 text tower — aligned with IV2 visual features. Use this
+        # whenever the per-video .npz files were extracted with iv2_feature_extractor.
+        from jockey.open_source.training.iv2_encoder import InternVideo2Encoder
+        iv2 = InternVideo2Encoder(
+            model_name_or_path=args.iv2_model,
+            device=args.iv2_device,
+        )
+        log.info(f"Embedding {len(todo)} queries with InternVideo2 text tower ({args.iv2_model})...")
+        chunk = 128  # smaller than CLIP since the model is larger
+        n_ok = 0
+        for i in range(0, len(todo), chunk):
+            batch_q = todo[i : i + chunk]
+            try:
+                embs = iv2.encode_text_batch(batch_q)
+                for q, e in zip(batch_q, embs):
+                    cache[q] = e.astype(np.float32)
+                n_ok += len(batch_q)
+            except Exception as e:
+                log.warning(f"  IV2 batch {i // chunk} failed: {e}")
+            if (i // chunk) % max(1, args.checkpoint_every // chunk) == 0:
+                save_cache(cache, args.out)
+                log.info(f"[{n_ok}/{len(todo)}] checkpoint ({time.time()-t0:.1f}s)")
+        save_cache(cache, args.out)
+        sample_dim = int(next(iter(cache.values())).shape[0]) if cache else iv2.embedding_dim
+        log.info(
+            f"Done (InternVideo2 text, {sample_dim}-d). cached={len(cache)} new={n_ok} "
             f"elapsed={time.time()-t0:.1f}s → {args.out}"
         )
 
