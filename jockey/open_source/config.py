@@ -75,14 +75,40 @@ class PipelineConfig:
     text_embedding_model: str = os.environ.get("TEXT_EMBEDDING_MODEL", "openai/text-embedding-3-large")
     text_embedding_dim: int = 3072  # text-embedding-3-large output dimension
 
+    # --- Marengo mode (single unified encoder, single vector per clip) ---
+    # When True (default), the indexer skips audio + ASR + text-emb-of-ASR
+    # entirely and stores only the visual encoder's 768-d output per shot.
+    # The search side encodes the query through the same encoder's text
+    # tower and cosine-searches in the same 768-d space. This mirrors
+    # Marengo's "one unified frozen video-language encoder" architecture.
+    #
+    # Set False to fall back to the legacy multi-stage concat pipeline
+    # (visual + wav2vec2 + text-emb-3-large concatenated) — useful only
+    # for backward compat with old indexes / ablation experiments.
+    marengo_mode: bool = os.environ.get("MARENGO_MODE", "true").lower() in ("true", "1", "yes")
+
+    # --- ASR transcript indexing (Marengo "conversation" modality) -------
+    # When True, the indexer runs Whisper per shot and stores the transcript
+    # in the Qdrant point payload. Does NOT change the indexed vector — that
+    # stays single-encoder Marengo-shape. Enables the `find-in-transcript`
+    # tool to answer queries like "when does the instructor say X?".
+    # Critical for lecture / podcast / interview content where the audio IS
+    # the meaningful signal.
+    store_transcript: bool = os.environ.get("STORE_TRANSCRIPT", "false").lower() in ("true", "1", "yes")
+
     # --- Fused Embedding ---
     @property
     def fused_embedding_dim(self) -> int:
-        """Total dimension after concatenating all modality embeddings."""
+        """Stored vector dimension for the Qdrant collection.
+
+        Marengo mode  → 768 (just the visual encoder)
+        Legacy modes  → viclip+audio+text or viclip+text concat (3840 or 4608)
+        """
+        if self.marengo_mode:
+            return self.viclip_embedding_dim
         if self.mediafm_enabled:
             return self.viclip_embedding_dim + self.audio_embedding_dim + self.text_embedding_dim
-        else:
-            return self.viclip_embedding_dim + self.text_embedding_dim
+        return self.viclip_embedding_dim + self.text_embedding_dim
 
     # --- VLM / Video QA (via OpenRouter API) ---
     vlm_model: str = os.environ.get("VLM_MODEL", "qwen/qwen3-vl-8b-instruct")
@@ -96,11 +122,25 @@ class PipelineConfig:
     mediafm_checkpoint: Optional[str] = os.environ.get("MEDIAFM_CHECKPOINT", None)
 
     # --- ASR ---
-    # Backend: "whisper" (default, via HF transformers) | "zipformer" (sherpa-onnx) | "none"
-    asr_backend: str = os.environ.get("ASR_BACKEND", "whisper")
-    whisper_model: str = os.environ.get("WHISPER_MODEL", "openai/whisper-base")
+    # Backend: "whisperx" (default, faster-whisper CTranslate2) | "zipformer" (sherpa-onnx) | "none"
+    asr_backend: str = os.environ.get("ASR_BACKEND", "whisperx")
+    # WhisperX/faster-whisper uses short model names ("tiny", "base", "small",
+    # "medium", "large-v3"), not HF model ids. Default "small" is CPU-friendly
+    # (~500 MB int8, near-realtime on a modern x86 core). Bump to "large-v3"
+    # on GPU for accuracy benchmarks.
+    whisper_model: str = os.environ.get("WHISPER_MODEL", "small")
     whisper_device: str = os.environ.get("WHISPER_DEVICE", _auto_device())
     whisper_language: str = os.environ.get("WHISPER_LANGUAGE", "en")
+    # Compute precision — auto: float16 on CUDA, int8 on CPU. Override for
+    # ablation: float32 (slower, higher quality), int8_float16 (CUDA, lower VRAM).
+    whisper_compute_type: str = os.environ.get(
+        "WHISPER_COMPUTE_TYPE",
+        "float16" if _auto_device() == "cuda" else "int8",
+    )
+    whisper_beam_size: int = int(os.environ.get("WHISPER_BEAM_SIZE", "5"))
+    # Silero VAD pre-filter inside faster-whisper. Replaces the legacy RMS
+    # silence heuristic — drops silent segments before any decoder work runs.
+    whisper_vad: bool = os.environ.get("WHISPER_VAD", "true").lower() in ("true", "1", "yes")
     zipformer_model_dir: str = os.environ.get(
         "ZIPFORMER_MODEL_DIR",
         os.path.join(os.path.dirname(__file__), "models", "zipformer")
@@ -112,19 +152,53 @@ class PipelineConfig:
     # --- Shot Detection ---
     shot_detection_threshold: float = float(os.environ.get("SHOT_DETECTION_THRESHOLD", "27.0"))
 
+    # --- Sentence-boundary chunk refinement -----------------------------
+    # When True, long shots (>max_shot_s) from PySceneDetect are split at
+    # sentence boundaries / long pauses using word-level ASR timestamps,
+    # instead of equal-length subdivision. Costs one extra Whisper pass per
+    # long shot. Falls back to uniform subdivision when speech is absent.
+    sentence_refine_enabled: bool = os.environ.get(
+        "SENTENCE_REFINE_ENABLED", "false"
+    ).lower() in ("true", "1", "yes")
+
+    # --- VLM per-shot captioning (VideoRAG / NVIDIA VSS pattern) ----------
+    # When enabled, the indexer generates a short caption per shot via the
+    # same Qwen3-VL endpoint the agent already uses for VQA (via OpenRouter,
+    # see ``vlm_model`` above). The caption is joined with the ASR
+    # transcript before being passed to the text embedder — the single
+    # biggest retrieval-quality win for silent shots (B-roll, animations).
+    #
+    # CAPTION_ENABLED:
+    #   "auto"  (default) — on iff OPENROUTER_API_KEY is configured
+    #   "true"  — force on (errors out if no API key)
+    #   "false" — force off
+    caption_enabled_raw: str = os.environ.get("CAPTION_ENABLED", "auto")
+    caption_max_new_tokens: int = int(os.environ.get("CAPTION_MAX_NEW_TOKENS", "80"))
+
+    @property
+    def caption_enabled(self) -> bool:
+        raw = (self.caption_enabled_raw or "").strip().lower()
+        if raw == "auto":
+            return bool(self.openrouter_api_key)
+        return raw in ("true", "1", "yes")
+
+    # --- Uniform-window override -----------------------------------------
+    # When set (e.g. 5.0), the indexer SKIPS PySceneDetect and chops the
+    # video into fixed-length windows. Necessary for continuous footage
+    # (lectures, ego-centric, single-camera) where PySceneDetect collapses
+    # the whole video into one shot — making per-shot transcripts useless.
+    # When None (default), uses PySceneDetect.
+    uniform_window_sec: Optional[float] = (
+        float(os.environ["UNIFORM_WINDOW_SEC"])
+        if os.environ.get("UNIFORM_WINDOW_SEC") else None
+    )
+
     # --- Frame Sampling ---
     max_frames_per_shot: int = int(os.environ.get("MAX_FRAMES_PER_SHOT", "8"))
 
-    # --- Moment grounding (find_moment tool) ---
-    # Backend: "trace" loads Yongxin-Guo/trace-uni at 4-bit on T4 (~15 GB download,
-    #          ~10-30s/query, zero-shot Charades-STA R@0.5 ≈ 43.7).
-    # "qd_detr" loads the thesis-trained QDDETRHead checkpoint via MomentLocalizer
-    #          (~50ms/query). Requires `qd_detr_checkpoint` + precomputed features.
-    # "off" disables the find_moment tool entirely.
-    grounding_backend: str = os.environ.get("GROUNDING_BACKEND", "trace")
-    trace_model_name: str = os.environ.get("TRACE_MODEL", "Yongxin-Guo/trace-uni")
-    trace_frames_per_clip: int = int(os.environ.get("TRACE_FRAMES_PER_CLIP", "64"))
-    trace_load_in_4bit: bool = os.environ.get("TRACE_LOAD_IN_4BIT", "true").lower() in ("true", "1", "yes")
+    # --- Thesis-side training (offline; not used by the agent runtime) ---
+    # Kept here so the existing training code (qd_detr_train.py, MomentLocalizer)
+    # reads its paths from the same singleton. Has no effect on the agent.
     qd_detr_checkpoint: str = os.environ.get("QD_DETR_CHECKPOINT", "")
     features_dir: str = os.environ.get("FEATURES_DIR", "features/charades")
 

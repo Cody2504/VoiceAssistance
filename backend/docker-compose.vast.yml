@@ -1,0 +1,121 @@
+# Standalone compose for the rented vast.ai 4090 box.
+#
+# Runs ONLY video-service + video-worker. Postgres / Redis / Qdrant / MinIO /
+# iam / agent-service / token-usage / gateway / frontend all stay on the local
+# machine and are reached over Tailscale by hostname (default `jockey-mac`).
+#
+# Usage on the vast.ai instance:
+#
+#     # one-time: pin /models to a Vast host-disk volume so pyannote/Paddle/
+#     # insightface weights survive instance destroy+recreate.
+#     #
+#     export TS_AUTHKEY=...        # tailscale auth key (https://login.tailscale.com/admin/settings/keys)
+#     tailscale up --authkey "$TS_AUTHKEY" --hostname=jockey-vast
+#
+#     # build + run
+#     docker compose -f docker-compose.vast.yml build
+#     docker compose -f docker-compose.vast.yml up -d
+#
+# Local-side flip (after the box is up and tailscale is reachable):
+#
+#     # backend/.env
+#     VIDEO_SERVICE_BASE_URL=http://jockey-vast:1101
+#     # in gateway nginx config, swap upstream: server jockey-vast:1101;
+#     docker compose restart gateway
+#
+# Everything that used `video-service` as a docker-network alias now resolves
+# `jockey-vast` via Tailscale.
+services:
+  video-service:
+    build:
+      context: ..
+      dockerfile: backend/video-service/Dockerfile.gpu
+    container_name: jockey-video
+    network_mode: host          # share the Vast host's tailnet interface
+    environment:
+      DEPLOY_ENV: ${DEPLOY_ENV:-vast}
+      SECRET_KEY: ${SECRET_KEY}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      ACCESS_TOKEN_TTL_MIN: ${ACCESS_TOKEN_TTL_MIN:-60}
+      REFRESH_TOKEN_TTL_DAYS: ${REFRESH_TOKEN_TTL_DAYS:-14}
+      # State stays on the laptop — reach it over Tailscale by hostname.
+      POSTGRES_USER: ${POSTGRES_USER:-jockey}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-jockey_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-jockey}
+      POSTGRES_HOST: ${POSTGRES_HOST:-jockey-mac}
+      POSTGRES_PORT: ${POSTGRES_PORT:-15432}
+      REDIS_HOST: ${REDIS_HOST:-jockey-mac}
+      REDIS_PORT: ${REDIS_PORT:-16379}
+      QDRANT_HOST: ${QDRANT_HOST:-jockey-mac}
+      QDRANT_PORT: ${QDRANT_PORT:-6333}
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-jockey_shots}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://jockey-mac:9000}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-jockey}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-jockey_dev_secret}
+      # Other services on the laptop.
+      IAM_BASE_URL: ${IAM_BASE_URL:-http://jockey-mac:1100}
+      AGENT_SERVICE_BASE_URL: ${AGENT_SERVICE_BASE_URL:-http://jockey-mac:1102}
+      TOKEN_USAGE_BASE_URL: ${TOKEN_USAGE_BASE_URL:-http://jockey-mac:1103}
+      # API keys.
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      HF_API_KEY: ${HF_API_KEY}
+      HF_TOKEN: ${HF_TOKEN}
+      # Grounding head — keep paths inside the container.
+      GROUNDING_CHECKPOINT: /models/grounding/best.pt
+      GROUNDING_DEVICE: cuda
+      GROUNDING_BACKEND: ${GROUNDING_BACKEND:-qddetr}
+      QDDETR_CHECKPOINT: /third_party/qd_detr/run_on_video/qd_detr_ckpt/model_best.ckpt
+      PYTHONPATH: /app:/shared:/workspace:/third_party/qd_detr
+    restart: always
+    volumes:
+      - ${VAST_MODELS_PATH:-/workspace/models}:/models
+      - ../third_party/qd_detr:/third_party/qd_detr:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  video-worker:
+    build:
+      context: ..
+      dockerfile: backend/video-service/Dockerfile.gpu
+    container_name: jockey-video-worker
+    network_mode: host
+    command: ["python", "-m", "main.workers.queue_worker"]
+    environment:
+      DEPLOY_ENV: ${DEPLOY_ENV:-vast}
+      SECRET_KEY: ${SECRET_KEY}
+      POSTGRES_USER: ${POSTGRES_USER:-jockey}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-jockey_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-jockey}
+      POSTGRES_HOST: ${POSTGRES_HOST:-jockey-mac}
+      POSTGRES_PORT: ${POSTGRES_PORT:-15432}
+      REDIS_HOST: ${REDIS_HOST:-jockey-mac}
+      REDIS_PORT: ${REDIS_PORT:-16379}
+      QDRANT_HOST: ${QDRANT_HOST:-jockey-mac}
+      QDRANT_PORT: ${QDRANT_PORT:-6333}
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-jockey_shots}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://jockey-mac:9000}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-jockey}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-jockey_dev_secret}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      HF_API_KEY: ${HF_API_KEY}
+      HF_TOKEN: ${HF_TOKEN}
+      PYTHONPATH: /app:/shared:/workspace
+    restart: always
+    volumes:
+      - ${VAST_MODELS_PATH:-/workspace/models}:/models
+    depends_on:
+      video-service: { condition: service_started }
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

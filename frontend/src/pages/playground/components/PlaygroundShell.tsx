@@ -1,0 +1,50 @@
+import type { ReactNode } from "react";
+import { ChevronDown } from "lucide-react";
+
+/**
+ * TwelveLabs-style two-column playground page. Title left, "Learn" pill right.
+ * Left = form card; right = large centered headline + "Start with an example"
+ * grid (rendered by examplesPanel). Results, if any, render below the grid.
+ */
+export function PlaygroundShell({
+  title,
+  subtitle,
+  formPanel,
+  examplesPanel,
+  resultsPanel,
+}: {
+  title: string;
+  subtitle: string;
+  formPanel: ReactNode;
+  examplesPanel: ReactNode;
+  resultsPanel?: ReactNode;
+}) {
+  return (
+    <div className="h-full overflow-y-auto bg-[var(--color-eggshell)]">
+      <div className="mx-auto max-w-[1200px] px-8 py-8">
+        <header className="mb-6 flex items-start justify-between">
+          <h1 className="text-[32px] font-light tracking-[-0.64px] text-[var(--color-obsidian)]">
+            {title}
+          </h1>
+          <button className="inline-flex h-9 items-center gap-2 rounded-full border border-[var(--color-chalk)] bg-white px-4 text-[13px] text-[var(--color-obsidian)] hover:bg-[var(--color-powder)]">
+            <span aria-hidden="true">📒</span>
+            Learn <ChevronDown size={12} />
+          </button>
+        </header>
+
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,460px)_minmax(0,1fr)]">
+          <section>{formPanel}</section>
+          <section className="flex flex-col items-center pt-4">
+            <h2 className="max-w-[640px] text-center text-[24px] font-normal tracking-[-0.3px] text-[var(--color-obsidian)]">
+              {subtitle}
+            </h2>
+            <p className="mt-3 text-[13px] text-[var(--color-gravel)]">Start with an example</p>
+            <div className="mt-6 w-full">{examplesPanel}</div>
+          </section>
+        </div>
+
+        {resultsPanel && <section className="mt-10">{resultsPanel}</section>}
+      </div>
+    </div>
+  );
+}

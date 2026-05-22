@@ -1,0 +1,115 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - link "Jockey" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e8]: Jockey
+      - navigation [ref=e9]:
+        - generic [ref=e10]: Agent
+        - link "Workspace" [ref=e11] [cursor=pointer]:
+          - /url: /workspace
+          - img [ref=e12]
+          - generic [ref=e17]: Workspace
+        - link "Chat" [ref=e18] [cursor=pointer]:
+          - /url: /chat
+          - img [ref=e19]
+          - generic [ref=e21]: Chat
+        - generic [ref=e22]: Playground
+        - link "Library" [ref=e23] [cursor=pointer]:
+          - /url: /playground/library
+          - img [ref=e24]
+          - generic [ref=e26]: Library
+        - link "Search" [ref=e27] [cursor=pointer]:
+          - /url: /playground/search
+          - img [ref=e28]
+          - generic [ref=e31]: Search
+        - link "Analyze" [ref=e32] [cursor=pointer]:
+          - /url: /playground/analyze
+          - img [ref=e33]
+          - generic [ref=e35]: Analyze
+        - link "Ground" [ref=e36] [cursor=pointer]:
+          - /url: /playground/ground
+          - img [ref=e37]
+          - generic [ref=e41]: Ground
+        - link "Segment" [ref=e42] [cursor=pointer]:
+          - /url: /playground/segment
+          - img [ref=e43]
+          - generic [ref=e49]: Segment
+        - generic [ref=e50]: Account
+        - link "Profile" [ref=e51] [cursor=pointer]:
+          - /url: /profile
+          - img [ref=e52]
+          - generic [ref=e55]: Profile
+      - generic [ref=e56]:
+        - generic [ref=e57]: "?"
+        - button "Sign out" [ref=e58]:
+          - img [ref=e59]
+    - main [ref=e62]:
+      - generic [ref=e64]:
+        - generic [ref=e65]:
+          - heading "Search" [level=1] [ref=e66]
+          - paragraph [ref=e67]: Find any moment in your videos.
+        - generic [ref=e68]:
+          - generic [ref=e70]:
+            - generic [ref=e71]:
+              - generic [ref=e72]:
+                - generic [ref=e73]: query_text
+                - generic [ref=e74]: "*"
+              - textbox "Search actions, objects, sounds, and logos" [ref=e75]
+              - paragraph [ref=e76]: What to search for. 1–512 chars.
+            - generic [ref=e78]:
+              - button "Advanced Settings" [ref=e79]:
+                - text: Advanced Settings
+                - img [ref=e80]
+              - button "Reset" [ref=e82]:
+                - img [ref=e83]
+                - text: Reset
+            - button "Search" [disabled] [ref=e86]:
+              - text: Search
+              - img [ref=e87]
+          - generic [ref=e90]:
+            - generic [ref=e91]: Start with an example
+            - generic [ref=e92]:
+              - button "Find any moment a player dunks the ball Search Sports" [ref=e93]:
+                - generic [ref=e94]:
+                  - img [ref=e95]
+                  - generic [ref=e97]: Find any moment a player dunks the ball
+                - generic [ref=e98]:
+                  - generic [ref=e99]: Search
+                  - generic [ref=e100]: Sports
+              - button "Locate cooking demonstrations across your library Search Lifestyle" [ref=e101]:
+                - generic [ref=e102]:
+                  - img [ref=e103]
+                  - generic [ref=e105]: Locate cooking demonstrations across your library
+                - generic [ref=e106]:
+                  - generic [ref=e107]: Search
+                  - generic [ref=e108]: Lifestyle
+              - button "Find someone explaining a concept to camera Search Lecture" [ref=e109]:
+                - generic [ref=e110]:
+                  - img [ref=e111]
+                  - generic [ref=e113]: Find someone explaining a concept to camera
+                - generic [ref=e114]:
+                  - generic [ref=e115]: Search
+                  - generic [ref=e116]: Lecture
+              - button "Find moments with on-screen text or graphics Search Broadcast" [ref=e117]:
+                - generic [ref=e118]:
+                  - img [ref=e119]
+                  - generic [ref=e121]: Find moments with on-screen text or graphics
+                - generic [ref=e122]:
+                  - generic [ref=e123]: Search
+                  - generic [ref=e124]: Broadcast
+              - button "Find specific sounds — laughter or applause Search Audio" [ref=e125]:
+                - generic [ref=e126]:
+                  - img [ref=e127]
+                  - generic [ref=e129]: Find specific sounds — laughter or applause
+                - generic [ref=e130]:
+                  - generic [ref=e131]: Search
+                  - generic [ref=e132]: Audio
+              - button "Find product close-ups for B-roll cuts Search Advertising" [ref=e133]:
+                - generic [ref=e134]:
+                  - img [ref=e135]
+                  - generic [ref=e137]: Find product close-ups for B-roll cuts
+                - generic [ref=e138]:
+                  - generic [ref=e139]: Search
+                  - generic [ref=e140]: Advertising
+  - region "Notifications alt+T"

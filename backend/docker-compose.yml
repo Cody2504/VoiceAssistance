@@ -20,21 +20,22 @@ x-common-env: &common-env
 services:
   iam:
     build:
-      context: .
-      dockerfile: iam/Dockerfile
+      context: ..
+      dockerfile: backend/iam/Dockerfile
     container_name: jockey-iam
     environment:
       <<: *common-env
     restart: always
-    depends_on: [postgres]
+    depends_on:
+      postgres: { condition: service_healthy }
     ports:
       - "1100:1100"
     networks: [jockey-net]
 
   video-service:
     build:
-      context: .
-      dockerfile: video-service/Dockerfile
+      context: ..
+      dockerfile: backend/video-service/Dockerfile
     container_name: jockey-video
     environment:
       <<: *common-env
@@ -49,18 +50,26 @@ services:
       HF_API_KEY: ${HF_API_KEY}
       GROUNDING_CHECKPOINT: /models/grounding/best.pt
       GROUNDING_DEVICE: ${GROUNDING_DEVICE:-cpu}
+      GROUNDING_BACKEND: ${GROUNDING_BACKEND:-qddetr}
+      QDDETR_CHECKPOINT: /third_party/qd_detr/run_on_video/qd_detr_ckpt/model_best.ckpt
+      PYTHONPATH: /app:/shared:/workspace:/third_party/qd_detr
     restart: always
-    depends_on: [postgres, redis, qdrant, minio]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_healthy }
+      qdrant:   { condition: service_healthy }
+      minio:    { condition: service_healthy }
     ports:
       - "1101:1101"
     volumes:
       - ./.models:/models
+      - ../third_party/qd_detr:/third_party/qd_detr:ro
     networks: [jockey-net]
 
   video-worker:
     build:
-      context: .
-      dockerfile: video-service/Dockerfile
+      context: ..
+      dockerfile: backend/video-service/Dockerfile
     container_name: jockey-video-worker
     environment:
       <<: *common-env
@@ -75,15 +84,17 @@ services:
       HF_API_KEY: ${HF_API_KEY}
     command: ["python", "-m", "main.workers.queue_worker"]
     restart: always
-    depends_on: [video-service, redis]
+    depends_on:
+      video-service: { condition: service_started }
+      redis:         { condition: service_healthy }
     volumes:
       - ./.models:/models
     networks: [jockey-net]
 
   agent-service:
     build:
-      context: .
-      dockerfile: agent-service/Dockerfile
+      context: ..
+      dockerfile: backend/agent-service/Dockerfile
     container_name: jockey-agent
     environment:
       <<: *common-env
@@ -99,21 +110,36 @@ services:
       STIRRUP_SEARCH: ${STIRRUP_SEARCH:-local}
       STIRRUP_TEXTGEN: ${STIRRUP_TEXTGEN:-local}
       TWELVE_LABS_API_KEY: ${TWELVE_LABS_API_KEY}
+      # Service hostnames overridden for host networking (see network_mode below).
+      # Postgres/Redis are published on non-default host ports (15432/16379) to
+      # avoid collision with the co-located Fsoft stack's :5432/:6379.
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 15432
+      REDIS_HOST: localhost
+      REDIS_PORT: 16379
+      VIDEO_SERVICE_BASE_URL: http://localhost:1101
+      IAM_BASE_URL: http://localhost:1100
+      TOKEN_USAGE_BASE_URL: http://localhost:1103
     restart: always
-    depends_on: [postgres, redis, video-service]
-    ports:
-      - "1102:1102"
-    networks: [jockey-net]
+    depends_on:
+      postgres:      { condition: service_healthy }
+      redis:         { condition: service_healthy }
+      video-service: { condition: service_started }
+    # NOTE: host networking is a workaround for the host iptables policy that blocks
+    # outbound egress from docker bridge networks (api.openai.com is unreachable from
+    # jockey-net). Revert to ports + networks once host-level egress is fixed.
+    network_mode: host
 
   token-usage:
     build:
-      context: .
-      dockerfile: token-usage/Dockerfile
+      context: ..
+      dockerfile: backend/token-usage/Dockerfile
     container_name: jockey-token-usage
     environment:
       <<: *common-env
     restart: always
-    depends_on: [postgres]
+    depends_on:
+      postgres: { condition: service_healthy }
     ports:
       - "1103:1103"
     networks: [jockey-net]
@@ -123,11 +149,33 @@ services:
     container_name: jockey-gateway
     restart: always
     depends_on: [iam, video-service, agent-service, token-usage]
+    environment:
+      # Render-time substitution by the nginx:1.27 entrypoint (envsubst on
+      # files under /etc/nginx/templates/). Default points at the in-network
+      # video-service alias; override via .env when video-service is rented
+      # on a vast.ai box and reached over Tailscale (e.g. `jockey-vast:1101`).
+      VIDEO_UPSTREAM: ${VIDEO_UPSTREAM:-video-service:1101}
     ports:
-      - "85:80"
+      - "${GATEWAY_PORT:-8085}:80"
+    # agent-service runs in network_mode: host, so it has no DNS entry on jockey-net.
+    # Map the upstream name to the docker host's IP — agent-service binds the host's :1102.
+    # When using a Tailscale upstream for video-service, set VIDEO_UPSTREAM in .env
+    # to either (a) the tailnet IPv4 (e.g. `100.x.y.z:1101`, recommended — works
+    # from any docker network) or (b) `jockey-vast:1101` and add an
+    # `extra_hosts` mapping below pointing at the tailnet IP. MagicDNS doesn't
+    # resolve from bridge-network containers without piping tailscale into the
+    # container, so the literal IP is the cheapest path.
+    extra_hosts:
+      - "agent-service:host-gateway"
     networks: [jockey-net]
 
   # ---- Infra (from database/docker-compose.yml, redeclared for one-shot startup) ----
+  # Postgres/Redis are published on non-default host ports (15432/16379) so that
+  #   (a) agent-service can reach them over host networking, AND
+  #   (b) the co-located Fsoft work-platform stack (which holds 5432/6379 on the host)
+  #       continues to work side-by-side.
+  # Qdrant is not published — agent-service doesn't need it; video-service reaches
+  # it via container DNS on jockey-net.
   postgres:
     image: postgres:16.8-bullseye
     container_name: jockey-postgres
@@ -136,23 +184,40 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-jockey_dev}
       POSTGRES_DB: ${POSTGRES_DB:-jockey}
     restart: always
-    ports: ["5432:5432"]
+    ports: ["15432:5432"]
     volumes: ["./.postgresdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-jockey} -d ${POSTGRES_DB:-jockey}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
     networks: [jockey-net]
 
   redis:
     image: redis:7.4.3
     container_name: jockey-redis
-    ports: ["6379:6379"]
     restart: always
+    ports: ["16379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     networks: [jockey-net]
 
   qdrant:
     image: qdrant/qdrant:v1.14.0
     container_name: jockey-qdrant
-    ports: ["6333:6333", "6334:6334"]
     volumes: ["./.qdrantdata:/qdrant/storage"]
     restart: always
+    healthcheck:
+      # qdrant image ships with bash; use /dev/tcp probe since it ships without curl/wget.
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/6333' || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
     networks: [jockey-net]
 
   minio:
@@ -165,15 +230,22 @@ services:
     ports: ["9000:9000", "9001:9001"]
     volumes: ["./.miniodata:/data"]
     restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
     networks: [jockey-net]
 
   minio-init:
     image: minio/mc:RELEASE.2024-11-21T17-21-54Z
     container_name: jockey-minio-init
-    depends_on: [minio]
+    depends_on:
+      minio: { condition: service_healthy }
     entrypoint: >
       /bin/sh -c "
-      until (/usr/bin/mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-jockey} ${MINIO_ROOT_PASSWORD:-jockey_dev_secret}) do echo 'waiting for minio'; sleep 2; done;
+      /usr/bin/mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-jockey} ${MINIO_ROOT_PASSWORD:-jockey_dev_secret};
       /usr/bin/mc mb --ignore-existing local/videos;
       /usr/bin/mc mb --ignore-existing local/edits;
       /usr/bin/mc mb --ignore-existing local/thumbs;

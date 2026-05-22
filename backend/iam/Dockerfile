@@ -1,21 +1,13 @@
-FROM python:3.11-slim
-
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
+# All Python deps live in jockey-base. This Dockerfile only ships source code,
+# so iam rebuilds in ~2s whenever you edit anything under iam/.
+FROM jockey-base:dev
 
 WORKDIR /app
 
-# cm_shared is mounted at /shared at build context; copy first for layer caching.
-COPY ./cm_shared /shared/cm_shared
-COPY ./cm_shared/requirements.txt /shared/requirements.txt
-
-COPY ./iam/requirements.txt /app/requirements.txt
-RUN pip install -r /shared/requirements.txt
-
-COPY ./iam /app
-
 ENV PYTHONPATH=/app:/shared
+
+COPY backend/cm_shared /shared/cm_shared
+COPY backend/iam /app
 
 EXPOSE 1100
 

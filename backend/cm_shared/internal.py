@@ -1,9 +1,25 @@
 """Service-to-service HTTP helper (container DNS based)."""
+from contextvars import ContextVar
 from typing import Any
 
 import httpx
 
 from cm_shared.settings import get_base_settings
+
+
+# Set per-request in chat.py before the agent runs; tool calls auto-forward this JWT
+# to other services so endpoints protected by require_user accept them.
+current_jwt: ContextVar[str] = ContextVar("current_jwt", default="")
+
+
+def _auto_auth_headers(extra: dict | None) -> dict | None:
+    token = current_jwt.get()
+    if not token:
+        return extra
+    headers = {"Authorization": f"Bearer {token}"}
+    if extra:
+        headers.update(extra)
+    return headers
 
 _SERVICE_BASE_URLS: dict[str, str] = {}
 
@@ -32,13 +48,14 @@ def _url(service: str, endpoint: str) -> str:
 
 async def get_request(service: str, endpoint: str, *, params: dict | None = None, headers: dict | None = None, timeout: float = 30.0) -> Any:
     async with httpx.AsyncClient(timeout=timeout) as client:
-        r = await client.get(_url(service, endpoint), params=params, headers=headers)
+        r = await client.get(_url(service, endpoint), params=params, headers=_auto_auth_headers(headers))
         r.raise_for_status()
         return r.json()
 
 
 async def post_request(service: str, endpoint: str, *, json: dict | None = None, headers: dict | None = None, timeout: float = 120.0) -> Any:
     async with httpx.AsyncClient(timeout=timeout) as client:
-        r = await client.post(_url(service, endpoint), json=json, headers=headers)
+        r = await client.post(_url(service, endpoint), json=json, headers=_auto_auth_headers(headers))
         r.raise_for_status()
         return r.json()
+

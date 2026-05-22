@@ -1,0 +1,133 @@
+{
+  "qdrant_collection": {
+    "collection_name": "jockey_shots",
+    "vector_size": 768,
+    "distance": "Cosine",
+    "total_points": 11
+  },
+  "videos": [
+    {
+      "id": "b623ccbe-a209-44a7-b00b-24879d7cf717",
+      "user_id": "b3b8e6c0-f393-493e-82b5-994c4ac381dc",
+      "original_filename": "tennis.mp4",
+      "duration_s": null,
+      "shot_count": null,
+      "status": "error",
+      "error": "Unexpected Response: 400 (Bad Request)\nRaw response content:\nb'{\"status\":{\"error\":\"Format error in JSON body: value b623ccbe-a209-44a7-b00b-24879d7cf717:0 is not a valid point ID, valid values are either an unsigned integer or a UUID\"},\"time\":0.0}'",
+      "created_at": "2026-05-14T15:38:56.074622+00:00",
+      "shots_in_qdrant": []
+    },
+    {
+      "id": "7576af8b-4ddc-4683-bce0-93226a3c7977",
+      "user_id": "b3b8e6c0-f393-493e-82b5-994c4ac381dc",
+      "original_filename": "SAT table.mp4",
+      "duration_s": null,
+      "shot_count": null,
+      "status": "error",
+      "error": "Unexpected Response: 400 (Bad Request)\nRaw response content:\nb'{\"status\":{\"error\":\"Format error in JSON body: value 7576af8b-4ddc-4683-bce0-93226a3c7977:0 is not a valid point ID, valid values are either an unsigned integer or a UUID\"},\"time\":0.0}'",
+      "created_at": "2026-05-14T15:39:41.596030+00:00",
+      "shots_in_qdrant": []
+    },
+    {
+      "id": "9ab0318e-5b0d-489b-a3b1-c147eccf2b9a",
+      "user_id": "b3b8e6c0-f393-493e-82b5-994c4ac381dc",
+      "original_filename": "tennis.mp4",
+      "duration_s": 24.3243,
+      "shot_count": 3,
+      "status": "ready",
+      "error": null,
+      "created_at": "2026-05-14T15:49:21.765251+00:00",
+      "shots_in_qdrant": [
+        {
+          "shot_idx": 0,
+          "t_start": 0.0,
+          "t_end": 8.085855555555556,
+          "duration_s": 8.085855555555556,
+          "asr_text": "I'm not going to be able to do it."
+        },
+        {
+          "shot_idx": 1,
+          "t_start": 8.085855555555556,
+          "t_end": 16.17171111111111,
+          "duration_s": 8.085855555555556,
+          "asr_text": "I'm going to do it."
+        },
+        {
+          "shot_idx": 2,
+          "t_start": 16.17171111111111,
+          "t_end": 24.3243,
+          "duration_s": 8.15258888888889,
+          "asr_text": "you"
+        }
+      ]
+    },
+    {
+      "id": "d8c4f838-28cf-4441-a8ce-2cc275fb8978",
+      "user_id": "b3b8e6c0-f393-493e-82b5-994c4ac381dc",
+      "original_filename": "SAT table.mp4",
+      "duration_s": 79.13333333333334,
+      "shot_count": 8,
+      "status": "ready",
+      "error": null,
+      "created_at": "2026-05-14T15:49:25.389395+00:00",
+      "shots_in_qdrant": [
+        {
+          "shot_idx": 0,
+          "t_start": 0.0,
+          "t_end": 9.891666666666667,
+          "duration_s": 9.891666666666667,
+          "asr_text": "Angel's ice cream shop sells ice cream by the scoop and by the pint. The table above shows the purchases made by his customers last weekend."
+        },
+        {
+          "shot_idx": 1,
+          "t_start": 9.891666666666667,
+          "t_end": 19.783333333333335,
+          "duration_s": 9.891666666666667,
+          "asr_text": "of the customers who bought scoops, what fraction also bought pints? So pause this video and see if you can figure this out on"
+        },
+        {
+          "shot_idx": 2,
+          "t_start": 19.783333333333335,
+          "t_end": 29.675000000000004,
+          "duration_s": 9.89166666666667,
+          "asr_text": "your own. All right now let's look at this. So of the customers who bought scoops, so I can do that as the denominator of a fraction. So customers"
+        },
+        {
+          "shot_idx": 3,
+          "t_start": 29.675000000000004,
+          "t_end": 39.56666666666667,
+          "duration_s": 9.891666666666666,
+          "asr_text": "customers buying scoops they're saying what fraction"
+        },
+        {
+          "shot_idx": 4,
+          "t_start": 39.56666666666667,
+          "t_end": 49.458333333333336,
+          "duration_s": 9.891666666666666,
+          "asr_text": "also bought pints. So we're looking at the customers"
+        },
+        {
+          "shot_idx": 5,
+          "t_start": 49.458333333333336,
+          "t_end": 59.35000000000001,
+          "duration_s": 9.891666666666673,
+          "asr_text": "that bought the scoops. So bought scoops is right over here. And we know that there's a total of 310 that bought scoops."
+        },
+        {
+          "shot_idx": 6,
+          "t_start": 59.35000000000001,
+          "t_end": 69.24166666666667,
+          "duration_s": 9.891666666666666,
+          "asr_text": "So this is going to be equal to 310 as our denominator and then of them which how many bought pints well we could see that right over"
+        },
+        {
+          "shot_idx": 7,
+          "t_start": 69.24166666666667,
+          "t_end": 79.13333333333334,
+          "duration_s": 9.891666666666666,
+          "asr_text": "here, 27 bought pints. So 27 over 310, which is this choice right over here. And we're done."
+        }
+      ]
+    }
+  ]
+}

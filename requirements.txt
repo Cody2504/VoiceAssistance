@@ -19,21 +19,6 @@ decord>=0.6.0
 numpy>=1.24.0
 Pillow>=10.0.0
 
-# Local visual encoder (CLIP) + grounding model dependencies
+# Local visual encoder (CLIP) for indexing
 transformers>=4.40.0
 torch>=2.0.0
-accelerate>=0.28.0
-
-# 4-bit quantization for the TRACE grounding model on T4-class GPUs
-bitsandbytes>=0.43.0
-
-# NOTE: The TRACE grounding backend additionally requires installing
-# https://github.com/gyxxyg/TRACE.git as an editable package, because TRACE
-# ships a custom `TraceMistralForCausalLM` architecture not in stock
-# transformers. Run, after `pip install -r requirements.txt`:
-#
-#     git clone https://github.com/gyxxyg/TRACE.git
-#     cd TRACE && pip install -r requirements.txt && pip install -e .
-#
-# To use the fine-tuned QDDETRHead grounding backend instead, no extra
-# install is needed (the head is defined in jockey/open_source/training/).

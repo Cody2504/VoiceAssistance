@@ -1,0 +1,48 @@
+# GPU build for vast.ai deployment.
+#
+# Extends the slim local image with the heavy segmenter deps (pyannote.audio,
+# PaddleOCR, InsightFace). The local Dockerfile stays unchanged so laptop
+# `docker compose up` keeps booting fast and small.
+#
+# IMPORTANT — pick a base image whose PyTorch wheels target the rented GPU's
+# compute capability:
+#   • RTX 4090 / 3090 / A100 / H100 (Hopper or older Ada): any PyTorch ≥2.2
+#     with cu121 works. Default `jockey-base:dev` is fine.
+#   • RTX 50-series (Blackwell, sm_120 — 5070 Ti / 5080 / 5090): needs
+#     PyTorch ≥2.6 built against cu124+. Set the build arg below:
+#         docker compose -f docker-compose.vast.yml build \
+#             --build-arg BASE_IMAGE=pytorch/pytorch:2.6.0-cuda12.4-cudnn9-runtime
+#     Without this, every CUDA kernel launch fails with
+#     "no kernel image is available for execution on the device".
+ARG BASE_IMAGE=jockey-base:dev
+FROM ${BASE_IMAGE} AS base
+
+WORKDIR /app
+ENV PYTHONPATH=/app:/shared:/workspace
+ENV HF_HOME=/models/hf-cache
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg libgl1 libglib2.0-0 ca-certificates curl \
+ && rm -rf /var/lib/apt/lists/*
+
+# Heavy GPU-only deps. Pinned conservatively — adjust on the box if you
+# need newer/older.
+RUN pip install --no-cache-dir \
+    "pyannote.audio>=3.1" \
+    "paddleocr>=2.7" \
+    "insightface>=0.7" \
+    "onnxruntime-gpu>=1.17" \
+    "opencv-python-headless>=4.9"
+
+# PaddlePaddle GPU is platform-conditional and big — keep it as a separate
+# layer so a rebuild that only touches application code doesn't redo it.
+RUN pip install --no-cache-dir "paddlepaddle-gpu>=2.6"
+
+COPY backend/cm_shared /shared/cm_shared
+COPY jockey /workspace/jockey
+COPY pyproject.toml /workspace/pyproject.toml
+COPY backend/video-service /app
+
+EXPOSE 1101
+
+CMD ["sh", "-c", "alembic upgrade head && uvicorn main.main:app --host 0.0.0.0 --port 1101"]

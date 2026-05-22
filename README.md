@@ -1,6 +1,6 @@
 # Jockey
 
-Jockey is a conversational video agent built with [LangGraph](https://python.langchain.com/v0.1/docs/langgraph/). It mirrors the architectural decisions of Twelve Labs' Marengo (video retrieval) and Pegasus (video text generation), but runs on **self-hosted open-source models** — CLIP-L / ViCLIP for indexing, Qdrant for vector storage, Qwen3-VL-8B (via OpenRouter) for VLM tasks, and [TRACE](https://github.com/gyxxyg/TRACE) for temporal moment grounding.
+Jockey is a conversational video agent built with [LangGraph](https://python.langchain.com/v0.1/docs/langgraph/). It mirrors the architectural decisions of Twelve Labs' Marengo (video retrieval) and Pegasus (video text generation), but runs on **self-hosted open-source models** — CLIP-L for indexing, Qdrant for vector storage, and Qwen3-VL-8B (via OpenRouter) for VLM tasks (summary, time-range Q&A, freeform description).
 
 ## Description
 
@@ -8,11 +8,13 @@ Jockey is a conversational video agent built with [LangGraph](https://python.lan
 
 Jockey combines a planner / supervisor / worker LangGraph topology with three workers:
 
-- **video-search** — corpus retrieval (`simple-video-search`) and intra-video moment localization (`find-moment`)
-- **video-text-generation** — `gist`, `summarize`, `freeform` Q&A over a single video
+- **video-search** — `simple-video-search`: corpus retrieval ("fetch 5 videos about dogs")
+- **video-text-generation** — `gist`, `summarize`, `freeform`, and `time-range-analysis` ("what happened from 0:09 to 0:12 in this video?")
 - **video-editing** — `combine-clips` and `remove-segment` via ffmpeg
 
-The retrieval and grounding paths run locally; only the VLM-based summary path calls a hosted LLM. There is no dependency on the closed TwelveLabs SaaS.
+There is no dependency on the closed TwelveLabs SaaS.
+
+**Coverage** — see [`docs/USE_CASE_COVERAGE.md`](docs/USE_CASE_COVERAGE.md) for which TwelveLabs Playground use cases the open-source pipeline handles today (7 fully, 5 partial, 5 missing) and the roadmap to close the gaps.
 
 ## Quickstart
 
@@ -20,9 +22,9 @@ The retrieval and grounding paths run locally; only the VLM-based summary path c
 
 - [FFMPEG](https://ffmpeg.org/): `ffmpeg` accessible in `$PATH` (used by the video-editing worker).
 - [Docker](https://www.docker.com/) + [Docker Compose](https://docs.docker.com/compose/): required for running the LangGraph API server and Qdrant.
-- An [OpenRouter API key](https://openrouter.ai/keys) — used by both `VideoQA` (Qwen3-VL-8B summary/gist/freeform) and the text-embedding fallback.
+- An [OpenRouter API key](https://openrouter.ai/keys) — used by `VideoQA` (Qwen3-VL-8B summary/gist/freeform/time-range) and the text-embedding fallback.
 - An LLM provider key for the planner / supervisor / worker LLMs (Azure or OpenAI).
-- For the `find_moment` tool: a CUDA-capable GPU (Colab T4 16 GB or better). 4-bit quantization keeps the TRACE 7B grounding model within T4 budget.
+- A CUDA-capable GPU is helpful for video indexing (CLIP-L is fast on T4), but the agent's text-gen path runs through OpenRouter so the laptop CPU also works.
 
 ### Setup
 
@@ -34,16 +36,6 @@ python3 -m venv venv
 source venv/bin/activate
 
 pip install -r requirements.txt
-# Or if you only want the LangGraph agent path without grounding:
-# pip install -e .[open-source]
-```
-
-For the `find_moment` tool, additionally clone and install the TRACE GitHub repo so its custom `TraceMistralForCausalLM` architecture is registered:
-
-```bash
-git clone https://github.com/gyxxyg/TRACE.git
-cd TRACE && pip install -r requirements.txt && pip install -e .
-cd ..
 ```
 
 Set up your `.env` (see [`example.env`](example.env) for the full list):
@@ -59,8 +51,6 @@ HOST_PUBLIC_DIR=/tmp/jockey_videos  # output dir for rendered clips
 
 QDRANT_URL=localhost
 QDRANT_PORT=6333
-
-GROUNDING_BACKEND=trace             # trace | qd_detr | off
 ```
 
 Make sure your `.env` file is somewhere in the working directory tree.

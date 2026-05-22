@@ -43,12 +43,6 @@ open-source = [
     "transformers>=4.40.0",
     "torch>=2.0.0",
 ]
-grounding = [
-    # TRACE inference: 4-bit on T4 needs bitsandbytes + accelerate.
-    # The TRACE GitHub repo also needs to be installed manually — see README.
-    "bitsandbytes>=0.43.0",
-    "accelerate>=0.28.0",
-]
 training = [
     "torch>=2.0.0",
     "transformers>=4.40.0",

@@ -1,0 +1,23 @@
+"""Agent graph state."""
+from typing import Annotated, Any, TypedDict
+
+from langchain_core.messages import BaseMessage
+from langgraph.graph.message import add_messages
+
+
+class AgentState(TypedDict, total=False):
+    # Conversation context
+    messages: Annotated[list[BaseMessage], add_messages]
+    conversation_id: str
+    user_id: str
+
+    # Attached video(s) — passed in by the API layer
+    video_id: str | None
+    video_ids: list[str] | None
+
+    # Most recent tool result, copied out for reflect/router context
+    last_tool_name: str | None
+    last_tool_result: Any
+
+    # Number of router→tool→router cycles taken (cap with settings.router_max_steps)
+    router_steps: int

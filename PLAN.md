@@ -17,6 +17,7 @@
 | Datasets | Charades-STA (primary). YouCook2/COIN auxiliary, optional. |
 | Three agent tools | `video-search` (Qdrant ANN + grounding head), `video-text-generation` (API VLM, no training), `video-edit` (LLM plan → ffmpeg) |
 | Eval target | R@1@IoU=0.5, R@1@IoU=0.7 on Charades-STA (no SOTA pressure — context only) |
+| Use-case coverage | 7 / 17 TwelveLabs Playground examples fully handled, 5 partial, 5 missing — see [`docs/USE_CASE_COVERAGE.md`](docs/USE_CASE_COVERAGE.md) for the per-case audit and prioritised roadmap. P3 items (recommender, product catalog) are explicitly descoped from this thesis. |
 
 ## Architecture
 
@@ -126,6 +127,55 @@ Agent tools (online):
 - [ ] **Task 10.3**: System chapter (agent + tools + LangGraph)
 - [ ] **Task 10.4**: Discussion + limitations
 
+### Phase 11 — Segment Builder (TwelveLabs-parity Segment UX)  `[ ]`
+
+**Goal**: Replace flat-list `Segment.tsx` with a schema-driven multi-track timeline + metadata panel that mirrors TwelveLabs' Segment Definition Builder. Backend = pluggable **segmenter registry** — one module per preset, all returning a uniform `Segment{t_start, t_end, metadata}` validated against a `SegmentDefinition` schema. Ships as Cut 1 (Path B, 3–4 presets on existing modules) and grows toward Cut 3 (Path A, full TwelveLabs parity).
+
+**Shared infrastructure** `[x]`
+- [x] **Task 11.1**: `SegmentDefinition` pydantic schema — `{id, description, fields:[{name, type, description?, enum?}], time_ranges?, image_attachment?}`. Lives in `backend/video-service/main/api/segments_types.py` to avoid circular imports with segmenter modules.
+- [x] **Task 11.2**: Segmenter registry — `backend/video-service/main/segmenters/{__init__,base helpers}.py`. Map `preset_id → callable(video_id, definition) → list[Segment]`. `run_definition()` dispatches; `_apply_definition_time_ranges()` applies per-definition `time_ranges` filter at the registry boundary so every segmenter benefits.
+- [x] **Task 11.3**: `POST /api/v1/videos/{id}/segment` — body `{definitions, start_s?, end_s?, min/max_duration_s?}` → `{tracks:[{definition_id, implemented, segments}]}`. 10-definition cap; per-definition filter combined with global window filter.
+- [x] **Task 11.4**: Frontend rewrite of `Segment.tsx` — form-left/output-right layout, `PrettyDropdown` with two-line items + badges, JSON editor with paperclip-image-attach + Edit-in-Builder stub, `MultiTrackTimeline`, `MetadataPanel`, Visual/JSON toggle, History panel with localStorage backing, Change Video / Video URL header buttons + inline video preview. Built on top of the existing `PlaygroundShell` pattern.
+
+**Cut 1 — Path B (MVP, 4 presets on existing stack)** `[x]`
+- [x] **Task 11.5**: `shot_detection.py` — Reads cached PySceneDetect boundaries + payload from Qdrant. Schema-driven metadata (`shot_idx`, `asr_text`, `ocr_text`, `chunk_caption`). Zero new compute.
+- [x] **Task 11.6**: `topic_changes.py` — Cosine change-point detection on cached ViCLIP shot embeddings (threshold = 0.78). Optional `topic_summary` field triggers parallel (8-way `ThreadPoolExecutor`) LLM rollup via OpenRouter using the repo-standard `qwen3-vl-8b-instruct` (non-thinking — the thinking variant ate the token budget). Smoke: **23 topic segments + LLM titles in 7.3s** on the 150s test video.
+- [x] **Task 11.7**: `sports_highlights.py` — Pure post-processing of cached PANN `audio_tags` payload. Filters by `HIGHLIGHT_KEYWORDS` (cheer/whistle/crowd/applause/horn/siren/yell) above `MIN_SCORE=0.15`, groups contiguous flagged shots, bucketizes intensity by peak score.
+- [x] **Task 11.8**: `write_my_own.py` — Chunks video into 60s windows, sends per-shot caption + ASR + OCR + audio_tags context to LLM with `response_format=json_object`, validates against user's `fields` schema (type coercion + enum check). Parallel 8-wide. Smoke: **3 chunks in 3.7s** on the 150s test video; schema-validated booleans/strings come back correctly populated.
+
+**Cut 2 — extend toward Path A (incremental presets, GPU via toggle)** `[x]`
+- [x] **Task 11.9**: Speaker Diarization (`speaker_diarization.py`) — `_remote()` calls `inference-service /v1/diarize` when `USE_REMOTE_INFERENCE=true`; `_local()` tries pyannote import and returns empty if missing (heavy dep, kept off the local container). Toggle is the only branch — segmenter code is identical otherwise.
+- [x] **Task 11.10**: OCR (`ocr.py`) — Three-tier: remote path calls `/v1/ocr` with per-shot frame times, cached-payload path reads existing `ocr_text` from Qdrant (default), error from remote falls back to cached. No local PaddleOCR install — re-index for fresh OCR without the GPU box.
+- [x] **Task 11.11**: Editorial Segment (`editorial_segment.py`) — LLM-only, no GPU. 90s chunks → LLM picks one role from the user's enum (default: intro/segment/interview/b_roll/ad_break/outro) + writes a one-line summary, then contiguous chunks with the same role merge. Smoke: **1 segment in 3.9s** on the 150s test video (correctly collapsed two chunks of the same role).
+
+**Cut 3 — Path A completion (TwelveLabs parity)** `[x]`
+- [x] **Task 11.12**: Person of Focus (`person_of_focus.py`) — Remote path calls `/v1/faces` (insightface detect + ArcFace embed + agglomerative cluster), groups contiguous shots sharing the focal cluster_id. Metadata: `person_label / screen_time_s / role`. Local path stubs to empty (insightface kept off the local container — expected to need the GPU box anyway).
+- [x] **Task 11.13**: Image attachment — `SegmentDefinition.image_attachment` field added (base64 data URL). Frontend paperclip input on the JSON editor, base64 round-trips through the API. Currently passthrough at segmenter level (write_my_own / topic_changes will forward to the VLM as a visual reference in a follow-up — needs OpenRouter multi-image prompt scaffolding).
+- [x] **Task 11.14**: `time_ranges` gating — Frontend `time_ranges` text input ("0-10, 30-45") parses to list on send. Backend `_apply_definition_time_ranges()` filters every segmenter's output at the registry boundary — adding a new segmenter automatically respects the user's ranges.
+- [x] **Task 11.15**: Definition library — `frontend/src/pages/playground/data/saved-presets.ts` with `loadSavedPresets / upsertSavedPreset / deleteSavedPreset` localStorage helpers; surfaced in `PrettyDropdown` under the built-in presets with a `saved` badge. Save / Delete buttons next to the dropdown.
+
+**Vast.ai deployment** `[x]`
+- [x] **`Dockerfile.gpu`** — Extends the local base image with pyannote.audio, PaddleOCR, paddlepaddle-gpu, insightface, onnxruntime-gpu, opencv-python-headless. Local `Dockerfile` stays slim so laptop `docker compose up` keeps booting fast.
+- [x] **`docker-compose.vast.yml`** — Standalone compose with only `video-service` + `video-worker`. NVIDIA GPU reservation. `network_mode: host` so Tailscale routes work without bridge translation. `${VAST_MODELS_PATH}` → `/models` mount points at a Vast host-disk volume so pyannote/Paddle/InsightFace weights survive instance destroy+recreate.
+- [x] **Env-driven gateway upstream** — `backend/gateway/api_gateway.conf.template` uses `${VIDEO_UPSTREAM}` (envsubst by the nginx:1.27 entrypoint at boot). Local default `video-service:1101`; flip to Tailscale IPv4 (`100.x.y.z:1101`) in `.env` when video-service is on the rented box. Magic-DNS hostnames don't resolve from bridge-network containers, so we pin to IP.
+- [x] **`docs/VAST_DEPLOY.md`** — Runbook: rent 4090 24GB with host-disk volume for `/models` → `tailscale up --hostname=jockey-vast` → `docker compose -f docker-compose.vast.yml up` → on laptop set `VIDEO_UPSTREAM=<tailnet-ip>:1101` and restart gateway. Per-session bring-up/tear-down sections. Cost guard documented.
+
+**Architectural notes (validated this iteration)**:
+- All segmenters return uniform `Segment{t_start, t_end, metadata: dict[str, Any]}` — frontend is preset-agnostic.
+- One `SegmentDefinition` ↔ one timeline track ↔ one metadata panel section.
+- Cut 2/3 segmenters (`speaker_diarization`, `person_of_focus`, optional fresh-OCR path) use an **import guard**: `try: import pyannote.audio / paddleocr / insightface; except: return []`. Same code path runs locally (no heavy deps → empty track) and on the vast.ai box (deps installed → real segmentation). No HTTP indirection, no toggle env to remember.
+- Per-definition `time_ranges` are enforced at the registry boundary, so adding a new preset automatically gets the filter for free.
+
+**Architectural notes**:
+- All segmenters return uniform `Segment{t_start, t_end, metadata: dict[str, Any]}` — frontend is preset-agnostic.
+- Metadata validated against `SegmentDefinition.fields` at the API boundary (pydantic + dynamic `enum` validation).
+- One `SegmentDefinition` ↔ one timeline track ↔ one metadata panel section.
+- Builder UI is shared across presets; presets just pre-fill the form.
+
+**Why this fits the thesis**:
+- Pure applied-SE work — registry pattern, schema validation, multi-module orchestration. No new trainable components.
+- Cuts 2–3 are additive: each preset wraps a frozen open-source model behind the same interface. Direct contrast point against TwelveLabs' single-model (Pegasus) approach — the thesis writes itself: "decomposed specialist modules vs monolithic video-LM."
+
 ---
 
 ## Decisions log
@@ -137,6 +187,12 @@ Agent tools (online):
 | 2026-05-10 | Single trained component = grounding head (relevance + boundary) | Highest thesis-impact per Colab GPU-hour; uses all 3 modalities |
 | 2026-05-10 | VLM (Pegasus-side) and LLM (planner) stay as APIs | Saves training budget; APIs already strong |
 | 2026-05-10 | Reuse `MediaFMEncoder` as fusion-transformer base | Already in repo, matches user's architecture diagram |
+| 2026-05-22 | Segment Builder = decomposed segmenter registry (not single video-LM) | TwelveLabs' Segment runs Pegasus-1.5 as schema-constrained VideoQA. We don't have a Pegasus-equivalent and don't want one in scope. Pluggable registry (one module per preset) lets us reuse frozen models we already have (PySceneDetect, ViCLIP, `audio_event_encoder`, API VLM) and add new presets one dep at a time. Cuts 1→3 grow the roster without rewriting the interface. |
+| 2026-05-22 | Path B as MVP, Path A as roadmap | Cut 1 (Shot Detection, Topic Changes, Sports Highlights, Write My Own) covers the full builder UX on existing modules — no new deps, ~1 week. Cuts 2–3 are additive presets (pyannote, OCR, face detection) each gated by per-preset value. Avoids scope blowout while leaving a clear path to full TwelveLabs parity. |
+| 2026-05-22 | ~~`USE_REMOTE_INFERENCE` toggle + separate inference-service~~ | **Superseded.** Initially split heavy segmenters into `backend/inference-service/` (FastAPI on vast.ai) called by video-service over HTTP via a `USE_REMOTE_INFERENCE` toggle. Worked, but two deploy units + an HTTP indirection were overkill for a one-laptop / one-GPU-box thesis demo. Replaced by the next entry. Kept here for the audit trail. |
+| 2026-05-22 | Move whole `video-service` + `video-worker` to vast.ai 4090 over Tailscale | Single deploy unit on the GPU box; everything else (frontend, gateway, iam, agent-service, postgres, redis, qdrant, minio) stays local. Tailscale gives bidirectional connectivity by hostname (`jockey-mac` ↔ `jockey-vast`) so the worker can reach local MinIO/Qdrant/Redis. Heavy segmenter libs (pyannote, PaddleOCR, InsightFace) installed in `Dockerfile.gpu`; local `Dockerfile` stays slim. Segmenters use `try: import; except: return []` so the same code runs locally (empty track) and on the GPU (real segmentation). `/models` persisted via Vast host-disk volume so weights survive instance destroy+recreate. Acceptable trade-off: frontend 502s on video-service endpoints whenever the box is down (expected; Segment is on-demand). Keep Qwen-on-OpenRouter for VLM (no self-hosted LLM on the GPU box). |
+| 2026-05-22 | Cached-first OCR | `ocr` segmenter reads existing `ocr_text` payload from Qdrant by default — already populated at index time. Remote re-OCR is an opt-in upgrade path, not the primary flow. Avoids paying GPU cost for what we already computed once. |
+| 2026-05-22 | Default Whisper checkpoint → `distil-large-v3` | Considered WhisperX wrapper but rejected: we already run on faster-whisper (CTranslate2), already have Silero VAD via `vad_filter=True`, and WhisperX would re-introduce a pyannote-audio↔torchaudio>=2.11 pin. Switching the checkpoint instead — `distil-large-v3` (from distil-whisper) is ~6× faster than `large-v3` at near-identical WER and ~½ the VRAM. One-line default change in `asr_whisper.py` + `.env.example`. Smaller models (`base`, `tiny`) still available via `WHISPER_MODEL` for the lightest-weight Colab path. |
 
 ## Update log
 

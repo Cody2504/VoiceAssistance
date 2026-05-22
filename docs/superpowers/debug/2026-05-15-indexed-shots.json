@@ -1,0 +1,77 @@
+{
+  "qdrant_collection": {
+    "collection_name": "jockey_shots",
+    "vector_size": 768,
+    "distance": "Cosine",
+    "total_points": 3
+  },
+  "videos": [
+    {
+      "id": "b623ccbe-a209-44a7-b00b-24879d7cf717",
+      "user_id": "b3b8e6c0-f393-493e-82b5-994c4ac381dc",
+      "original_filename": "tennis.mp4",
+      "duration_s": null,
+      "shot_count": null,
+      "status": "error",
+      "error": "Unexpected Response: 400 (Bad Request)\nRaw response content:\nb'{\"status\":{\"error\":\"Format error in JSON body: value b623ccbe-a209-44a7-b00b-24879d7cf717:0 is not a valid point ID, valid values are either an unsigned integer or a UUID\"},\"time\":0.0}'",
+      "created_at": "2026-05-14T15:38:56.074622+00:00",
+      "shots_in_qdrant": []
+    },
+    {
+      "id": "7576af8b-4ddc-4683-bce0-93226a3c7977",
+      "user_id": "b3b8e6c0-f393-493e-82b5-994c4ac381dc",
+      "original_filename": "SAT table.mp4",
+      "duration_s": null,
+      "shot_count": null,
+      "status": "error",
+      "error": "Unexpected Response: 400 (Bad Request)\nRaw response content:\nb'{\"status\":{\"error\":\"Format error in JSON body: value 7576af8b-4ddc-4683-bce0-93226a3c7977:0 is not a valid point ID, valid values are either an unsigned integer or a UUID\"},\"time\":0.0}'",
+      "created_at": "2026-05-14T15:39:41.596030+00:00",
+      "shots_in_qdrant": []
+    },
+    {
+      "id": "9ab0318e-5b0d-489b-a3b1-c147eccf2b9a",
+      "user_id": "b3b8e6c0-f393-493e-82b5-994c4ac381dc",
+      "original_filename": "tennis.mp4",
+      "duration_s": 24.3243,
+      "shot_count": 2,
+      "status": "ready",
+      "error": null,
+      "created_at": "2026-05-14T15:49:21.765251+00:00",
+      "shots_in_qdrant": [
+        {
+          "shot_idx": 0,
+          "t_start": 0.0,
+          "t_end": 24.257566666666666,
+          "duration_s": 24.257566666666666,
+          "asr_text": ""
+        },
+        {
+          "shot_idx": 1,
+          "t_start": 24.257566666666666,
+          "t_end": 24.3243,
+          "duration_s": 0.06673333333333531,
+          "asr_text": ""
+        }
+      ]
+    },
+    {
+      "id": "d8c4f838-28cf-4441-a8ce-2cc275fb8978",
+      "user_id": "b3b8e6c0-f393-493e-82b5-994c4ac381dc",
+      "original_filename": "SAT table.mp4",
+      "duration_s": 79.13333333333334,
+      "shot_count": 1,
+      "status": "ready",
+      "error": null,
+      "created_at": "2026-05-14T15:49:25.389395+00:00",
+      "shots_in_qdrant": [
+        {
+          "shot_idx": 0,
+          "t_start": 0.0,
+          "t_end": 79.13333333333334,
+          "duration_s": 79.13333333333334,
+          "asr_text": ""
+        }
+      ]
+    }
+  ]
+}

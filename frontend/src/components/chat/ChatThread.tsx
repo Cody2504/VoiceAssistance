@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { User } from "lucide-react";
 
 import type { VideoSummary } from "@/apis/videos.api";
 import { streamChat, type ChatEvent } from "@/apis/chat.api";
 import { AgentsThinking, type ThinkingStep } from "./AgentsThinking";
 import { ChatComposer } from "./ChatComposer";
+import { BrandAvatar } from "@/components/brand/BrandAvatar";
 import { VideoPreviewModal } from "@/components/video/VideoPreviewModal";
 import { VideoSearchResults, type ClipResult } from "./VideoSearchResults";
 import { VideoSummaryCard } from "./VideoSummaryCard";
@@ -104,11 +106,17 @@ export function ChatThread({ initialAttached = [] }: Props) {
           </div>
         )}
 
-        {turns.map((t, i) => (
+        {turns.map((t, i) => {
+          const isLastTurn = i === turns.length - 1;
+          const turnComplete = !isLastTurn || !busy;
+          return (
           <div key={i} className="space-y-3">
             <div className="text-sm">
               <div className="mb-1 inline-flex items-center gap-2 text-xs font-medium text-neutral-500">
-                <span className="grid h-5 w-5 place-items-center rounded-full bg-neutral-200 text-[10px]">You</span>
+                <span className="grid h-5 w-5 place-items-center rounded-full bg-neutral-200 text-neutral-600">
+                  <User size={12} />
+                </span>
+                You
               </div>
               <p className="text-neutral-900">{t.user}</p>
               {t.attachments.length > 0 && (
@@ -120,11 +128,17 @@ export function ChatThread({ initialAttached = [] }: Props) {
 
             <div className="space-y-3">
               <div className="inline-flex items-center gap-2 text-xs font-medium text-neutral-700">
-                <span className="grid h-5 w-5 place-items-center rounded-full bg-neutral-900 text-[9px] font-bold text-white">J</span>
+                <BrandAvatar size={20} />
                 Jockey
               </div>
 
-              {t.steps.length > 0 && <AgentsThinking steps={t.steps} />}
+              {t.steps.length > 0 && (
+                <AgentsThinking
+                  steps={t.steps}
+                  assistantHasContent={t.assistant.length > 0}
+                  complete={turnComplete}
+                />
+              )}
 
               {t.resultClips.length > 0 && (
                 <VideoSearchResults
@@ -146,14 +160,15 @@ export function ChatThread({ initialAttached = [] }: Props) {
                 </div>
               )}
 
-              {t.assistant && (
+              {t.assistant && t.resultClips.length === 0 && t.summaries.length === 0 && (
                 <div className="text-sm leading-relaxed text-neutral-900 [&_p]:my-2 [&_code]:rounded [&_code]:bg-neutral-100 [&_code]:px-1 [&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:bg-neutral-100 [&_pre]:p-3 [&_pre]:text-xs">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{t.assistant}</ReactMarkdown>
                 </div>
               )}
             </div>
           </div>
-        ))}
+        );
+        })}
         <div ref={bottom} />
       </div>
 
@@ -181,18 +196,43 @@ function extractClips(tool: string, result: unknown): ClipResult[] {
   if (!result || typeof result !== "object") return [];
   const r = result as Record<string, unknown>;
   const videoId = (r.video_id as string) ?? "";
-  if (tool.includes("ground") || tool.includes("search")) {
-    const shots = (r.shots as Array<Record<string, unknown>>) ?? [];
-    return shots
-      .filter((s) => typeof s.t_start === "number" && typeof s.t_end === "number")
-      .map((s) => ({
-        video_id: (s.video_id as string) ?? videoId,
-        shot_idx: typeof s.idx === "number" ? (s.idx as number) : undefined,
-        t_start: s.t_start as number,
-        t_end: s.t_end as number,
-      }));
+  if (!(tool.includes("ground") || tool.includes("search"))) return [];
+
+  const shots = (r.shots as Array<Record<string, unknown>>) ?? [];
+  // group_by is the LLM-chosen presentation hint coming from the corpus search.
+  // "video" → one result per distinct video; "clip" → keep all matched clips.
+  const groupBy = r.group_by === "video" ? "video" : "clip";
+
+  const clips: ClipResult[] = shots
+    .filter((s) => typeof s.t_start === "number" && typeof s.t_end === "number")
+    .map((s) => ({
+      video_id: (s.video_id as string) ?? videoId,
+      shot_idx: typeof s.idx === "number" ? (s.idx as number) : undefined,
+      t_start: s.t_start as number,
+      t_end: s.t_end as number,
+      video_duration_s: typeof s.video_duration_s === "number" ? (s.video_duration_s as number) : undefined,
+      original_filename: typeof s.original_filename === "string" ? (s.original_filename as string) : undefined,
+      display_mode: groupBy === "video" ? "parent_video" : "clip",
+    }));
+
+  // Frontend fallback: if every clip points at the same video_id, the LLM probably
+  // should have grouped by video. Collapse to one parent-video tile so we don't
+  // render N near-identical clips of the same source.
+  if (clips.length > 1) {
+    const distinct = new Set(clips.map((c) => c.video_id));
+    if (distinct.size === 1) {
+      const top = clips[0];
+      return [{ ...top, display_mode: "parent_video" }];
+    }
   }
-  return [];
+
+  // For parent_video mode, dedupe by video_id (keep the highest-scoring shot per video).
+  if (groupBy === "video") {
+    const seen = new Set<string>();
+    return clips.filter((c) => (seen.has(c.video_id) ? false : (seen.add(c.video_id), true)));
+  }
+
+  return clips;
 }
 
 function extractSummary(tool: string, result: unknown, fallbackIds: string[]): { videoId: string; text: string } | null {

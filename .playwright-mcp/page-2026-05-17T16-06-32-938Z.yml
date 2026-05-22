@@ -1,0 +1,199 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e5]:
+        - link "Jockey" [ref=e6] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e9]: Jockey
+        - navigation [ref=e10]:
+          - link "Product" [ref=e11] [cursor=pointer]:
+            - /url: "#features"
+          - link "Docs" [ref=e12] [cursor=pointer]:
+            - /url: "#how-it-works"
+          - link "Pricing" [ref=e13] [cursor=pointer]:
+            - /url: /pricing
+        - link "Get started" [ref=e15] [cursor=pointer]:
+          - /url: /signup
+    - main [ref=e16]:
+      - generic [ref=e17]:
+        - generic [ref=e18]:
+          - img [ref=e19]
+          - text: Pricing
+        - heading "Start free, speed up, or scale." [level=1] [ref=e21]
+        - paragraph [ref=e22]: Build, launch, and grow with flexible plans that match your momentum. Pay only for what you use and change course at any time.
+        - link "Pricing Calculator" [ref=e24] [cursor=pointer]:
+          - /url: /pricing-calculator
+          - text: Pricing Calculator
+          - img [ref=e25]
+      - generic [ref=e28]:
+        - generic [ref=e30]:
+          - img [ref=e33]
+          - generic [ref=e35]:
+            - heading "Eclipse" [level=3] [ref=e36]
+            - paragraph [ref=e37]: Our retrieval model — indexes video frames, speech, and ambient audio into a searchable temporal space, with moment-level grounding from a single text query.
+        - generic [ref=e39]:
+          - img [ref=e42]
+          - generic [ref=e44]:
+            - heading "Secretariat" [level=3] [ref=e45]
+            - paragraph [ref=e46]: Our generation model — answers questions about a chosen time range and summarizes whole videos, reading frames and transcripts together to produce grounded text.
+      - generic [ref=e47]:
+        - generic [ref=e48]:
+          - generic [ref=e49]:
+            - generic [ref=e50]:
+              - heading "Free" [level=3] [ref=e51]
+              - paragraph [ref=e52]: Up to 5 hours of indexing
+            - link "Get Started" [ref=e53] [cursor=pointer]:
+              - /url: /signup
+              - text: Get Started
+              - img [ref=e54]
+            - generic [ref=e57]:
+              - generic [ref=e58]:
+                - img [ref=e60]
+                - text: Eclipse
+              - list [ref=e62]:
+                - listitem [ref=e63]:
+                  - generic [ref=e64]: Video indexing
+                  - generic [ref=e65]: Free
+                - listitem [ref=e66]:
+                  - generic [ref=e67]: Search API
+                  - generic [ref=e68]: Free
+                - listitem [ref=e69]:
+                  - generic [ref=e70]: Moment grounding
+                  - generic [ref=e71]: Free
+            - generic [ref=e72]:
+              - generic [ref=e73]:
+                - img [ref=e75]
+                - text: Secretariat
+              - list [ref=e77]:
+                - listitem [ref=e78]:
+                  - generic [ref=e79]: Time-range Q&A
+                  - generic [ref=e80]: Free
+                - listitem [ref=e81]:
+                  - generic [ref=e82]: Whole-video summary
+                  - generic [ref=e83]: Free
+          - generic [ref=e84]:
+            - generic [ref=e85]:
+              - heading "Developer" [level=3] [ref=e86]
+              - paragraph [ref=e87]: Pay as you go
+            - link "Upgrade" [ref=e88] [cursor=pointer]:
+              - /url: /signup
+              - text: Upgrade
+              - img [ref=e89]
+            - generic [ref=e92]:
+              - generic [ref=e93]:
+                - img [ref=e95]
+                - text: Eclipse
+              - list [ref=e97]:
+                - listitem [ref=e98]:
+                  - generic [ref=e99]: Video indexing
+                  - generic [ref=e100]: $0.04 /min
+                - listitem [ref=e101]:
+                  - generic [ref=e102]: Search API
+                  - generic [ref=e103]: $3 /1K queries
+                - listitem [ref=e104]:
+                  - generic [ref=e105]: Moment grounding
+                  - generic [ref=e106]: $0.005 /call
+            - generic [ref=e107]:
+              - generic [ref=e108]:
+                - img [ref=e110]
+                - text: Secretariat
+              - list [ref=e112]:
+                - listitem [ref=e113]:
+                  - generic [ref=e114]: Time-range Q&A
+                  - generic [ref=e115]: $0.02 /call
+                - listitem [ref=e116]:
+                  - generic [ref=e117]: Whole-video summary
+                  - generic [ref=e118]: $0.1 /call
+          - generic [ref=e119]:
+            - generic [ref=e120]:
+              - heading "Enterprise" [level=3] [ref=e121]
+              - paragraph [ref=e122]: Committed use contracts
+            - link "Talk to Sales" [ref=e123] [cursor=pointer]:
+              - /url: mailto:hello@jockey.local
+              - text: Talk to Sales
+              - img [ref=e124]
+            - generic [ref=e127]:
+              - generic [ref=e128]:
+                - img [ref=e130]
+                - text: Eclipse
+              - list [ref=e132]:
+                - listitem [ref=e133]:
+                  - generic [ref=e134]: Video indexing
+                  - generic [ref=e135]: Custom
+                - listitem [ref=e136]:
+                  - generic [ref=e137]: Search API
+                  - generic [ref=e138]: Custom
+                - listitem [ref=e139]:
+                  - generic [ref=e140]: Moment grounding
+                  - generic [ref=e141]: Custom
+            - generic [ref=e142]:
+              - generic [ref=e143]:
+                - img [ref=e145]
+                - text: Secretariat
+              - list [ref=e147]:
+                - listitem [ref=e148]:
+                  - generic [ref=e149]: Time-range Q&A
+                  - generic [ref=e150]: Custom
+                - listitem [ref=e151]:
+                  - generic [ref=e152]: Whole-video summary
+                  - generic [ref=e153]: Custom
+        - paragraph [ref=e154]: Rate limits apply and scale with monthly spend. See details in our API docs.
+      - generic [ref=e155]:
+        - heading "Compare plans side-by-side" [level=2] [ref=e156]
+        - table [ref=e158]:
+          - rowgroup [ref=e159]:
+            - row "Compare plans Free Developer Enterprise" [ref=e160]:
+              - columnheader "Compare plans" [ref=e161]
+              - columnheader "Free" [ref=e162]
+              - columnheader "Developer" [ref=e163]
+              - columnheader "Enterprise" [ref=e164]
+          - rowgroup [ref=e165]:
+            - row "Video hours / month 5 hours Unlimited Unlimited" [ref=e166]:
+              - cell "Video hours / month" [ref=e167]
+              - cell "5 hours" [ref=e168]
+              - cell "Unlimited" [ref=e169]
+              - cell "Unlimited" [ref=e170]
+            - row "Index retention 30 days since creation Unlimited Unlimited" [ref=e171]:
+              - cell "Index retention" [ref=e172]
+              - cell "30 days since creation" [ref=e173]
+              - cell "Unlimited" [ref=e174]
+              - cell "Unlimited" [ref=e175]
+            - row "Concurrent indexing tasks 2 10 Custom" [ref=e176]:
+              - cell "Concurrent indexing tasks" [ref=e177]
+              - cell "2" [ref=e178]
+              - cell "10" [ref=e179]
+              - cell "Custom" [ref=e180]
+            - row "Max video length 60 min 240 min Unlimited" [ref=e181]:
+              - cell "Max video length" [ref=e182]
+              - cell "60 min" [ref=e183]
+              - cell "240 min" [ref=e184]
+              - cell "Unlimited" [ref=e185]
+            - row "Volume per index 100 videos 10,000 videos Custom" [ref=e186]:
+              - cell "Volume per index" [ref=e187]
+              - cell "100 videos" [ref=e188]
+              - cell "10,000 videos" [ref=e189]
+              - cell "Custom" [ref=e190]
+      - generic [ref=e191]:
+        - heading "Fast answers to frequent questions." [level=2] [ref=e192]
+        - generic [ref=e193]:
+          - generic [ref=e194]:
+            - button "Do I need to register a credit card to use the Free plan?" [ref=e196]:
+              - generic [ref=e197]: Do I need to register a credit card to use the Free plan?
+              - img [ref=e199]
+            - button "What happens to my index if I switch from Free to Developer?" [ref=e201]:
+              - generic [ref=e202]: What happens to my index if I switch from Free to Developer?
+              - img [ref=e204]
+            - button "How is moment grounding billed?" [ref=e206]:
+              - generic [ref=e207]: How is moment grounding billed?
+              - img [ref=e209]
+          - generic [ref=e210]:
+            - button "Can I fine-tune the models?" [ref=e212]:
+              - generic [ref=e213]: Can I fine-tune the models?
+              - img [ref=e215]
+            - button "How is video indexing duration measured?" [ref=e217]:
+              - generic [ref=e218]: How is video indexing duration measured?
+              - img [ref=e220]
+            - button "What's the difference between Eclipse and Secretariat?" [ref=e222]:
+              - generic [ref=e223]: What's the difference between Eclipse and Secretariat?
+              - img [ref=e225]
+  - region "Notifications alt+T"

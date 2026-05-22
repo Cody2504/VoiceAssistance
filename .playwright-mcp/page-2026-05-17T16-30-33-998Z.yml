@@ -1,0 +1,105 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - link "Jockey" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e8]: Jockey
+      - navigation [ref=e9]:
+        - generic [ref=e10]: Agent
+        - link "Workspace" [ref=e11] [cursor=pointer]:
+          - /url: /workspace
+          - img [ref=e12]
+          - generic [ref=e17]: Workspace
+        - link "Chat" [ref=e18] [cursor=pointer]:
+          - /url: /chat
+          - img [ref=e19]
+          - generic [ref=e21]: Chat
+        - generic [ref=e22]: Playground
+        - link "Library" [ref=e23] [cursor=pointer]:
+          - /url: /playground/library
+          - img [ref=e24]
+          - generic [ref=e26]: Library
+        - link "Search" [ref=e27] [cursor=pointer]:
+          - /url: /playground/search
+          - img [ref=e28]
+          - generic [ref=e31]: Search
+        - link "Analyze" [ref=e32] [cursor=pointer]:
+          - /url: /playground/analyze
+          - img [ref=e33]
+          - generic [ref=e35]: Analyze
+        - link "Ground" [ref=e36] [cursor=pointer]:
+          - /url: /playground/ground
+          - img [ref=e37]
+          - generic [ref=e41]: Ground
+        - link "Segment" [ref=e42] [cursor=pointer]:
+          - /url: /playground/segment
+          - img [ref=e43]
+          - generic [ref=e49]: Segment
+        - generic [ref=e50]: Account
+        - link "Profile" [ref=e51] [cursor=pointer]:
+          - /url: /profile
+          - img [ref=e52]
+          - generic [ref=e55]: Profile
+      - generic [ref=e56]:
+        - generic [ref=e57]: "?"
+        - button "Sign out" [ref=e58]:
+          - img [ref=e59]
+    - main [ref=e62]:
+      - generic [ref=e64]:
+        - generic [ref=e65]:
+          - heading "Segment" [level=1] [ref=e66]
+          - paragraph [ref=e67]: Partition your video into labeled, time-stamped segments.
+        - generic [ref=e68]:
+          - generic [ref=e70]:
+            - generic [ref=e71]:
+              - generic [ref=e72]:
+                - generic [ref=e73]: video
+                - generic [ref=e74]: "*"
+              - button "Loading…" [ref=e76]:
+                - generic [ref=e77]:
+                  - img [ref=e78]
+                  - generic [ref=e81]: Loading…
+                - img [ref=e82]
+            - generic [ref=e84]:
+              - generic [ref=e86]: filter
+              - combobox [ref=e87]:
+                - option "all" [selected]
+                - option "with_speech"
+                - option "silent"
+                - option "long (≥10s)"
+              - paragraph [ref=e88]: Apply a quick filter on the returned shots.
+            - button "List segments" [disabled] [ref=e89]:
+              - text: List segments
+              - img [ref=e90]
+          - generic [ref=e93]:
+            - generic [ref=e94]: Start with an example
+            - generic [ref=e95]:
+              - button "View every detected shot in order Segment Overview" [ref=e96]:
+                - generic [ref=e97]:
+                  - img [ref=e98]
+                  - generic [ref=e100]: View every detected shot in order
+                - generic [ref=e101]:
+                  - generic [ref=e102]: Segment
+                  - generic [ref=e103]: Overview
+              - button "Show only shots with speech transcripts Segment Dialogue" [ref=e104]:
+                - generic [ref=e105]:
+                  - img [ref=e106]
+                  - generic [ref=e108]: Show only shots with speech transcripts
+                - generic [ref=e109]:
+                  - generic [ref=e110]: Segment
+                  - generic [ref=e111]: Dialogue
+              - button "Find silent shots (no transcribed speech) Segment B-roll" [ref=e112]:
+                - generic [ref=e113]:
+                  - img [ref=e114]
+                  - generic [ref=e116]: Find silent shots (no transcribed speech)
+                - generic [ref=e117]:
+                  - generic [ref=e118]: Segment
+                  - generic [ref=e119]: B-roll
+              - button "List long shots (≥10 seconds) Segment Pacing" [ref=e120]:
+                - generic [ref=e121]:
+                  - img [ref=e122]
+                  - generic [ref=e124]: List long shots (≥10 seconds)
+                - generic [ref=e125]:
+                  - generic [ref=e126]: Segment
+                  - generic [ref=e127]: Pacing
+  - region "Notifications alt+T"

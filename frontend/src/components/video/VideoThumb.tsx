@@ -1,7 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn, formatSeconds } from "@/lib/utils";
-import { ROUTES } from "@/constants/routes";
-import { API_BASE_URL } from "@/config";
+import { getThumbUrl } from "@/apis/videos.api";
 
 interface Props {
   videoId: string;
@@ -16,19 +15,29 @@ interface Props {
 
 /**
  * Renders a thumbnail for a (video, shot?) pair.
- * Source URL points at `thumbs/{video_id}/{shot_idx}.jpg` in MinIO via the gateway.
- * Falls back to a neutral block when the thumb hasn't been generated yet.
+ *
+ * The thumb endpoint is auth-guarded and returns ``{url}`` to a presigned MinIO
+ * object (an ``<img src>`` tag can't carry the Bearer token, so we resolve the URL
+ * via an authed XHR first and then point ``<img>`` at the presigned URL itself).
+ * When ``shotIdx`` is omitted we default to the first shot, which is how the
+ * library tiles get a cover thumbnail.
  */
 export function VideoThumb({
   videoId, shotIdx, duration, fallback, onClick, className, draggable, onDragStart,
 }: Props) {
+  const effectiveIdx = shotIdx ?? 0;
+  const [src, setSrc] = useState<string | null>(null);
   const [errored, setErrored] = useState(false);
-  // The video-service exposes thumbnails via a presigned URL endpoint;
-  // for now we point at the gateway's /api/v1/videos/{id}/stream when no shot is given,
-  // and at a hypothetical /thumbs/{id}/{idx}.jpg path otherwise.
-  const src = shotIdx !== undefined
-    ? `${API_BASE_URL}/videos/${videoId}/thumb/${shotIdx}`
-    : `${API_BASE_URL}${ROUTES.VIDEO_STREAM(videoId)}#t=0.1`;
+
+  useEffect(() => {
+    let alive = true;
+    setSrc(null);
+    setErrored(false);
+    getThumbUrl(videoId, effectiveIdx)
+      .then((u) => { if (alive) setSrc(u); })
+      .catch(() => { if (alive) setErrored(true); });
+    return () => { alive = false; };
+  }, [videoId, effectiveIdx]);
 
   return (
     <div
@@ -41,7 +50,7 @@ export function VideoThumb({
         className,
       )}
     >
-      {!errored && (
+      {src && !errored && (
         <img
           src={src}
           alt=""
@@ -51,7 +60,7 @@ export function VideoThumb({
           draggable={false}
         />
       )}
-      {errored && (
+      {(!src || errored) && (
         <div className="grid h-full w-full place-items-center text-xs text-neutral-500">
           {fallback ?? "video"}
         </div>

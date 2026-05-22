@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 @theme {
+  /* legacy tokens kept for the already-built app shell */
   --color-bg: #ffffff;
   --color-bg-muted: #f7f7f8;
   --color-fg: #111315;
@@ -9,17 +10,119 @@
   --color-border-strong: #d1d5db;
   --color-accent: #16a34a;
   --color-accent-fg: #ffffff;
+
+  /* new public/auth tokens (light & playful) */
+  --color-paper: #f6f5f1;
+  --color-surface: #ffffff;
+  --color-ink: #0a0a0a;
+  --color-ink-soft: #4a4a4a;
+  --color-ink-muted: #888888;
+  --color-line: rgba(0, 0, 0, 0.08);
+  --color-brand: #7a4dff;
+  --color-brand-soft: #ff8caa;
+  --color-danger: #c0392b;
+
+  /* ElevenLabs / TwelveLabs console palette */
+  --color-eggshell: #fdfcfc;
+  --color-powder:   #f5f3f1;
+  --color-chalk:    #e5e5e5;
+  --color-fog:      #b1b0b0;
+  --color-gravel:   #777169;
+  --color-slate:    #a59f97;
+  --color-obsidian: #000000;
+  --color-ember:    #ff4704;
+  --color-signal:   #0447ff;
+
+  --radius-card: 16px;
+  --radius-card-hover: 22px;
+  --radius-pill: 9999px;
+}
+
+:root {
+  --bg: #f6f5f1;
+  --surface: #ffffff;
+  --ink: #0a0a0a;
+  --ink-soft: #4a4a4a;
+  --ink-muted: #888888;
+  --line: rgba(0, 0, 0, 0.08);
+  --accent: #7a4dff;
+  --accent-soft: #ff8caa;
+  --danger: #c0392b;
+
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-full: 999px;
+
+  --shadow-hairline: rgba(0,0,0,0.06) 0 0 0 1px, rgba(0,0,0,0.04) 0 1px 2px 0, rgba(0,0,0,0.04) 0 2px 4px 0;
+  --shadow-inset: rgba(0,0,0,0.075) 0 0 0 0.5px inset;
 }
 
 html, body, #root { height: 100%; }
 body {
   margin: 0;
-  font-family: ui-sans-serif, system-ui, -apple-system, "Inter", "Segoe UI", Roboto, sans-serif;
+  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   background: #ffffff;
   color: #111315;
   -webkit-font-smoothing: antialiased;
+  font-feature-settings: "kern" 1;
 }
 
+/* Console app pages use the eggshell ground; landing/auth keep their own backgrounds */
+.app-ground { background: #fdfcfc; }
+
+/* peach + green wash for hero cards on Overview/Assets */
+.bg-gradient-warm {
+  background:
+    radial-gradient(120% 80% at 18% 28%, rgba(255, 196, 156, 0.55) 0%, rgba(253, 252, 252, 0) 55%),
+    radial-gradient(110% 90% at 82% 78%, rgba(168, 230, 178, 0.55) 0%, rgba(253, 252, 252, 0) 60%),
+    radial-gradient(140% 100% at 100% 0%, rgba(255, 220, 200, 0.45) 0%, rgba(253, 252, 252, 0) 50%),
+    #f0eee9;
+}
+
+/* shadows surfaced for inline use */
+.shadow-hairline { box-shadow: var(--shadow-hairline); }
+.shadow-inset { box-shadow: var(--shadow-inset); }
+
+/* gradient text fill used in landing hero headline */
+.gradient-text {
+  background: linear-gradient(90deg, #ff8caa, #7a4dff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* a single soft entrance for hero + chip */
+@keyframes fade-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-rise { animation: fade-rise 320ms ease-out both; }
+.fade-rise-delayed { animation: fade-rise 320ms ease-out 120ms both; }
+@media (prefers-reduced-motion: reduce) {
+  .fade-rise, .fade-rise-delayed { animation: none; }
+}
+
+/* ---------- gradient blob field (used on landing hero + auth right pane) ---------- */
+.blob-field {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.blob {
+  position: absolute;
+  border-radius: 38% 62% 55% 45% / 55% 45% 65% 35%;
+  filter: blur(0.5px);
+  opacity: 0.95;
+}
+.blob.b1 { background: linear-gradient(135deg, #ff8caa, #c4a8ff); }
+.blob.b2 { background: linear-gradient(135deg, #87e3a5, #ffd060); }
+.blob.b3 { background: linear-gradient(135deg, #ffd1b3, #ff8caa); }
+.blob.b4 { background: linear-gradient(135deg, #87cefa, #87e3a5); }
+.blob.b5 { background: linear-gradient(135deg, #ffd060, #ff8caa); }
+
+/* preserved from earlier work — video thumbnail duration badge */
 .duration-badge {
   position: absolute;
   bottom: 6px;

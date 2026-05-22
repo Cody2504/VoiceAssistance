@@ -9,7 +9,7 @@ from cm_shared.db import get_session
 from cm_shared.queue import VIDEO_INDEX_QUEUE, get_queue
 from cm_shared.response import success_response
 from cm_shared.schemas import VideoOut
-from main.models.video import Video
+from main.models.video import IndexingJob, Video
 from main.settings import get_settings
 from main.storage.minio import presigned_get, s3
 
@@ -65,6 +65,63 @@ async def get_video(video_id: UUID, payload: TokenPayload = Depends(require_user
     return success_response(VideoOut.model_validate(v, from_attributes=True).model_dump(mode="json"))
 
 
+@router.delete("/{video_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_video(
+    video_id: UUID,
+    payload: TokenPayload = Depends(require_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Delete a video and its derived artifacts.
+
+    Removes the row from Postgres, the MP4 from MinIO, any shot thumbnails and feature
+    cache, plus every Qdrant point referencing this video_id. Cleanly handles videos
+    in any status (queued/indexing/ready/error) — only the artifacts that exist are
+    deleted; the rest is best-effort.
+    """
+    v = await session.get(Video, video_id)
+    if not v or v.user_id != UUID(payload.sub):
+        raise HTTPException(404, "Video not found")
+
+    s = get_settings()
+
+    # MinIO: source mp4, shot thumbs (best-effort).
+    try:
+        s3().delete_object(Bucket=s.minio_bucket_videos, Key=v.minio_key)
+    except Exception:
+        pass
+    try:
+        s3().delete_object(Bucket=s.minio_bucket_videos, Key=f"features/{video_id}.npz")
+    except Exception:
+        pass
+    try:
+        objs = s3().list_objects_v2(Bucket=s.minio_bucket_thumbs, Prefix=f"{video_id}/")
+        for obj in objs.get("Contents", []) or []:
+            s3().delete_object(Bucket=s.minio_bucket_thumbs, Key=obj["Key"])
+    except Exception:
+        pass
+
+    # Qdrant: drop every shot tied to this video_id.
+    try:
+        from qdrant_client import QdrantClient
+        from qdrant_client.http import models as qm
+        client = QdrantClient(host=s.qdrant_host, port=s.qdrant_port)
+        client.delete(
+            collection_name=s.qdrant_collection,
+            points_selector=qm.FilterSelector(
+                filter=qm.Filter(must=[qm.FieldCondition(key="video_id", match=qm.MatchValue(value=str(video_id)))]),
+            ),
+        )
+    except Exception:
+        pass
+
+    # Postgres: clear FK-referencing rows first, then the video row.
+    from sqlalchemy import delete as sa_delete
+    await session.execute(sa_delete(IndexingJob).where(IndexingJob.video_id == video_id))
+    await session.delete(v)
+    await session.commit()
+    return None
+
+
 @router.get("/{video_id}/stream")
 async def stream_url(video_id: UUID, payload: TokenPayload = Depends(require_user), session: AsyncSession = Depends(get_session)):
     v = await session.get(Video, video_id)
@@ -81,16 +138,17 @@ async def thumb_url(
     payload: TokenPayload = Depends(require_user),
     session: AsyncSession = Depends(get_session),
 ):
-    """Redirect to a presigned MinIO URL for a shot thumbnail.
+    """Return a presigned URL for a shot thumbnail (symmetric with /stream).
 
-    The indexing worker writes JPEGs to `thumbs/{video_id}/{idx}.jpg`. We use a 307 here
-    so `<img src="...">` can render the JPEG directly without an extra auth round-trip.
+    The indexing worker writes JPEGs to ``thumbs/{video_id}/{idx}.jpg``. We return
+    JSON ``{url}`` instead of a 307 redirect because ``<img src>`` does not send the
+    Bearer token, so a redirect-guarded endpoint would fail before the redirect could
+    fire. The frontend fetches the URL with axios (which carries the token) and then
+    points ``<img src>`` at the presigned MinIO URL directly.
     """
-    from fastapi.responses import RedirectResponse
-
     v = await session.get(Video, video_id)
     if not v or v.user_id != UUID(payload.sub):
         raise HTTPException(404, "Video not found")
     s = get_settings()
     url = presigned_get(s.minio_bucket_thumbs, f"{video_id}/{shot_idx}.jpg")
-    return RedirectResponse(url, status_code=307)
+    return success_response({"url": url})

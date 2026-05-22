@@ -22,8 +22,17 @@ export async function getVideo(id: string): Promise<VideoSummary> {
   return r.data?.data;
 }
 
+export async function deleteVideo(id: string): Promise<void> {
+  await axios.delete(ROUTES.VIDEO(id));
+}
+
 export async function getStreamUrl(id: string): Promise<string> {
   const r = await axios.get(ROUTES.VIDEO_STREAM(id));
+  return r.data?.data?.url;
+}
+
+export async function getThumbUrl(id: string, shotIdx: number = 0): Promise<string> {
+  const r = await axios.get(ROUTES.VIDEO_THUMB(id, shotIdx));
   return r.data?.data?.url;
 }
 
@@ -74,5 +83,187 @@ export async function askVideo(id: string, question: string, t_start?: number, t
 
 export async function editVideo(id: string, clips: Array<{ t_start: number; t_end: number }>) {
   const r = await axios.post(ROUTES.VIDEO_EDIT(id), { clips });
+  return r.data?.data;
+}
+
+// -- Cross-corpus search + segments (Playground) --
+
+export interface CorpusShot extends ShotResult {
+  video_id: string;
+  original_filename: string;
+  video_duration_s: number | null;
+  ocr_text?: string;
+  audio_tags?: Array<{ label: string; score: number }>;
+}
+
+export interface CorpusSearchResponse {
+  query: string;
+  group_by: "clip" | "video";
+  shots: CorpusShot[];
+}
+
+export async function searchCorpus(params: {
+  query: string;
+  top_n?: number;
+  group_by?: "clip" | "video";
+}): Promise<CorpusSearchResponse> {
+  const r = await axios.post(ROUTES.VIDEOS_SEARCH, {
+    query: params.query,
+    top_n: params.top_n ?? 10,
+    group_by: params.group_by ?? "clip",
+  });
+  return r.data?.data;
+}
+
+export interface SegmentItem {
+  idx: number;
+  t_start: number;
+  t_end: number;
+  asr_text: string;
+}
+
+export interface SegmentListResponse {
+  video_id: string;
+  duration_s: number | null;
+  segments: SegmentItem[];
+}
+
+export async function listSegments(id: string): Promise<SegmentListResponse> {
+  const r = await axios.get(ROUTES.VIDEO_SEGMENTS(id));
+  return r.data?.data;
+}
+
+// -- Segment Builder (multi-track) --
+
+export interface SegmentFieldSpec {
+  name: string;
+  type?: "string" | "number" | "boolean";
+  description?: string;
+  enum?: string[];
+}
+
+export interface SegmentDefinition {
+  id: string;
+  description: string;
+  fields: SegmentFieldSpec[];
+  /** Per-definition time-range filter. e.g. ["0-10", "30-45"]. */
+  time_ranges?: string[];
+  /** Optional base64 image (data: URL) attached to the description. */
+  image_attachment?: string;
+}
+
+export interface SegmentRunRequest {
+  definitions: SegmentDefinition[];
+  start_s?: number;
+  end_s?: number;
+  min_duration_s?: number;
+  max_duration_s?: number;
+}
+
+export interface TrackSegment {
+  t_start: number;
+  t_end: number;
+  metadata: Record<string, unknown>;
+}
+
+export interface SegmentTrack {
+  definition_id: string;
+  implemented: boolean;
+  segments: TrackSegment[];
+}
+
+export interface SegmentRunResponse {
+  video_id: string;
+  duration_s: number | null;
+  tracks: SegmentTrack[];
+}
+
+export async function runSegment(
+  id: string,
+  body: SegmentRunRequest,
+): Promise<SegmentRunResponse> {
+  const r = await axios.post(ROUTES.VIDEO_SEGMENT_RUN(id), body);
+  return r.data?.data;
+}
+
+// -- Recommendations (UC #11) --
+
+export interface SimilarVideoItem {
+  video_id: string;
+  original_filename: string;
+  duration_s: number | null;
+  shot_count: number | null;
+  score: number;
+}
+
+export interface SimilarVideosResponse {
+  video_id: string;
+  results: SimilarVideoItem[];
+  reason?: string;
+}
+
+export async function getSimilarVideos(id: string, topK = 5): Promise<SimilarVideosResponse> {
+  const r = await axios.get(ROUTES.VIDEO_SIMILAR(id), { params: { top_k: topK } });
+  return r.data?.data;
+}
+
+// -- Auto-highlights (UC #4) --
+
+export interface HighlightsResponse {
+  video_id: string;
+  duration_s: number | null;
+  moments: Span[];
+  shots: ShotResult[];
+  query_used: string;
+}
+
+export async function getHighlights(id: string, topK = 10): Promise<HighlightsResponse> {
+  const r = await axios.get(ROUTES.VIDEO_HIGHLIGHTS(id), { params: { top_k: topK } });
+  return r.data?.data;
+}
+
+// -- Moderation (UC #14) --
+
+export interface FlaggedShot {
+  idx: number;
+  t_start: number;
+  t_end: number;
+  nsfw_score: number;
+  toxic_score: number;
+  asr_text: string;
+}
+
+export interface ModerateResponse {
+  video_id: string;
+  threshold: number;
+  summary: { max_nsfw: number; max_toxic: number; flagged_count: number };
+  flagged_shots: FlaggedShot[];
+}
+
+export async function getModeration(id: string, threshold = 0.5): Promise<ModerateResponse> {
+  const r = await axios.get(ROUTES.VIDEO_MODERATE(id), { params: { threshold } });
+  return r.data?.data;
+}
+
+// -- Audio events (UC #15) --
+
+export interface AudioTag { label: string; score: number; }
+
+export interface SoundShot {
+  idx: number;
+  t_start: number;
+  t_end: number;
+  audio_tags: AudioTag[];
+  asr_text: string;
+}
+
+export interface SoundsResponse {
+  video_id: string;
+  tag: string | null;
+  shots: SoundShot[];
+}
+
+export async function getSounds(id: string, tag?: string): Promise<SoundsResponse> {
+  const r = await axios.get(ROUTES.VIDEO_SOUNDS(id), { params: tag ? { tag } : {} });
   return r.data?.data;
 }

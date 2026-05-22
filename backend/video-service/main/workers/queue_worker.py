@@ -43,7 +43,11 @@ def index_video(video_id: str) -> dict:
         db.commit()
 
         try:
-            result = run_indexing(vid, video.minio_key)
+            result = run_indexing(
+                vid, video.minio_key,
+                user_id=video.user_id,
+                original_filename=video.original_filename,
+            )
             video.status = "ready"
             video.duration_s = result["duration_s"]
             video.shot_count = result["shot_count"]

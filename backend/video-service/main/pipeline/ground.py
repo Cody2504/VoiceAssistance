@@ -57,7 +57,14 @@ def _embed_query(text: str) -> np.ndarray:
         return np.zeros(_load_model()[1].query_dim, dtype=np.float32)
 
 
-def run_grounding(video_id: str, query: str, top_k: int = 5) -> dict[str, Any]:
+def run_grounding(video_id: str, query: str, top_k: int = 5, minio_key: str | None = None) -> dict[str, Any]:
+    s = get_settings()
+    if getattr(s, "grounding_backend", "legacy") == "qddetr":
+        if not minio_key:
+            raise ValueError("grounding_backend=qddetr requires minio_key from the video row")
+        from main.pipeline.ground_qddetr import run_grounding_qddetr
+        return run_grounding_qddetr(video_id, minio_key, query, top_k=top_k)
+
     import torch
     model, cfg = _load_model()
     feats = _features_for(video_id)

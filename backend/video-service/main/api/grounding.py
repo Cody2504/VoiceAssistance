@@ -26,5 +26,5 @@ async def ground(
     if v.status != "ready":
         raise HTTPException(409, f"Video is not ready (status={v.status})")
 
-    result = run_grounding(str(video_id), body.query)
+    result = run_grounding(str(video_id), body.query, minio_key=v.minio_key)
     return success_response(result)

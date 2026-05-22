@@ -1,14 +1,93 @@
 {
-  "app": { "name": "tl-jockey" },
-  "auth": {
-    "login": "Sign in",
-    "register": "Create account",
-    "email": "Email",
-    "password": "Password"
-  },
+  "app": { "name": "Jockey" },
+  "lang": { "en": "English", "vi": "Tiếng Việt" },
   "library": {
     "title": "Your videos",
     "upload": "Upload video",
     "empty": "No videos yet. Drop one above to get started."
+  },
+  "landing": {
+    "nav": {
+      "product": "Product",
+      "docs": "Docs",
+      "pricing": "Pricing",
+      "open_app": "Open app",
+      "get_started": "Get started"
+    },
+    "hero": {
+      "eyebrow": "VIDEO INTELLIGENCE",
+      "h1_a": "Talk to your",
+      "h1_em": "videos.",
+      "sub": "Search, summarize, and locate any moment. Jockey turns your video library into a teammate who has seen everything.",
+      "cta_primary": "Get started",
+      "cta_secondary": "Watch demo",
+      "chip_query": "when does the keeper save the penalty?",
+      "chip_caption": "3 matches across 12:04"
+    },
+    "features": {
+      "title": "Three ways to use Jockey",
+      "search": {
+        "title": "Search",
+        "body": "Drag a video into chat and ask anything. Get answers grounded in the timeline."
+      },
+      "summarize": {
+        "title": "Summarize",
+        "body": "One-paragraph or chapter-by-chapter summaries of any video in your library."
+      },
+      "find": {
+        "title": "Find the moment",
+        "body": "Natural-language search across your whole library. Jockey jumps straight to the second."
+      }
+    },
+    "how": {
+      "title": "How it works",
+      "step1": { "title": "Upload videos", "body": "Drop in MP4s or paste a link. Jockey indexes the visuals, audio, and transcript." },
+      "step2": { "title": "Ask in plain words", "body": "Type a question or paste a transcript snippet. No filters, no SQL." },
+      "step3": { "title": "Jump to the moment", "body": "Click a match to seek the player to the exact second. Verify in one click." }
+    },
+    "footer": {
+      "product": "Product",
+      "company": "Company",
+      "legal": "Legal",
+      "features": "Features",
+      "pricing": "Pricing",
+      "docs": "Docs",
+      "about": "About",
+      "contact": "Contact",
+      "privacy": "Privacy",
+      "terms": "Terms",
+      "copyright": "© {{year}} Jockey. All rights reserved."
+    }
+  },
+  "auth": {
+    "email": "Email",
+    "password": "Password",
+    "show_password": "Show password",
+    "hide_password": "Hide password",
+    "or": "or",
+    "submitting": "…",
+    "errors": {
+      "email_invalid": "Enter a valid email address",
+      "password_min": "Password must be at least 8 characters",
+      "generic": "Authentication failed"
+    },
+    "login": {
+      "title": "Log in to your account",
+      "submit": "Log in",
+      "forgot": "Forgot password?",
+      "forgot_toast": "Password reset is coming soon.",
+      "no_account": "Don't have an account?",
+      "sign_up": "Sign up",
+      "quote": "I asked when the dog jumps the fence. Jockey took me to 03:42.",
+      "quote_who": "Beta user · researcher"
+    },
+    "signup": {
+      "title": "Create your account",
+      "submit": "Create account",
+      "have_account": "Already have an account?",
+      "log_in": "Log in",
+      "quote": "Set up in five minutes. Asked my first question in seven.",
+      "quote_who": "Beta user · video editor"
+    }
   }
 }

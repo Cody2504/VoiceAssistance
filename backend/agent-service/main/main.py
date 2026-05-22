@@ -2,8 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from cm_shared.settings import get_base_settings
-from main.api.chat import router as chat_router
-from main.api.conversations import router as conversations_router
+from main.app.api.v1.chat import router as chat_router
+from main.app.api.v1.conversations import router as conversations_router
 
 settings = get_base_settings()
 

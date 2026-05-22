@@ -1,0 +1,23 @@
+[    1455ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=48a6c0b1:20102
+[    1750ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:5173/favicon.ico:0
+[    4783ms] [ERROR] Access to XMLHttpRequest at 'http://localhost:85/api/v1/videos' from origin 'http://localhost:5173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:5173/playground/library?__bypass_auth=1:0
+[    4786ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://localhost:85/api/v1/videos:0
+[    4793ms] AxiosError: Network Error
+    at XMLHttpRequest.handleError (http://localhost:5173/node_modules/.vite/deps/axios.js?v=48a6c0b1:1863:19)
+    at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=48a6c0b1:2650:41)
+    at async listVideos (http://localhost:5173/src/apis/videos.api.ts:4:13)
+    at async http://localhost:5173/src/components/library/LibraryGrid.tsx:29:53
+[    7847ms] [ERROR] Access to XMLHttpRequest at 'http://localhost:85/api/v1/videos' from origin 'http://localhost:5173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:5173/playground/library?__bypass_auth=1:0
+[    7848ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://localhost:85/api/v1/videos:0
+[    7850ms] AxiosError: Network Error
+    at XMLHttpRequest.handleError (http://localhost:5173/node_modules/.vite/deps/axios.js?v=48a6c0b1:1863:19)
+    at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=48a6c0b1:2650:41)
+    at async listVideos (http://localhost:5173/src/apis/videos.api.ts:4:13)
+    at async http://localhost:5173/src/components/library/LibraryGrid.tsx:29:53
+[   10922ms] [ERROR] Access to XMLHttpRequest at 'http://localhost:85/api/v1/videos' from origin 'http://localhost:5173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:5173/playground/library?__bypass_auth=1:0
+[   10923ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://localhost:85/api/v1/videos:0
+[   10927ms] AxiosError: Network Error
+    at XMLHttpRequest.handleError (http://localhost:5173/node_modules/.vite/deps/axios.js?v=48a6c0b1:1863:19)
+    at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=48a6c0b1:2650:41)
+    at async listVideos (http://localhost:5173/src/apis/videos.api.ts:4:13)
+    at async http://localhost:5173/src/components/library/LibraryGrid.tsx:29:53

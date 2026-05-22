@@ -135,24 +135,29 @@ class VideoSearch:
     def _build_query_vector(self, query: str) -> np.ndarray:
         """Build a query vector matching the indexed embedding dimension.
 
-        For MediaFM (tri-modal) mode:
-            [viclip_text_emb (768)] + [zeros (768, audio placeholder)] + [openrouter_text_emb (3072)]
-            = 4608 dims
+        Marengo mode (default):
+            CLIP-text encode(query) → 768-d, L2-normalized.
+            Same encoder produced the visual side, so dot product is meaningful.
 
-        For legacy mode:
-            [viclip_text_emb (768)] + [openrouter_text_emb (3072)]
-            = 3840 dims
+        Legacy modes:
+            MediaFM tri-modal: [viclip(768) | zeros(768) | text_emb(3072)] = 4608d
+            Legacy concat   : [viclip(768) | text_emb(3072)] = 3840d
         """
-        viclip_text_emb = self.viclip.encode_text(query)
-        openrouter_text_emb = self.text_embedder.encode(query)
+        marengo_mode = getattr(self.config, "marengo_mode", True) if self.config is not None else True
 
+        viclip_text_emb = self.viclip.encode_text(query)
+
+        if marengo_mode:
+            # Single encoder space — CLIP-text output is already L2-normalized.
+            return viclip_text_emb
+
+        # --- legacy concat paths ---
+        openrouter_text_emb = self.text_embedder.encode(query)
         if self._mediafm_enabled:
-            # For text queries, we don't have audio — use zeros for the audio slot
             audio_placeholder = np.zeros(self.config.audio_embedding_dim, dtype=np.float32)
             query_vector = np.concatenate([viclip_text_emb, audio_placeholder, openrouter_text_emb])
         else:
             query_vector = np.concatenate([viclip_text_emb, openrouter_text_emb])
-
         return query_vector / np.linalg.norm(query_vector)
 
     async def search(
@@ -289,6 +294,101 @@ class VideoSearch:
             return json.dumps(similar)
         except Exception as e:
             return json.dumps({"error": f"Video similarity search failed: {e}"})
+
+    async def find_in_transcript(
+        self,
+        query: str,
+        index_id: str,
+        video_id: Optional[str] = None,
+        top_n: int = 3,
+    ) -> str:
+        """Find shots whose transcripts mention `query`.
+
+        Hybrid match:
+          1. Exact case-insensitive substring → score 1.0 if hit.
+          2. Otherwise CLIP-text cosine similarity between query and transcript.
+
+        Args:
+            query: Natural language phrase to search for in transcripts.
+            index_id: Qdrant collection name.
+            video_id: Restrict to a single video. If None, search the whole index.
+            top_n: Return the top-N matching shots.
+
+        Returns:
+            JSON string with a list of {video_id, start, end, transcript, score}.
+        """
+        from qdrant_client.models import Filter, FieldCondition, MatchValue, Range
+
+        collection_name = self._get_collection_name(index_id)
+
+        filter_conds = [FieldCondition(key="shot_index", range=Range(gte=0))]
+        if video_id:
+            filter_conds.append(FieldCondition(key="video_id", match=MatchValue(value=video_id)))
+
+        try:
+            points, _ = self.qdrant.scroll(
+                collection_name=collection_name,
+                scroll_filter=Filter(must=filter_conds),
+                limit=10000,
+                with_payload=True,
+                with_vectors=False,
+            )
+        except Exception as e:
+            return json.dumps({"error": f"transcript search failed: {e}"})
+
+        shots = []
+        for p in points:
+            payload = p.payload or {}
+            transcript = (payload.get("transcript") or "").strip()
+            if not transcript:
+                continue
+            shots.append({
+                "video_id": payload.get("video_id", ""),
+                "start": float(payload.get("start", 0.0)),
+                "end": float(payload.get("end", 0.0)),
+                "transcript": transcript,
+                "video_url": payload.get("video_path", ""),
+                "video_title": payload.get("title", ""),
+            })
+
+        if not shots:
+            return json.dumps({
+                "message": (
+                    "No transcripts found. Either the index has no transcripts "
+                    "(set STORE_TRANSCRIPT=true / config.store_transcript=True at "
+                    "index time) or the video has no speech."
+                ),
+                "results": [],
+            })
+
+        q_lower = query.lower().strip()
+
+        # --- pass 1: exact substring match (case-insensitive) ---
+        substring_hits = []
+        for s in shots:
+            if q_lower and q_lower in s["transcript"].lower():
+                substring_hits.append({**s, "score": 1.0, "match_type": "substring"})
+
+        # --- pass 2: semantic fallback via CLIP-text cosine ---
+        semantic_hits = []
+        if len(substring_hits) < top_n:
+            try:
+                q_emb = self.viclip.encode_text(query)               # [D]
+                transcript_embs = self.viclip.encode_text_batch(
+                    [s["transcript"][:300] for s in shots]            # cap to 300 chars per CLIP-77-token limit
+                )                                                     # [N, D]
+                scores = transcript_embs @ q_emb                      # cosine since both L2-normalized
+                already_idx = {(h["video_id"], h["start"]) for h in substring_hits}
+                for s, sc in zip(shots, scores):
+                    if (s["video_id"], s["start"]) in already_idx:
+                        continue
+                    semantic_hits.append({**s, "score": float(sc), "match_type": "semantic"})
+            except Exception as e:
+                log.warning(f"semantic fallback failed: {e}")
+
+        semantic_hits.sort(key=lambda x: x["score"], reverse=True)
+        results = substring_hits + semantic_hits[: max(0, top_n - len(substring_hits))]
+        return json.dumps(results[:top_n])
 
     def get_video_metadata(self, index_id: str, video_id: str) -> dict:
         """Get metadata for a specific video from Qdrant."""

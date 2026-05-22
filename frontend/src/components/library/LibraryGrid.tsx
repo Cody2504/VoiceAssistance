@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
-import { Upload } from "lucide-react";
+import { Upload, Trash2 } from "lucide-react";
 
 import type { VideoSummary } from "@/apis/videos.api";
-import { listVideos, uploadVideo } from "@/apis/videos.api";
+import { deleteVideo, listVideos, uploadVideo } from "@/apis/videos.api";
 import { VideoThumb } from "@/components/video/VideoThumb";
 import { cn, formatSeconds } from "@/lib/utils";
 
@@ -93,10 +93,30 @@ export function LibraryGrid({ onPreview }: Props) {
             }}
             onClick={() => onPreview?.(v)}
             className={cn(
-              "group cursor-pointer space-y-2",
+              "group relative cursor-pointer space-y-2",
               v.status !== "ready" && "opacity-60",
             )}
           >
+            <button
+              type="button"
+              onClick={async (e) => {
+                e.stopPropagation();
+                if (!window.confirm(`Delete "${v.original_filename}"? This removes the file, its index, and any derived artifacts.`)) return;
+                try {
+                  await deleteVideo(v.id);
+                  toast.success("Video deleted");
+                  await refresh();
+                } catch (err: unknown) {
+                  const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? "Delete failed";
+                  toast.error(msg);
+                }
+              }}
+              aria-label="Delete video"
+              title="Delete video"
+              className="absolute right-1.5 top-1.5 z-10 grid h-6 w-6 place-items-center rounded-full bg-black/70 text-white opacity-0 transition group-hover:opacity-100 hover:bg-black/85"
+            >
+              <Trash2 size={12} />
+            </button>
             <VideoThumb
               videoId={v.id}
               duration={v.duration_s ?? undefined}

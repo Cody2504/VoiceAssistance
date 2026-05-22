@@ -1,4 +1,18 @@
-.PHONY: build up down restart local-build local-up local-down db-up db-down remove logs ps
+.PHONY: base-build build up down restart local-build local-up local-down gpu-up db-up db-down remove logs ps
+
+# ---------------------------------------------------------------------------
+# Service Dockerfiles `FROM jockey-base:dev` — the base image is built and kept
+# **locally only**. Run `make base-build` once after cloning (and again whenever
+# base_image/{Dockerfile,requirements.txt,build-constraints.txt} change), then
+# `docker compose build && docker compose up` for everything else.
+# ---------------------------------------------------------------------------
+
+BASE_IMAGE ?= jockey-base
+BASE_TAG   ?= dev
+
+# Build the base image locally (only when base_image/{Dockerfile,requirements.txt,build-constraints.txt} change).
+base-build:
+	DOCKER_BUILDKIT=1 docker build -t $(BASE_IMAGE):$(BASE_TAG) ./base_image
 
 # -------- Production-ish (CPU/GPU local with full stack) --------
 build:

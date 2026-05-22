@@ -14,8 +14,15 @@ decord==0.6.0
 transformers==4.45.2
 qdrant-client==1.12.0
 
-# Whisper ASR
-openai-whisper==20240930
+# Whisper ASR — faster-whisper (CTranslate2 backend). ~3-4x faster than the
+# transformers Whisper on both GPU (fp16) and CPU (int8). Provides:
+#   - Silero VAD pre-filter (vad_filter=True) — replaces the legacy RMS heuristic
+#   - Word-level timestamps (word_timestamps=True) — cross-attention DTW
+# Uses faster-whisper directly instead of WhisperX to avoid the
+# torchaudio<->pyannote-audio<->torch>=2.11 ABI break. We keep word timestamps
+# via faster-whisper's built-in DTW; we don't need WhisperX's wav2vec2 forced
+# alignment for sentence-boundary chunking (~0.4s pause detection is enough).
+faster-whisper==1.2.1
 
 # OpenRouter / OpenAI clients
 openai==1.51.2

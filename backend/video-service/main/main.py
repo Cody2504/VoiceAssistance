@@ -7,7 +7,12 @@ from cm_shared.settings import get_base_settings
 from main.api.edit import router as edit_router
 from main.api.grounding import router as grounding_router
 from main.api.qa import router as qa_router
+from main.api.highlights import router as highlights_router
+from main.api.moderate import router as moderate_router
+from main.api.recommend import router as recommend_router
 from main.api.search import router as search_router
+from main.api.sounds import router as sounds_router
+from main.api.segments import router as segments_router
 from main.api.videos import router as videos_router
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(name)s | %(message)s")
@@ -26,6 +31,11 @@ app.add_middleware(
 app.include_router(videos_router)
 app.include_router(grounding_router)
 app.include_router(search_router)
+app.include_router(segments_router)
+app.include_router(recommend_router)
+app.include_router(highlights_router)
+app.include_router(moderate_router)
+app.include_router(sounds_router)
 app.include_router(qa_router)
 app.include_router(edit_router)
 

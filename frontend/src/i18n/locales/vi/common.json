@@ -1,14 +1,93 @@
 {
-  "app": { "name": "tl-jockey" },
-  "auth": {
-    "login": "Đăng nhập",
-    "register": "Tạo tài khoản",
-    "email": "Email",
-    "password": "Mật khẩu"
-  },
+  "app": { "name": "Jockey" },
+  "lang": { "en": "English", "vi": "Tiếng Việt" },
   "library": {
     "title": "Video của bạn",
     "upload": "Tải video",
     "empty": "Chưa có video nào. Hãy tải lên một video để bắt đầu."
+  },
+  "landing": {
+    "nav": {
+      "product": "Sản phẩm",
+      "docs": "Tài liệu",
+      "pricing": "Bảng giá",
+      "open_app": "Mở ứng dụng",
+      "get_started": "Bắt đầu"
+    },
+    "hero": {
+      "eyebrow": "TRÍ TUỆ VIDEO",
+      "h1_a": "Trò chuyện với",
+      "h1_em": "video của bạn.",
+      "sub": "Tìm kiếm, tóm tắt và định vị bất kỳ khoảnh khắc nào. Jockey biến thư viện video thành một đồng đội đã xem hết mọi thứ.",
+      "cta_primary": "Bắt đầu",
+      "cta_secondary": "Xem demo",
+      "chip_query": "thủ môn cản phạt đền lúc nào?",
+      "chip_caption": "3 kết quả trong 12:04"
+    },
+    "features": {
+      "title": "Ba cách dùng Jockey",
+      "search": {
+        "title": "Tìm kiếm",
+        "body": "Kéo video vào chat và hỏi bất cứ điều gì. Câu trả lời gắn với mốc thời gian."
+      },
+      "summarize": {
+        "title": "Tóm tắt",
+        "body": "Một đoạn văn hoặc theo từng chương cho bất kỳ video nào trong thư viện."
+      },
+      "find": {
+        "title": "Tìm khoảnh khắc",
+        "body": "Tìm bằng ngôn ngữ tự nhiên trên toàn bộ thư viện. Jockey nhảy thẳng đến giây cần xem."
+      }
+    },
+    "how": {
+      "title": "Cách hoạt động",
+      "step1": { "title": "Tải video lên", "body": "Thả file MP4 hoặc dán liên kết. Jockey lập chỉ mục hình ảnh, âm thanh và lời thoại." },
+      "step2": { "title": "Hỏi bằng ngôn ngữ thường", "body": "Gõ câu hỏi hoặc dán đoạn lời thoại. Không cần bộ lọc, không cần SQL." },
+      "step3": { "title": "Đến đúng khoảnh khắc", "body": "Bấm vào kết quả để tua đến đúng giây. Kiểm chứng chỉ trong một cú nhấp." }
+    },
+    "footer": {
+      "product": "Sản phẩm",
+      "company": "Công ty",
+      "legal": "Pháp lý",
+      "features": "Tính năng",
+      "pricing": "Bảng giá",
+      "docs": "Tài liệu",
+      "about": "Giới thiệu",
+      "contact": "Liên hệ",
+      "privacy": "Quyền riêng tư",
+      "terms": "Điều khoản",
+      "copyright": "© {{year}} Jockey. Bảo lưu mọi quyền."
+    }
+  },
+  "auth": {
+    "email": "Email",
+    "password": "Mật khẩu",
+    "show_password": "Hiện mật khẩu",
+    "hide_password": "Ẩn mật khẩu",
+    "or": "hoặc",
+    "submitting": "…",
+    "errors": {
+      "email_invalid": "Nhập một email hợp lệ",
+      "password_min": "Mật khẩu phải có ít nhất 8 ký tự",
+      "generic": "Xác thực thất bại"
+    },
+    "login": {
+      "title": "Đăng nhập",
+      "submit": "Đăng nhập",
+      "forgot": "Quên mật khẩu?",
+      "forgot_toast": "Tính năng đặt lại mật khẩu sắp ra mắt.",
+      "no_account": "Chưa có tài khoản?",
+      "sign_up": "Đăng ký",
+      "quote": "Tôi hỏi lúc nào con chó nhảy qua hàng rào. Jockey đưa tôi tới 03:42.",
+      "quote_who": "Người dùng beta · nhà nghiên cứu"
+    },
+    "signup": {
+      "title": "Tạo tài khoản",
+      "submit": "Tạo tài khoản",
+      "have_account": "Đã có tài khoản?",
+      "log_in": "Đăng nhập",
+      "quote": "Cài đặt trong năm phút. Đặt câu hỏi đầu tiên trong bảy phút.",
+      "quote_who": "Người dùng beta · biên tập video"
+    }
   }
 }

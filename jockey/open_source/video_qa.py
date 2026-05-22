@@ -96,26 +96,44 @@ class VideoQA:
             log.warning("openai package not installed. pip install openai")
             self._client = "unavailable"
 
-    def _extract_frames(self, video_path: str) -> np.ndarray:
-        """Extract frames from video for VLM input."""
+    def _extract_frames(
+        self,
+        video_path: str,
+        start_sec: float = 0.0,
+        end_sec: Optional[float] = None,
+    ) -> np.ndarray:
+        """Extract frames for VLM input.
+
+        Defaults to whole-video sampling (start=0, end=video duration). Pass
+        an explicit `[start_sec, end_sec]` to restrict sampling to a window,
+        which is what `analyze_range` uses for time-range Q&A.
+        """
         try:
             from jockey.open_source.indexer import extract_frames
-            # Extract from the whole video
-            frames = extract_frames(video_path, 0.0, 9999.0, max_frames=self.max_frames)
+            # Use a large sentinel for end if not specified; extract_frames clamps
+            # internally to the actual video duration.
+            end = 9999.0 if end_sec is None else float(end_sec)
+            frames = extract_frames(video_path, float(start_sec), end, max_frames=self.max_frames)
             return frames
         except Exception as e:
             log.warning(f"Frame extraction failed: {e}")
             return np.zeros((1, 224, 224, 3), dtype=np.uint8)
 
-    def _generate(self, video_path: str, prompt: str, max_tokens: int = 512) -> str:
-        """Core generation method — sends video frames + prompt to VLM via OpenRouter."""
+    def _generate(
+        self,
+        video_path: str,
+        prompt: str,
+        max_tokens: int = 512,
+        start_sec: float = 0.0,
+        end_sec: Optional[float] = None,
+    ) -> str:
+        """Core generation: sample frames from `[start_sec, end_sec]`, send + prompt to VLM."""
         self._lazy_load()
 
         if self._client == "unavailable":
             return f"[VLM unavailable — set OPENROUTER_API_KEY] Prompt was: {prompt}"
 
-        # Extract frames and convert to base64
-        frames = self._extract_frames(video_path)
+        frames = self._extract_frames(video_path, start_sec=start_sec, end_sec=end_sec)
         b64_images = _frames_to_base64_images(frames, max_images=self.max_frames)
 
         if not b64_images:
@@ -225,3 +243,51 @@ class VideoQA:
         """
         text = self._generate(video_path, prompt, max_tokens=512)
         return json.dumps({"text": text, "video_url": video_path})
+
+    async def analyze_range(
+        self,
+        video_path: str,
+        start_sec: float,
+        end_sec: float,
+        prompt: Optional[str] = None,
+    ) -> str:
+        """Describe what happens in a specific `[start_sec, end_sec]` window of a video.
+
+        Used by the `time-range-analysis` agent tool: the user supplies the time
+        range (e.g. "0:09 - 0:12"); we sample N frames from that window only and
+        ask the VLM to describe them. NOT to be confused with moment retrieval —
+        we are NOT predicting timestamps here, we are *given* them.
+
+        Args:
+            video_path: Path to video file.
+            start_sec: Window start (seconds).
+            end_sec: Window end (seconds, exclusive).
+            prompt: Optional override. Defaults to a "describe what happens" prompt.
+
+        Returns:
+            JSON string with `{type, text, start, end, video_url}`.
+        """
+        if end_sec <= start_sec:
+            return json.dumps({
+                "error": f"end_sec ({end_sec}) must be greater than start_sec ({start_sec})",
+                "video_url": video_path,
+            })
+
+        if prompt is None or not prompt.strip():
+            prompt = (
+                f"Describe what happens in the video between {start_sec:.1f}s and "
+                f"{end_sec:.1f}s. Focus on visible actions, objects, and people. "
+                f"Be concise — 2 to 4 sentences."
+            )
+
+        text = self._generate(
+            video_path, prompt, max_tokens=512,
+            start_sec=float(start_sec), end_sec=float(end_sec),
+        )
+        return json.dumps({
+            "type": "time_range",
+            "start": float(start_sec),
+            "end": float(end_sec),
+            "text": text,
+            "video_url": video_path,
+        })

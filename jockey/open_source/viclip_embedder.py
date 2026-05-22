@@ -16,7 +16,11 @@ from typing import Union, List
 
 log = logging.getLogger(__name__)
 
-EMBEDDING_DIM = 768  # clip-vit-large-patch14 output dimension
+# Fallback used only in placeholder mode (when the model couldn't load).
+# The real dim is discovered from `model.config.projection_dim` on _lazy_load:
+#   clip-vit-base-patch32 → 512
+#   clip-vit-large-patch14 → 768
+DEFAULT_EMBEDDING_DIM = 768
 
 
 class ViCLIPEmbedder:
@@ -33,8 +37,10 @@ class ViCLIPEmbedder:
         self._model = None
         self._processor = None
         self._tokenizer = None
+        # Discovered from the loaded model's projection_dim; populated by _lazy_load.
+        # Defaults to the placeholder fallback until the model is actually loaded.
+        self.embedding_dim = DEFAULT_EMBEDDING_DIM
         self._hf_token = os.environ.get("HF_TOKEN") or os.environ.get("HF_API_KEY") or None
-        # Ensure HF_TOKEN is set so huggingface_hub authenticates automatically
         if self._hf_token and not os.environ.get("HF_TOKEN"):
             os.environ["HF_TOKEN"] = self._hf_token
 
@@ -80,8 +86,20 @@ class ViCLIPEmbedder:
                 self.model_name_or_path,
                 token=self._hf_token,
             )
+            # Discover the actual projection dim (B/32 → 512, L/14 → 768).
+            try:
+                proj_dim = int(self._model.config.projection_dim)
+                if proj_dim != self.embedding_dim:
+                    log.info(f"CLIP projection_dim = {proj_dim} (was {self.embedding_dim})")
+                self.embedding_dim = proj_dim
+            except AttributeError:
+                log.warning(
+                    f"Could not read projection_dim from model config; "
+                    f"keeping default {self.embedding_dim}."
+                )
+
             param_count = sum(p.numel() for p in self._model.parameters())
-            log.info(f"Loaded CLIP model ({param_count:,} params, device={self.device})")
+            log.info(f"Loaded CLIP model ({param_count:,} params, device={self.device}, dim={self.embedding_dim})")
         except Exception as e:
             log.warning(f"Could not load CLIP model: {e}. Using random embeddings as placeholder.")
             self._model = "placeholder"
@@ -101,7 +119,7 @@ class ViCLIPEmbedder:
         self._lazy_load()
 
         if self._model == "placeholder":
-            emb = np.random.randn(EMBEDDING_DIM).astype(np.float32)
+            emb = np.random.randn(self.embedding_dim).astype(np.float32)
             return emb / np.linalg.norm(emb)
 
         import torch
@@ -157,7 +175,7 @@ class ViCLIPEmbedder:
         self._lazy_load()
         n_shots = len(frames_list)
         if n_shots == 0:
-            return np.zeros((0, EMBEDDING_DIM), dtype=np.float32)
+            return np.zeros((0, self.embedding_dim), dtype=np.float32)
 
         import torch
         from PIL import Image
@@ -175,15 +193,15 @@ class ViCLIPEmbedder:
                 flat_pil.append(Image.fromarray(f))
 
         if self._model == "placeholder":
-            out = np.zeros((n_shots, EMBEDDING_DIM), dtype=np.float32)
+            out = np.zeros((n_shots, self.embedding_dim), dtype=np.float32)
             for i, n in enumerate(shot_counts):
                 if n == 0:
                     continue
-                r = np.random.randn(EMBEDDING_DIM).astype(np.float32)
+                r = np.random.randn(self.embedding_dim).astype(np.float32)
                 out[i] = r / max(np.linalg.norm(r), 1e-12)
             return out
 
-        result = np.zeros((n_shots, EMBEDDING_DIM), dtype=np.float32)
+        result = np.zeros((n_shots, self.embedding_dim), dtype=np.float32)
         if not flat_pil:
             return result
 
@@ -220,10 +238,10 @@ class ViCLIPEmbedder:
         self._lazy_load()
         n = len(texts)
         if n == 0:
-            return np.zeros((0, EMBEDDING_DIM), dtype=np.float32)
+            return np.zeros((0, self.embedding_dim), dtype=np.float32)
 
         if self._model == "placeholder":
-            r = np.random.randn(n, EMBEDDING_DIM).astype(np.float32)
+            r = np.random.randn(n, self.embedding_dim).astype(np.float32)
             return r / np.linalg.norm(r, axis=1, keepdims=True).clip(min=1e-12)
 
         import torch
@@ -253,7 +271,7 @@ class ViCLIPEmbedder:
         self._lazy_load()
 
         if self._model == "placeholder":
-            emb = np.random.randn(EMBEDDING_DIM).astype(np.float32)
+            emb = np.random.randn(self.embedding_dim).astype(np.float32)
             return emb / np.linalg.norm(emb)
 
         import torch

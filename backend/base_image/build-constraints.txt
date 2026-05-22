@@ -1,0 +1,7 @@
+# Applied via uv `--constraint` (equivalent to pip's PIP_CONSTRAINT). Constrains
+# both the install env and PEP-517 build-isolation envs.
+#
+# Why: openai-whisper 20240930's setup.py imports `pkg_resources`, which was
+# removed in setuptools 81. Without this pin, modern build envs would pull
+# setuptools 82+ and the whisper sdist would fail.
+setuptools<80
