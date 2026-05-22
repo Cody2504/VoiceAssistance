@@ -156,25 +156,42 @@ class VLMCaptioner:
             return ""
 
     def caption_batch(self, frame_batches: List[np.ndarray]) -> List[str]:
-        """Caption N shots. One API call per shot (no provider-side batching).
+        """Caption N shots in parallel.
 
         Provider doesn't batch multi-image chat completions across separate
-        conversations; we just loop. With keep-alive, per-shot RTT is
-        ~1-2 s for ~8 frames + 80 output tokens.
+        conversations, so we fan out N parallel HTTP calls via a thread pool.
+        Empirically this is the dominant cost of indexing on long videos:
+        serial loop ≈ 1.5 s/shot × N. Parallelism collapses that to
+        ceil(N / workers) × 1.5 s — ~8× faster on a 60-shot video.
+
+        Workers default to 8 (OpenRouter handles this comfortably). Override
+        with the ``CAPTION_BATCH_WORKERS`` env var.
         """
+        import os
+        from concurrent.futures import ThreadPoolExecutor
+
         self._lazy_load()
         n = len(frame_batches)
         out: List[str] = [""] * n
         if self._client == _UNAVAILABLE or n == 0:
             self._n_skipped += n
             return out
-        for i, frames in enumerate(frame_batches):
+
+        max_workers = int(os.environ.get("CAPTION_BATCH_WORKERS", "8"))
+        max_workers = max(1, min(max_workers, n))
+
+        def _run(i: int, frames) -> tuple[int, str]:
             if frames is None or len(frames) == 0:
-                continue
+                return i, ""
             try:
-                out[i] = self._run_one(frames)
-            except Exception as e:
+                return i, self._run_one(frames)
+            except Exception as e:  # noqa: BLE001
                 log.warning(f"caption_batch item {i} failed: {e}")
+                return i, ""
+
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            for i, caption in pool.map(lambda iv: _run(*iv), enumerate(frame_batches)):
+                out[i] = caption
         return out
 
     # ---------- internals ----------
