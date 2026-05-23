@@ -16,6 +16,7 @@ import { VideoPickerModal, useVideoLibrary } from "./components/VideoPicker";
 import { MultiTrackTimeline, type TimelineTrack } from "./components/MultiTrackTimeline";
 import { MetadataPanel } from "./components/MetadataPanel";
 import { PrettyDropdown, type DropdownItem } from "./components/PrettyDropdown";
+import { SegmentBuilderModal } from "./components/SegmentDefinitionBuilder";
 import {
   HistoryPanel,
   appendHistory,
@@ -105,6 +106,9 @@ export default function Segment() {
   const [savedPresets, setSavedPresets] = useState<SavedPreset[]>(() => loadSavedPresets());
   const [savePromptOpen, setSavePromptOpen] = useState(false);
   const [saveLabel, setSaveLabel] = useState("");
+
+  // Segment Definition Builder modal.
+  const [builderOpen, setBuilderOpen] = useState(false);
 
   const player = useRef<VideoPlayerHandle>(null);
   const formPlayer = useRef<VideoPlayerHandle>(null);
@@ -472,8 +476,14 @@ export default function Segment() {
                         <button
                           type="button"
                           className="inline-flex items-center gap-1 rounded-[7px] border border-neutral-700 bg-white px-1.5 py-1 text-[10px] text-neutral-900 shadow-[0_0_3px_0_rgba(29,28,27,0.4)] hover:bg-neutral-100"
-                          title="Builder modal — coming soon"
-                          onClick={() => toast.info("Builder modal lands in the next iteration. Edit the JSON directly for now.")}
+                          title="Open the visual builder"
+                          onClick={() => {
+                            if (!parsed.ok) {
+                              toast.error(`Fix JSON first: ${parsed.error}`);
+                              return;
+                            }
+                            setBuilderOpen(true);
+                          }}
                         >
                           {"</>"} Edit in Builder
                         </button>
@@ -708,6 +718,13 @@ export default function Segment() {
         onFilterChange={setHistoryFilter}
         onPick={onPickHistory}
         onClear={onClearHistory}
+      />
+
+      <SegmentBuilderModal
+        open={builderOpen}
+        value={parsed.ok ? parsed.defs : []}
+        onChange={(next) => setDefinitionsJson(JSON.stringify(next, null, 2))}
+        onClose={() => setBuilderOpen(false)}
       />
     </div>
   );

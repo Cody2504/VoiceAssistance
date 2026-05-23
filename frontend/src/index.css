@@ -84,6 +84,20 @@ body {
 .shadow-hairline { box-shadow: var(--shadow-hairline); }
 .shadow-inset { box-shadow: var(--shadow-inset); }
 
+/* Animated conic-gradient border used on the Search query textarea */
+@property --gradient-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+@keyframes gradient-rotate {
+  to { --gradient-angle: 360deg; }
+}
+.gradient-border {
+  background: conic-gradient(from var(--gradient-angle), #f6afff, #d9d9ff, #a7abff, #f6afff);
+  animation: gradient-rotate 3s linear infinite;
+}
+
 /* gradient text fill used in landing hero headline */
 .gradient-text {
   background: linear-gradient(90deg, #ff8caa, #7a4dff);

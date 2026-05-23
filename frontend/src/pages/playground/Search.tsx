@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { Link } from "react-router";
+import { ImageIcon, UserCircle2 } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -8,7 +9,7 @@ import { searchCorpus, type CorpusSearchResponse, type CorpusShot } from "@/apis
 import { formatSeconds } from "@/lib/utils";
 
 import { PlaygroundShell } from "./components/PlaygroundShell";
-import { FormPanel, Field } from "./components/FormPanel";
+import { FormPanel, Field, CheckOption } from "./components/FormPanel";
 import { ExamplesPanel } from "./components/ExamplesPanel";
 import { ResultsPanel } from "./components/ResultsPanel";
 import { AdvancedSettings } from "./components/AdvancedSettings";
@@ -17,11 +18,24 @@ import { SEARCH_EXAMPLES, type SearchPreset } from "./data/examples";
 
 const DEFAULT_FORM: SearchPreset = { query: "", group_by: "clip", top_n: 10 };
 
+interface SearchOptions {
+  visual: boolean;
+  audio: boolean;
+  transcription: boolean;
+}
+
+interface TranscriptionOptions {
+  lexical: boolean;
+  semantic: boolean;
+}
+
 export default function Search() {
   const [form, setForm] = useState<SearchPreset>(DEFAULT_FORM);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<CorpusSearchResponse | null>(null);
   const [indexSelection, setIndexSelection] = useState<{ id: string; title: string } | null>(null);
+  const [searchOpts, setSearchOpts] = useState<SearchOptions>({ visual: true, audio: true, transcription: true });
+  const [transcriptOpts, setTranscriptOpts] = useState<TranscriptionOptions>({ lexical: true, semantic: true });
 
   const run = async () => {
     if (!form.query.trim()) return;
@@ -57,17 +71,77 @@ export default function Search() {
             />
           </Field>
 
-          <Field label="query_text" required hint="What to search for. 1–512 chars.">
-            <textarea
-              value={form.query}
-              onChange={(e) => setForm({ ...form, query: e.target.value })}
-              placeholder="Search actions, objects, sounds, and logos"
-              className="min-h-[100px] w-full resize-none rounded-lg border border-[var(--color-chalk)] bg-white px-3 py-2 text-[13px] text-[var(--color-obsidian)] placeholder:text-[var(--color-slate)] focus:border-[var(--color-gravel)] focus:outline-none focus:ring-2 focus:ring-[var(--color-obsidian)]/10"
-            />
+          <Field label="query_text" required type="STRING">
+            <div className="rounded-xl p-[2px] gradient-border">
+              <div className="rounded-[10px] bg-white px-3 py-2">
+                <textarea
+                  value={form.query}
+                  onChange={(e) => setForm({ ...form, query: e.target.value })}
+                  placeholder="Search actions, objects, sounds and logos"
+                  className="block min-h-[68px] w-full resize-none border-none bg-transparent text-[13px] leading-6 text-[var(--color-obsidian)] outline-none placeholder:text-[var(--color-gravel)]/80"
+                />
+                <div className="flex items-center gap-x-2 pb-0.5 pt-1">
+                  <button
+                    type="button"
+                    disabled
+                    aria-label="Add image"
+                    className="grid h-7 w-7 place-items-center rounded-[8px] border border-[var(--color-chalk)] text-[var(--color-gravel)] transition-all hover:rounded-[12px] hover:bg-[var(--color-powder)] disabled:opacity-40"
+                  >
+                    <ImageIcon size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    disabled
+                    aria-label="Insert entity"
+                    className="inline-flex h-7 items-center gap-1 rounded-[8px] border border-[var(--color-chalk)] px-2 text-[11px] text-[var(--color-gravel)] transition-all hover:rounded-[12px] hover:bg-[var(--color-powder)] disabled:opacity-40"
+                  >
+                    <UserCircle2 size={12} />
+                    @ Entity
+                  </button>
+                </div>
+              </div>
+            </div>
           </Field>
 
+          <Field label="search_options" required type="ARRAY">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
+              <CheckOption
+                label="Visual"
+                checked={searchOpts.visual}
+                onChange={(v) => setSearchOpts((s) => ({ ...s, visual: v }))}
+              />
+              <CheckOption
+                label="Audio"
+                checked={searchOpts.audio}
+                onChange={(v) => setSearchOpts((s) => ({ ...s, audio: v }))}
+              />
+              <CheckOption
+                label="Transcription"
+                checked={searchOpts.transcription}
+                onChange={(v) => setSearchOpts((s) => ({ ...s, transcription: v }))}
+              />
+            </div>
+          </Field>
+
+          {searchOpts.transcription && (
+            <Field label="transcription_options" type="ARRAY">
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
+                <CheckOption
+                  label="Lexical"
+                  checked={transcriptOpts.lexical}
+                  onChange={(v) => setTranscriptOpts((s) => ({ ...s, lexical: v }))}
+                />
+                <CheckOption
+                  label="Semantic"
+                  checked={transcriptOpts.semantic}
+                  onChange={(v) => setTranscriptOpts((s) => ({ ...s, semantic: v }))}
+                />
+              </div>
+            </Field>
+          )}
+
           <AdvancedSettings onReset={() => setForm({ ...form, top_n: 10, group_by: "clip" })}>
-            <Field label="group_by" hint="`clip` returns shot-level hits; `video` returns one hit per video.">
+            <Field label="group_by" type="ENUM" hint="`clip` returns shot-level hits; `video` returns one hit per video.">
               <select
                 value={form.group_by}
                 onChange={(e) => setForm({ ...form, group_by: e.target.value as "clip" | "video" })}
@@ -77,7 +151,7 @@ export default function Search() {
                 <option value="video">video</option>
               </select>
             </Field>
-            <Field label="top_n" hint="1–50. Max number of hits returned.">
+            <Field label="top_n" type="INTEGER" hint="1–50. Max number of hits returned.">
               <Input
                 type="number"
                 min={1}

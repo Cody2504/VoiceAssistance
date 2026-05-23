@@ -26,9 +26,10 @@ interface Props {
 }
 
 /**
- * Index picker used by Search. There's no multi-index backend yet, so this
- * shows the user's video corpus as a single "Default" index plus the same
- * sample tiles seen on /indexes (for visual parity with the TwelveLabs ref).
+ * Index picker used by Search. Closed state mirrors the TwelveLabs reference:
+ * a looping video clip behind a "Select an index" pill, with a soft warm/cool
+ * inner-glow and hover-zoom on the video. Opens a modal of indexes (real
+ * default + sample tiles).
  */
 export function IndexPicker({ selectedIndexId, onSelect }: Props) {
   const [open, setOpen] = useState(false);
@@ -59,24 +60,49 @@ export function IndexPicker({ selectedIndexId, onSelect }: Props) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={cn(
-          "relative flex h-[230px] w-full items-center justify-center overflow-hidden rounded-[14px] border border-[var(--color-chalk)] transition hover:shadow-hairline",
-          selected ? variantClass[selected.variant] : "bg-gradient-warm",
-        )}
+        className="group/panel relative block aspect-video w-full overflow-hidden rounded-[18px] border border-[var(--color-chalk)] bg-black transition hover:shadow-hairline"
       >
         {selected ? (
-          <div className="flex flex-col items-center gap-2 text-[var(--color-obsidian)]">
-            <span className="text-[15px] font-medium">{selected.title}</span>
-            <span className="text-[12px] text-[var(--color-gravel)]">{selected.meta}</span>
-            <span className="mt-2 rounded-full bg-[var(--color-obsidian)] px-3 py-1 text-[12px] text-white">
-              Change index
-            </span>
+          <div
+            className={cn(
+              "absolute inset-0 grid place-items-center",
+              variantClass[selected.variant],
+            )}
+          >
+            <div className="flex flex-col items-center gap-2 text-[var(--color-obsidian)]">
+              <span className="text-[15px] font-medium">{selected.title}</span>
+              <span className="text-[12px] text-[var(--color-gravel)]">{selected.meta}</span>
+              <span className="mt-2 rounded-full bg-[var(--color-obsidian)] px-3 py-1 text-[12px] text-white">
+                Change index
+              </span>
+            </div>
           </div>
         ) : (
-          <span className="inline-flex items-center gap-2 rounded-md bg-[var(--color-obsidian)] px-3 py-1.5 text-[13px] text-white">
-            <FolderSearch size={13} />
-            Select an index
-          </span>
+          <>
+            <video
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="auto"
+              className="absolute left-1/2 top-1/2 h-full w-full -translate-x-1/2 -translate-y-1/2 object-cover transition-transform duration-200 ease-in-out group-hover/panel:scale-[1.2]"
+            >
+              <source src="/twelvelabs/index-loop.mp4" type="video/mp4" />
+            </video>
+            <div className="absolute inset-0 bg-black/35" aria-hidden="true" />
+            <div
+              className="absolute inset-0 rounded-[18px]"
+              aria-hidden="true"
+              style={{
+                boxShadow:
+                  "inset -4px -4px 41px 0 rgba(253, 227, 162, 0.65), inset 4px 4px 41px 0 rgba(168, 230, 178, 0.65)",
+              }}
+            />
+            <span className="absolute left-1/2 top-1/2 inline-flex -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 rounded-[8px] bg-[var(--color-obsidian)] px-3 py-1.5 text-[13px] font-medium text-white transition-all duration-200 hover:rounded-[12px] hover:bg-neutral-800">
+              Select an index
+              <FolderSearch size={14} />
+            </span>
+          </>
         )}
       </button>
 
