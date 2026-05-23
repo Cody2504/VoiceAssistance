@@ -11,7 +11,7 @@ upstream token_usage_upstream { server token-usage:1103; }
 
 server {
     listen 80;
-    resolver 1.1.1.1 8.8.8.8 valid=60s ipv6=off;
+    resolver 127.0.0.11 valid=60s ipv6=off;
 
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-Frame-Options "DENY" always;

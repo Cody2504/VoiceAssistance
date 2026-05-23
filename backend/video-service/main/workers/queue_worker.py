@@ -30,6 +30,13 @@ def _sync_session() -> Session:
 
 def index_video(video_id: str) -> dict:
     """Top-level RQ-callable. Updates DB state around the actual pipeline run."""
+    # RQ forks per job; boto3 clients hold connection pool FDs that don't survive
+    # fork cleanly (manifests as 403 HeadObject errors even with correct config).
+    # Drop the lru_cache so the forked child builds a fresh client.
+    from main.storage.minio import s3, _s3_public
+    s3.cache_clear()
+    _s3_public.cache_clear()
+
     vid = UUID(video_id)
     db = _sync_session()
     try:
