@@ -2,12 +2,16 @@ upstream iam_upstream         { server iam:1100; }
 # VIDEO_UPSTREAM defaults to the local docker network alias. Override via
 # .env (VIDEO_UPSTREAM=jockey-vast:1101) when video-service runs on the
 # rented vast.ai box and is reached over the Tailscale tailnet.
-upstream video_upstream       { server ${VIDEO_UPSTREAM}; }
+upstream video_upstream {
+    server ${VIDEO_UPSTREAM};
+    keepalive 8;
+}
 upstream agent_upstream       { server agent-service:1102; }
 upstream token_usage_upstream { server token-usage:1103; }
 
 server {
     listen 80;
+    resolver 1.1.1.1 8.8.8.8 valid=60s ipv6=off;
 
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-Frame-Options "DENY" always;
@@ -32,8 +36,27 @@ server {
     location /api/v1/users/ { proxy_pass http://iam_upstream;  include /etc/nginx/conf.d/proxy_headers.inc; }
 
     # ---- Video service ----
-    location /api/v1/videos     { proxy_pass http://video_upstream; include /etc/nginx/conf.d/proxy_headers.inc; }
-    location /api/v1/videos/    { proxy_pass http://video_upstream; include /etc/nginx/conf.d/proxy_headers.inc; }
+    # Cloudflare-tunneled upstream (video-service on vast). We deliberately
+    # skip /etc/nginx/conf.d/proxy_headers.inc here: that include adds
+    # X-Forwarded-For with the Docker bridge IP (172.18.x.x), which trips
+    # Cloudflare's WAF (private-IP-in-XFF rule) and returns 403. Cloudflare
+    # itself sets CF-Connecting-IP for the upstream, so we don't need our own.
+    location /api/v1/videos {
+        set $video_host video.voiceassistant.uk;
+        proxy_pass https://$video_host:443;
+        proxy_ssl_server_name on;
+        proxy_ssl_name $video_host;
+        proxy_set_header Host $video_host;
+        proxy_set_header X-Original-URI $request_uri;
+    }
+    location /api/v1/videos/ {
+        set $video_host video.voiceassistant.uk;
+        proxy_pass https://$video_host:443;
+        proxy_ssl_server_name on;
+        proxy_ssl_name $video_host;
+        proxy_set_header Host $video_host;
+        proxy_set_header X-Original-URI $request_uri;
+    }
 
     # ---- Agent (SSE) ----
     location /api/v1/chat/stream {

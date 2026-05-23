@@ -185,7 +185,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-jockey}
     restart: always
     ports: ["15432:5432"]
-    volumes: ["./.postgresdata:/var/lib/postgresql/data"]
+    volumes: ["jockey_pgdata:/var/lib/postgresql/data"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-jockey} -d ${POSTGRES_DB:-jockey}"]
       interval: 5s
@@ -209,7 +209,8 @@ services:
   qdrant:
     image: qdrant/qdrant:v1.14.0
     container_name: jockey-qdrant
-    volumes: ["./.qdrantdata:/qdrant/storage"]
+    ports: ["16333:6333"]
+    volumes: ["jockey_qdrant:/qdrant/storage"]
     restart: always
     healthcheck:
       # qdrant image ships with bash; use /dev/tcp probe since it ships without curl/wget.
@@ -228,7 +229,7 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-jockey_dev_secret}
     command: server /data --console-address ":9001"
     ports: ["9000:9000", "9001:9001"]
-    volumes: ["./.miniodata:/data"]
+    volumes: ["jockey_minio:/data"]
     restart: always
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
@@ -257,3 +258,8 @@ networks:
   jockey-net:
     name: jockey-net
     driver: bridge
+
+volumes:
+  jockey_pgdata:
+  jockey_qdrant:
+  jockey_minio:
