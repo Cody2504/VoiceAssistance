@@ -17,10 +17,25 @@ export const ROUTES = {
   VIDEO_SEGMENTS: (id: string) => `/videos/${id}/segments`,
   VIDEO_SEGMENT_RUN: (id: string) => `/videos/${id}/segment`,
   VIDEOS_SEARCH: "/videos/search",
+  VIDEOS_SEARCH_IMAGE: "/videos/search/image",
+  VIDEO_SEARCH_IMAGE: (id: string) => `/videos/${id}/search/image`,
   VIDEO_SIMILAR: (id: string) => `/videos/${id}/similar`,
   VIDEO_HIGHLIGHTS: (id: string) => `/videos/${id}/highlights`,
   VIDEO_MODERATE: (id: string) => `/videos/${id}/moderate`,
   VIDEO_SOUNDS: (id: string) => `/videos/${id}/sounds`,
+
+  // Indexes (lecture series / collections)
+  INDEXES: "/indexes",
+  INDEX: (id: string) => `/indexes/${id}`,
+  INDEX_VIDEOS: (id: string) => `/indexes/${id}/videos`,
+  INDEX_VIDEO: (id: string, videoId: string) => `/indexes/${id}/videos/${videoId}`,
+  INDEX_SEARCH: (id: string) => `/indexes/${id}/search`,
+  // Phase 2a KG endpoints — separate from text retrieval (intentional)
+  INDEX_CONCEPTS_SEARCH: (id: string) => `/indexes/${id}/concepts/search`,
+  INDEX_ENTITY_MENTIONS: (id: string, entityId: string) =>
+    `/indexes/${id}/entities/${entityId}/mentions`,
+  INDEX_ENTITY_RELATED: (id: string, entityId: string) =>
+    `/indexes/${id}/entities/${entityId}/related`,
 
   // Chat
   CHAT_STREAM: "/chat/stream",
@@ -29,6 +44,11 @@ export const ROUTES = {
 
   // Usage
   USAGE_ME: "/usage/me",
+
+  // Billing
+  BILLING_PLANS: "/billing/plans",
+  BILLING_SUBSCRIPTION: "/billing/subscription",
+  BILLING_CHECKOUT: "/billing/checkout",
 } as const;
 
 export const TOKEN_KEYS = {

@@ -121,6 +121,67 @@ Agent tools (online):
 - [ ] **Task 9.2**: Demo script: 5–10 representative queries (search, summary, edit)
 - [ ] **Task 9.3**: Qualitative eval set + manual scoring template
 
+### Phase 12 — Cloudflare-tunnel deployment (replacing Tailscale)  `[/]`
+
+**Goal**: Move from the Tailscale-based vast.ai deployment (Phase 11.x) to a Cloudflare-tunnel topology so the system is reachable from any network without a Tailscale install on the client side. Same split: laptop runs data plane (postgres/redis/qdrant/minio/iam/agent/token/gateway) + serves UI; vast pod runs video-service + RQ workers + GPU encoders.
+
+```
+┌──────────── laptop (WSL2 + Docker Desktop) ─────────────┐
+│  jockey-{postgres,redis,qdrant,minio,iam,agent,token,gateway}
+│                                                         │
+│  cloudflared "jockey-wsl" → 6 ingress hostnames:        │
+│    pg/redis/qdrant.voiceassistant.uk → tcp://127.0.0.1  │
+│    minio/iam/token.voiceassistant.uk → http://127.0.0.1 │
+└──────────────────────────┬──────────────────────────────┘
+                           │  voiceassistant.uk zone
+┌──────────────────────────┴──────────────────────────────┐
+│  vast.ai pod (generic Ubuntu 24.04 + /venv/main)        │
+│  tmux: tun-{pg,redis,qdrant} (access tcp listeners),    │
+│        tun-video (jockey-vast inbound tunnel → :1101),  │
+│        vs-api (uvicorn), vs-worker-{1,2} (RQ)           │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Bring-up automation** `[x]`
+- [x] **Task 12.1**: `backend/scripts/setup-laptop.sh` — idempotent: installs cloudflared, copies `<root>/.env` → `backend/.env` (problem #5), creates `jockey-wsl` tunnel + writes `config.yml` with all 6 ingress rules (using `printf` not heredoc — problem #2), routes DNS for all 6 hostnames, `make base-build` if missing + `docker compose up -d --no-deps` of explicit laptop service list (skips video-service which is vast-owned).
+- [x] **Task 12.2**: `backend/scripts/setup-vast.sh` — idempotent: installs cloudflared + tmux, validates `vast.env`, starts 3 `cloudflared access tcp` listeners (pg/redis/qdrant → 127.0.0.1), runs `jockey-vast` inbound tunnel (config.yml + uploaded `<UUID>.json`), creates `/models → /workspace/models` symlink, delegates to `vast-bootstrap.sh all`.
+- [x] **Task 12.3**: `backend/scripts/vast-bootstrap.sh` hardened — auto-installs pinned `torch==2.4.1 + torchvision==0.19.1 + torchaudio==2.4.1` from cu124 wheels when missing (generic image support); `detect_py()` picks the venv with uvicorn installed (vast's `/venv/main` vs system Python); `load_env()` sets `PYTHONPATH=${BACKEND_DIR}` and strips CRLF from `vast.env` (problem #13); api/workers/alembic all invoke `${PY_BIN}` by absolute path.
+
+**Compose fixes (migration log #16 + new)** `[x]`
+- [x] **Task 12.4**: `agent-service` to `jockey-net` with `ports: ["1102:1102"]` (was `network_mode: host` which doesn't work on Docker Desktop WSL2). Gateway's `extra_hosts: agent-service:host-gateway` removed.
+- [x] **Task 12.5**: `gateway` no longer `depends_on: video-service` (vast owns it). Avoids compose pulling in the broken `video-service` Dockerfile build on `up`.
+- [x] **Task 12.6**: `backend/video-service/main/storage/minio.py` — `download_to_path` uses `get_object()` not `download_file()` (migration log #10 finally applied; the high-level transfer manager bypasses our path-style config and hits Cloudflare with a virtual-hosted HEAD → 403).
+- [x] **Task 12.7**: `backend/video-service/requirements.txt` — `msclap` commented out + installed `--no-deps` (torchvision pin doesn't have cp312 wheels); `lighthouse-mr` install renamed to `lighthouse` (uv strict wheel-metadata name match); `gdown==5.2.0` added.
+- [x] **Task 12.8**: `backend/video-service/scripts/download_lighthouse_weights.sh` — QD-DETR Zenodo URL fixed (filename has a hyphen, lighthouse loader expects underscore — rename on save); CG-DETR now downloads from the **original** CG-DETR repo's QVHighlights Drive folder (~860 MB) instead of Lighthouse's bundled multi-GB `results.zip`.
+
+**End-to-end verified** `[x]`
+- [x] Laptop docker stack healthy (all 8 services).
+- [x] `https://iam.voiceassistant.uk/health` / `https://token.voiceassistant.uk/health` / `https://minio.voiceassistant.uk/minio/health/live` all 200 from outside the LAN.
+- [x] `https://video.voiceassistant.uk/health` 200 (pod via `jockey-vast` tunnel).
+- [x] Auth flow: register/login via laptop iam, JWT validated by pod video-service (after fixing CRLF in SECRET_KEY).
+- [x] Upload: laptop → gateway → vast api → MinIO (via `jockey-wsl` tunnel back from pod) — 8 cooking clips landed in MinIO with rows in Postgres.
+- [x] Worker download from MinIO via tunnel works (logs show `modality:video_audio duration=144.8s` — file was successfully pulled and ffprobed).
+
+**Blocked — pick up tomorrow** `[ ]`
+- [ ] **Task 12.9** — **Worker segfault at `torch.cuda._lazy_init`** after PyAV (libavcodec) is loaded.
+
+  **Symptom:** Worker reaches `Loading CLIP model from openai/clip-vit-large-patch14 on cuda...`, then SIGSEGV. faulthandler traceback ends at `torch/cuda/__init__.py:314 in _lazy_init` ← `transformers/modeling_utils.py:2958 in to` ← `viclip_embedder.py:78 in _lazy_load`. Standalone reproduction (same env, same imports, same model) WORKS — the crash is specific to the worker context after scenedetect/ffprobe have loaded `av._core`.
+
+  **Confirmed not the cause:** SECRET_KEY (fixed), MinIO download (works), PYTHONPATH (set), tunnel routing (verified), CUDA preflight at module top (added; still segfaults), `SimpleWorker` no-fork mode (already in use).
+
+  **Tomorrow — pick ONE of these, in this order:**
+  1. **(Recommended) Re-rent on `pytorch/pytorch:2.4.1-cuda12.4-cudnn9-runtime`** — vast image ships Python 3.10 + torch wired against the matching CUDA runtime. The whole symbol-conflict class disappears. Cost: ~5 min — re-scp the `c59f44b9-….json` credentials + re-rsync the repo + `bash setup-vast.sh`. Everything else (DNS, tunnels, .env, compose) stays as-is.
+  2. **Subprocess-isolate the GPU work** — each `index_video()` call spawns a fresh Python via `multiprocessing.spawn` (re-execs Python with clean import state, no PyAV preloaded). ~1 hour code. Adds ~10 s/video for re-execution + model reload.
+  3. **Swap decord/PyAV for opencv-python-headless** in `indexer.py::detect_shots / extract_frames` and replace `av.open()` with an `ffprobe` subprocess in `modality.py`. ~2 hours code. Touches the core pipeline — opencv has subtle differences in color space and frame indexing.
+
+  **Where to look first:**
+  - `backend/video-service/main/workers/queue_worker.py` (preflight is in place; would extend with subprocess wrapper for option 2).
+  - `backend/video-service/main/encoders/indexer.py` (option 3 — `detect_shots`, `extract_frames`).
+  - `backend/video-service/main/pipeline/modality.py` (option 3 — `av.open()` → `ffprobe`).
+  - Full debug log: `MIGRATION_LOG_2026-05-25.md` (all 14+ today's gotchas + this open item with the same three options).
+
+- [ ] **Task 12.10**: Once 12.9 is unblocked, verify the 8 queued cooking videos index end-to-end and surface in `GET /api/v1/videos` with `status=ready`, `duration_s`, `shot_count`, `global_summary` populated.
+
 ### Phase 10 — Thesis writeup  `[~]` (do during/after Phase 5)
 - [ ] **Task 10.1**: Draft Methods chapter (architecture + training)
 - [ ] **Task 10.2**: Results chapter (eval + ablation table)
@@ -213,3 +274,4 @@ Agent tools (online):
 | 2026-05-11 | **Batched extraction (P1)** | Profile of single-video extraction showed N × ffmpeg subprocess (×2 for audio_encoder + asr_whisper) + N × per-shot encoder forwards. For 16-shot Charades video that's 32 ffmpeg invocations and 48 encoder forwards. **Refactored to single-pass**: (1) `_load_full_audio_16k_mono(video_path)` extracts the whole video's audio ONCE via ffmpeg → in-memory 16kHz mono float32 samples. (2) Added batch methods to all three encoders: `ViCLIPEmbedder.encode_video_batch(frames_list) → [N, 768]` (flattens all frames cross-shot, one CLIP forward, re-groups per-shot mean-pool); `AudioEncoder.encode_audio_batch(samples_list) → [N, 768]` (filters None/short, pads, one wav2vec2 forward); `WhisperASR.transcribe_batch(samples_list) → [str, ...]` (per-item RMS silence filter, then one Whisper generate). (3) `feature_extractor.extract()` now: Pass A collect frames per shot, Pass B extract full audio + slice per window in memory, Pass C three batched encoder forwards, Pass D one batched OpenRouter call. **Per-video calls: 1× ffmpeg + 1× each encoder + 1× OpenRouter** (was 32× ffmpeg + N× each encoder). Placeholder branches in CLIP/audio mirror real filter behavior (None/empty/short → zero embedding). Real Colab T4 timing: ~10s/video (predicted 1-3s; the bottleneck moved to per-shot `decord.VideoReader` re-instantiation in `extract_frames` — addressable as P2 follow-up if needed). Total Charades-STA extraction ~15-19 hours. |
 | 2026-05-11 | **Sanity-run dry run (100 videos, 10 epochs)** | Ran the full pipeline end-to-end on 100 randomly-sampled Charades videos to validate before scaling up. Extraction: 100 videos × 10.4s = 1044s on Colab T4. After train/val/test split + feature-existence filter: 93 train queries / 28 val / 24 test. Training (lr=1e-3, bs=8, 10 epochs): train loss 1.62→1.25, rel loss 0.78→0.53 (learned), l1/iou losses plateaued (boundary head needs more data). Val R@0.5 hit 0.143 at ep 3, regressed to 0.0 afterward (small-data overfitting). Final test (24 queries): R@0.3=0.125, R@0.5=0.042, mIoU=0.076 — within statistical noise but above random uniform baseline. **Pipeline validated end-to-end**: no crashes, all metrics computed, splits work, best.pt + test_metrics.json written correctly. Identified follow-ups: AMP API deprecation warnings fixed (torch.cuda.amp.* → torch.amp.*); added `--features-dir-filter` to `precompute_queries` for sanity-run workflow; added NaN-return path in `evaluate()` for empty loaders. Next: kick off full 6700-video extraction. |
 | 2026-05-11 | **Tier-1 architectural fix (CLIP-text queries + loss reweighting)** | Deep-research review identified the root cause of the R@0.5=0.04 sanity result: the query embedding (text-embedding-3-large, 3072-d, OpenAI text space) was in a completely different space from the visual features (CLIP-L vision, 768-d, CLIP image-text joint space). A single linear projection cannot learn to bridge unrelated pretrained spaces from ~10k training pairs. Every modern Charades-STA paper that achieves R@0.5 > 0.50 (Moment-DETR, QD-DETR, UniVTG) uses **CLIP-text** for queries, which has built-in alignment with CLIP visual via contrastive pretraining. **Fix**: (1) Added `ViCLIPEmbedder.encode_text_batch(texts) → [N, 768]` using CLIP's text encoder. (2) `precompute_queries.py` accepts `--encoder clip` (default, recommended) or `--encoder openai` (opt-in for ablation). (3) Split `GroundingConfig.query_dim` (768, CLIP-text) from new `global_dim` (3072, text-emb-3-large from `MetadataEncoder`) — these are different embedders and shouldn't share a projection. (4) Re-balanced loss weights to Moment-DETR conventions: `--w-rel 1.0 --w-l1 10.0 --w-iou 1.0` (was 1/1/0.5 — the boundary head was starved of gradient relative to the BCE relevance loss). (5) Added embedding-dim logging in Dataset constructors so dim mismatches surface immediately. End-to-end smoke test passes; boundary head learns instead of plateauing. **User must regenerate the query embedding cache with the new CLIP-text encoder before re-running training.** |
+| 2026-05-25 | **Phase 12 — Cloudflare-tunnel deployment bring-up** | Migrated from Tailscale (Phase 11.x) to Cloudflare-tunnel topology. Wrote `setup-laptop.sh` + `setup-vast.sh` for one-command bring-up. Hardened `vast-bootstrap.sh` to auto-install pinned torch trio, detect venv (`/venv/main` vs system), set PYTHONPATH, strip CRLF from `vast.env`. Applied two long-deferred fixes from `MIGRATION_LOG_2026-05-23` (#10 boto3 HeadObject → `get_object`; #16 agent-service onto `jockey-net` with `ports: ["1102:1102"]`). Fixed weight URLs (Zenodo hyphen + smaller CG-DETR source). End-to-end verified: laptop docker stack, 6 cloudflared ingresses, vast pod + jockey-vast inbound tunnel, auth across pod↔laptop, upload through gateway → pod → MinIO, worker download from MinIO via tunnel. Open: worker SIGSEGV at `torch.cuda._lazy_init` after PyAV is loaded — see Phase 12 Task 12.9 for tomorrow's three options (re-rent pytorch-base image / subprocess-isolate GPU work / swap decord for opencv). Full session log in `MIGRATION_LOG_2026-05-25.md`. |

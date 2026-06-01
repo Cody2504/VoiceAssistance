@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from cm_shared.settings import get_base_settings
 from main.api.edit import router as edit_router
 from main.api.grounding import router as grounding_router
+from main.api.indexes import router as indexes_router
 from main.api.qa import router as qa_router
 from main.api.highlights import router as highlights_router
 from main.api.moderate import router as moderate_router
@@ -29,6 +30,7 @@ app.add_middleware(
 )
 
 app.include_router(videos_router)
+app.include_router(indexes_router)
 app.include_router(grounding_router)
 app.include_router(search_router)
 app.include_router(segments_router)
@@ -42,12 +44,15 @@ app.include_router(edit_router)
 
 @app.on_event("startup")
 def warm_models():
-    """Eagerly load the grounding head so the first /ground request isn't slow."""
+    """Eagerly load Lighthouse so the first /ground or /highlights request
+    doesn't pay the cold-start cost of loading both DETR heads + the visual
+    and audio encoders. Best-effort: in CPU-only dev images where the
+    checkpoints aren't mounted we log a warning and keep going."""
     try:
-        from main.pipeline.ground import _load_model
-        _load_model()
+        from main.services.lighthouse_service import get_lighthouse
+        get_lighthouse()
     except Exception as exc:
-        logging.getLogger(__name__).warning("model warm-up failed (ok in CPU/dev): %s", exc)
+        logging.getLogger(__name__).warning("lighthouse warm-up failed (ok in dev): %s", exc)
 
 
 @app.get("/health")

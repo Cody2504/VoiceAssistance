@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Plus, Send, Video as VideoIcon } from "lucide-react";
+import { useRef, useState } from "react";
+import { ImageIcon, Plus, Send, Video as VideoIcon, X } from "lucide-react";
 
 import type { VideoSummary } from "@/apis/videos.api";
 import { AttachedVideoChip } from "./AttachedVideoChip";
@@ -8,27 +8,37 @@ import { cn } from "@/lib/utils";
 interface Props {
   attached: VideoSummary[];
   onRemove: (videoId: string) => void;
-  onSend: (message: string, videoIds: string[]) => void;
+  onSend: (message: string, videoIds: string[], image?: string) => void;
   onDropVideo: (video: VideoSummary) => void;
   busy?: boolean;
   placeholder?: string;
 }
 
 /**
- * Bottom composer matching the screenshots: video chips on top, big text input,
- * + attach button + Chat Mode pill on the bottom-left, send arrow on the bottom-right.
- * Accepts dropped video items (drag-and-drop from library).
+ * Bottom composer: video chips + an optional attached-image thumbnail on top, big
+ * text input, attach/image buttons + Chat Mode pill on the bottom-left, send arrow
+ * on the bottom-right. Accepts dropped video items (drag-and-drop from library).
  */
 export function ChatComposer({ attached, onRemove, onSend, onDropVideo, busy, placeholder }: Props) {
   const [text, setText] = useState("");
   const [chatMode, setChatMode] = useState(true);
   const [dragOver, setDragOver] = useState(false);
+  const [image, setImage] = useState<{ dataUrl: string; name: string } | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const pickImage = (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = () => setImage({ dataUrl: String(reader.result), name: file.name });
+    reader.readAsDataURL(file);
+  };
 
   const submit = () => {
     const t = text.trim();
     if (!t || busy) return;
-    onSend(t, attached.map((v) => v.id));
+    onSend(t, attached.map((v) => v.id), image?.dataUrl);
     setText("");
+    setImage(null);
   };
 
   return (
@@ -62,6 +72,39 @@ export function ChatComposer({ attached, onRemove, onSend, onDropVideo, busy, pl
         </div>
       )}
 
+      {/* attached image — shown in the box like the reference */}
+      {image && (
+        <div className="px-3 pt-3">
+          <div className="group relative inline-block">
+            <img
+              src={image.dataUrl}
+              alt={image.name}
+              className="h-28 w-28 rounded-xl border border-neutral-200 object-cover"
+            />
+            <button
+              type="button"
+              onClick={() => setImage(null)}
+              aria-label="Remove image"
+              className="absolute -right-2 -top-2 grid h-6 w-6 place-items-center rounded-full bg-neutral-900 text-white shadow hover:bg-neutral-700 focus-visible:outline-2 focus-visible:outline-signal"
+            >
+              <X size={13} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) pickImage(f);
+          e.target.value = "";
+        }}
+      />
+
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -70,7 +113,7 @@ export function ChatComposer({ attached, onRemove, onSend, onDropVideo, busy, pl
         }}
         rows={2}
         placeholder={placeholder ?? "Chat with your videos"}
-        className="w-full resize-none rounded-t-xl border-0 px-4 pt-3 pb-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none"
+        className="w-full resize-none border-0 px-4 pt-3 pb-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none"
       />
 
       <div className="flex items-center justify-between px-2 pb-2">
@@ -78,9 +121,18 @@ export function ChatComposer({ attached, onRemove, onSend, onDropVideo, busy, pl
           <button
             type="button"
             className="rounded-full p-2 text-neutral-600 hover:bg-neutral-100"
-            title="Attach (drag a video from the library or click here)"
+            title="Attach (drag a video from the library here)"
           >
             <Plus size={16} />
+          </button>
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            className="rounded-full p-2 text-neutral-600 hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-signal"
+            title="Attach an image — ask Jockey to find the matching scene"
+            aria-label="Attach image"
+          >
+            <ImageIcon size={16} />
           </button>
           <button
             type="button"

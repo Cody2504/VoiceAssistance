@@ -66,7 +66,7 @@ export default function VideoDetail() {
               onRun={async (q) => setGrounding(await groundVideo(videoId, q))}
               renderResult={grounding ? () => (
                 <div className="space-y-1 text-xs">
-                  {grounding.shots.map((s) => (
+                  {(grounding.shots ?? []).map((s) => (
                     <button
                       key={s.idx}
                       onClick={() => seek(s.t_start)}

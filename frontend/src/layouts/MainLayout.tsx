@@ -99,7 +99,7 @@ function SidebarShell() {
   return (
     <nav
       className={cn(
-        "h-dvh min-h-[600px] py-5 flex flex-col sticky top-0 border-r border-[var(--color-chalk)] bg-[var(--color-eggshell)]",
+        "h-dvh min-h-[600px] py-5 flex flex-col sticky top-0 bg-[var(--color-eggshell)]",
         "transform transition-[width,padding] duration-300 ease-in-out",
         collapsed ? "px-3 w-[72px]" : "px-5",
       )}

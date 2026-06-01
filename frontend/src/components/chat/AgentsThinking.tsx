@@ -167,24 +167,25 @@ export function AgentsThinking({ steps, assistantHasContent, complete }: Props) 
 
 function StatusDot({ status }: { status: StepStatus }) {
   if (status === "active") {
+    // Subtle: a small solid dot with a faint static halo (no loud ping).
     return (
-      <span className="relative inline-flex h-3 w-3" data-testid="dot-active">
-        <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/60" />
-        <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500" />
-      </span>
+      <span
+        className="block h-2 w-2 rounded-full bg-emerald-500 ring-[3px] ring-emerald-500/15"
+        data-testid="dot-active"
+      />
     );
   }
   if (status === "error") {
     return (
       <span
-        className="inline-flex h-3 w-3 rounded-full border-2 border-red-500 bg-white"
+        className="block h-2 w-2 rounded-full border border-red-400 bg-white"
         data-testid="dot-error"
       />
     );
   }
   return (
     <span
-      className="inline-flex h-3 w-3 rounded-full border-2 border-neutral-300 bg-white"
+      className="block h-2 w-2 rounded-full border border-neutral-300 bg-white"
       data-testid="dot-done"
     />
   );
@@ -202,7 +203,7 @@ function StepRow({
   const hasBody = step.kind === "phase" ? Boolean(step.body) : true;
   return (
     <li className="relative pl-7">
-      <div className="absolute left-[14px] top-2 -translate-x-1/2">
+      <div className="absolute left-[10px] top-2.5 -translate-x-1/2">
         <StatusDot status={step.status} />
       </div>
       <button
@@ -216,8 +217,8 @@ function StepRow({
       >
         <span
           className={cn(
-            "truncate text-neutral-800",
-            step.status === "active" && "font-medium text-neutral-900",
+            "truncate text-neutral-700",
+            step.status === "active" && "text-neutral-900",
           )}
         >
           {step.label}

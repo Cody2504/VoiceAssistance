@@ -27,6 +27,7 @@ from uuid import UUID
 from main.api.segments_types import SegmentDefinition
 
 from . import (
+    _enrich,
     editorial_segment,
     ocr,
     person_of_focus,
@@ -36,6 +37,7 @@ from . import (
     topic_changes,
     write_my_own,
 )
+from .qdrant_io import read_shots
 
 SegmenterFn = Callable[[UUID, "SegmentDefinition"], list[dict[str, Any]]]
 
@@ -53,17 +55,35 @@ REGISTRY: dict[str, SegmenterFn] = {
     "person_of_focus": person_of_focus.segment,
 }
 
+# Twelve Labs default-builder ids intentionally NOT aliased to our
+# specialised segmenters — they fall through to `write_my_own`'s ~60s
+# LLM-per-window rollup so users get the Pegasus-style granular behavior
+# (e.g. ~5 segments on a 2-3 min clip with per-window metadata) rather
+# than 1-2 collapsed segments from our visual-similarity boundary logic.
+# If you want specialised dispatch for a TL id, add it explicitly above.
+
 
 def run_definition(video_id: UUID, definition: "SegmentDefinition") -> list[dict[str, Any]]:
-    fn = REGISTRY.get(definition.id)
-    if fn is None:
-        return []
+    # Built-in presets dispatch to their specialised segmenter; any other (custom)
+    # id falls back to the generic LLM rollup (`write_my_own`), which is driven
+    # entirely by the definition's description + fields/enums. This lets a user
+    # author arbitrary definitions (e.g. "scoring_plays", "camera_cut") and get
+    # structured segments back, instead of an empty track.
+    fn = REGISTRY.get(definition.id, write_my_own.segment)
     raw = fn(video_id, definition)
+    # LLM enrichment: fill any `definition.fields` the segmenter didn't natively
+    # populate (Twelve Labs schema parity). Skipped for `write_my_own` which
+    # already does its own LLM call per segment; skipped if no API key set.
+    if definition.id != "write_my_own" and raw and definition.fields:
+        shots = read_shots(video_id, with_vectors=False)
+        raw = _enrich.enrich_segments(raw, definition, shots)
     return _apply_definition_time_ranges(raw, definition.time_ranges)
 
 
 def is_implemented(preset_id: str) -> bool:
-    return preset_id in REGISTRY
+    # Every definition is now handled: known presets by their segmenter, custom
+    # ids by the generic `write_my_own` fallback in run_definition().
+    return True
 
 
 def _parse_time_ranges(specs: list[str] | None) -> list[tuple[float, float]]:

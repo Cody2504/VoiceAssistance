@@ -36,6 +36,7 @@ class RefreshRequest(BaseModel):
 
 # -------- Videos --------
 VideoStatus = Literal["queued", "processing", "ready", "error"]
+VideoModality = Literal["video_audio", "video_only", "audio_only"]
 
 
 class VideoOut(BaseModel):
@@ -47,6 +48,15 @@ class VideoOut(BaseModel):
     shot_count: int | None = None
     error: str | None = None
     created_at: datetime
+    modality: VideoModality | None = None
+    has_video: bool | None = None
+    has_audio: bool | None = None
+    global_summary: str | None = None
+    # Set on chunks produced by POST /api/v1/videos/chunked (Option B). `offset_s`
+    # is the chunk's start time within the full source; add it to a segment's
+    # local t_start/t_end to get the timestamp in the original long video.
+    parent_video_id: UUID | None = None
+    offset_s: float | None = None
 
 
 # -------- Grounding --------
@@ -80,6 +90,12 @@ class ChatMessageIn(BaseModel):
     conversation_id: UUID | None = None
     video_id: UUID | None = None
     video_ids: list[UUID] | None = None
+    # When set, the chat is scoped to an Index (lecture series / collection).
+    # `video_ids` may be empty (whole index) or a subset of its videos.
+    index_id: UUID | None = None
+    # Optional base64 data-URL image attached to the turn. Used by the
+    # `find_scene_by_image` tool to locate the scene in a video matching it.
+    image: str | None = None
     message: str = Field(min_length=1)
 
 

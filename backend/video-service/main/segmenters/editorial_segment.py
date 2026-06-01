@@ -123,11 +123,23 @@ def segment(video_id: UUID, definition: SegmentDefinition) -> list[dict[str, Any
         role = raw.get("role")
         if role not in roles:
             role = None
+        summary = str(raw.get("summary", "")).strip()
         meta: dict[str, Any] = {}
         if "role" in field_names and role:
             meta["role"] = role
         if "summary" in field_names:
-            meta["summary"] = str(raw.get("summary", "")).strip()
+            meta["summary"] = summary
+        # Twelve Labs `editorial_narratives` schema aliases. The LLM call here
+        # only asks for role + summary; richer fields (editorial_subjects /
+        # visual_subjects / names) would need a second LLM pass with the full
+        # chunk context — left empty until that's added. `confidence` is fixed
+        # to HIGH when the role classification succeeded, LOW otherwise.
+        if "segment_title" in field_names:
+            meta["segment_title"] = summary[:60].rstrip(",. ") if summary else (role or "")
+        if "description" in field_names:
+            meta["description"] = summary
+        if "confidence" in field_names:
+            meta["confidence"] = "HIGH" if role else "LOW"
         return ch[0]["t_start"], ch[-1]["t_end"], meta
 
     with ThreadPoolExecutor(max_workers=8) as pool:

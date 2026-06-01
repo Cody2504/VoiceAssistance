@@ -65,6 +65,7 @@ export default function Recommend() {
       }
       examplesPanel={
         <ExamplesPanel<{ note: string }>
+          kind="search"
           examples={EXAMPLES}
           onSelect={(p) => setNote(p.note)}
         />

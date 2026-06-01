@@ -1,12 +1,24 @@
--r /shared/requirements.txt
+# Shared deps live in ../cm_shared/requirements.txt and are installed
+# explicitly by both the Dockerfile RUN and vast-bootstrap.sh's uv invocation
+# (each passes -r for cm_shared/requirements.txt and this file). Don't add an
+# absolute -r /shared/... include here — it only resolves inside the Docker
+# container layout and breaks bare-metal installs on the vast pod.
 
 # Object storage
 boto3==1.35.50
 
-# Video / ML deps (jockey package already brings these via -e install, but we pin
-# the ones the service needs even when running without the editable install)
-torch==2.4.1
-torchvision==0.19.1
+# Video / ML deps.
+#
+# IMPORTANT — torch / torchvision / torchaudio are NOT pinned here. They come
+# from the underlying environment:
+#   • laptop (docker compose up) — jockey-base:dev pre-installs torch==2.4.1
+#     CPU wheels in a separate Dockerfile step.
+#   • vast.ai pod — the pytorch:2.4.1-cuda12.4-cudnn9-runtime image (or any
+#     CUDA-12.4 build of torch >=2.4) ships torch + torchvision + torchaudio
+#     pre-installed against the GPU. The bootstrap script preflights this.
+#
+# Pinning torch here would let uv "satisfy" the constraint by re-downloading
+# the CPU wheels from PyPI and clobbering the pod's CUDA torch. Don't.
 numpy==1.26.4
 ffmpeg-python==0.2.0
 scenedetect[opencv]==0.6.4
@@ -26,3 +38,42 @@ faster-whisper==1.2.1
 
 # OpenRouter / OpenAI clients
 openai==1.51.2
+
+# Lighthouse runtime deps. Lighthouse itself is installed in a separate step
+# with `--no-deps` (it pins `numpy<=1.23.5` which collides with the rest of
+# our stack); the pins below are what its modules actually `import` at
+# runtime, at versions that work with modern numpy/torch.
+librosa==0.10.2
+torchlibrosa==0.1.0
+# NB: torchaudio matches torch — pulled from whatever the host already has,
+# or auto-installed by the bootstrap preflight against the cu124 wheel index.
+# msclap 1.3.x pins torchvision>=0.16,<0.17 (cp311 max), which conflicts with
+# Python 3.12 environments. Installed separately with --no-deps by the
+# Dockerfile / vast-bootstrap.sh so it picks up whatever modern torchvision
+# we already have. msclap only uses basic torchvision image-preprocessing
+# ops and is API-compatible across 0.16-0.20.
+# msclap==1.3.3  (do not re-add as a direct dep)
+einops==0.8.0
+fvcore==0.1.5.post20221221
+easydict==1.13
+ftfy==6.2.3
+clip @ git+https://github.com/openai/CLIP.git
+# Lighthouse modules also `import sklearn / pandas / scipy / tqdm / pyyaml`.
+# Most would be pulled in transitively, but we pin them so a fresh install
+# never resolves to surprising versions.
+scikit-learn==1.5.2
+pandas==2.2.3
+scipy==1.13.1
+pyyaml==6.0.2
+tqdm==4.66.5
+tiktoken==0.7.0
+# gdown — only used by scripts/download_lighthouse_weights.sh to pull the
+# CG-DETR checkpoint from Google Drive (Lighthouse upstream only publishes it
+# as part of a bundled `results.zip`). Pinned to the modern flag layout
+# (no --id arg) used by the download script.
+gdown==5.2.0
+# Lighthouse itself — install AFTER the requirements above with --no-deps:
+#   uv pip install --system --no-deps "lighthouse @ git+https://github.com/line/lighthouse.git@main"
+# (use the name `lighthouse`, not `lighthouse-mr` — uv enforces wheel-metadata
+# name match. See scripts/vast-bootstrap.sh and Dockerfile.gpu for the
+# canonical install order.)

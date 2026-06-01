@@ -1,0 +1,6 @@
+# Billing-service deps. `stripe` is baked into jockey-base (base_image/
+# requirements.txt) because the runtime venv ships without pip/uv, so it cannot
+# be installed at the service Dockerfile layer — rebuild the base image
+# (`make base-build`) after changing this pin.
+-r /shared/requirements.txt
+stripe==11.1.0

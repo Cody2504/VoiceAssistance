@@ -16,6 +16,13 @@ x-common-env: &common-env
   VIDEO_SERVICE_BASE_URL: http://video-service:1101
   AGENT_SERVICE_BASE_URL: http://agent-service:1102
   TOKEN_USAGE_BASE_URL: http://token-usage:1103
+  BILLING_BASE_URL: http://billing:1104
+  STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+  STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLIC_KEY:-}
+  STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+  STRIPE_PRICE_DEVELOPER: ${STRIPE_PRICE_DEVELOPER}
+  BILLING_SUCCESS_URL: ${BILLING_SUCCESS_URL:-http://localhost:5173/settings/billing?checkout=success}
+  BILLING_CANCEL_URL: ${BILLING_CANCEL_URL:-http://localhost:5173/settings/billing?checkout=cancelled}
 
 services:
   iam:
@@ -47,12 +54,9 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-jockey_dev_secret}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
-      HF_API_KEY: ${HF_API_KEY}
-      GROUNDING_CHECKPOINT: /models/grounding/best.pt
-      GROUNDING_DEVICE: ${GROUNDING_DEVICE:-cpu}
-      GROUNDING_BACKEND: ${GROUNDING_BACKEND:-qddetr}
-      QDDETR_CHECKPOINT: /third_party/qd_detr/run_on_video/qd_detr_ckpt/model_best.ckpt
-      PYTHONPATH: /app:/shared:/workspace:/third_party/qd_detr
+      HF_TOKEN: ${HF_TOKEN}
+      LIGHTHOUSE_DEVICE: ${LIGHTHOUSE_DEVICE:-cpu}
+      PYTHONPATH: /app:/shared
     restart: always
     depends_on:
       postgres: { condition: service_healthy }
@@ -63,14 +67,34 @@ services:
       - "1101:1101"
     volumes:
       - ./.models:/models
-      - ../third_party/qd_detr:/third_party/qd_detr:ro
     networks: [jockey-net]
 
+  # video-worker: scalable RQ worker that drains the `video_index` Redis queue.
+  # `container_name` is intentionally omitted so docker-compose can run multiple
+  # replicas:
+  #   docker-compose up -d --scale video-worker=N
+  # Each replica is an RQ `Worker` (forking) — the parent process does only
+  # BLPOP and never touches CUDA, then forks a fresh work-horse per job that
+  # cold-loads ~14 GB of model weights, runs the pipeline, exits. Cost is
+  # ~30–60 s of startup per video; gain is fault isolation (a SIGSEGV in one
+  # job no longer kills the worker).
+  #
+  # CUDA MPS lets multiple replicas' work-horses share the GPU at SM
+  # granularity instead of time-slicing the whole CUDA context. To enable on
+  # the host, BEFORE `docker-compose up`:
+  #   sudo nvidia-cuda-mps-control -d
+  # (creates pipes in /tmp/nvidia-mps and logs in /tmp/nvidia-log). The mounts
+  # and env vars below let containers register as MPS clients. Without the
+  # daemon running, the env vars are inert — pipeline still works, just no
+  # SM-level sharing.
+  #
+  # VRAM budget on an RTX 3090 (24 GB): a single work-horse holds ~14 GB; with
+  # MPS, you can typically run --scale video-worker=2 comfortably. Pushing to
+  # 3 will likely OOM. See CROSS_VIDEO_LECTURE_PLAN.md §8 Phase 1.5 + Phase 2c.
   video-worker:
     build:
       context: ..
       dockerfile: backend/video-service/Dockerfile
-    container_name: jockey-video-worker
     environment:
       <<: *common-env
       QDRANT_HOST: qdrant
@@ -81,7 +105,10 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-jockey_dev_secret}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
-      HF_API_KEY: ${HF_API_KEY}
+      HF_TOKEN: ${HF_TOKEN}
+      LIGHTHOUSE_DEVICE: ${LIGHTHOUSE_DEVICE:-cpu}
+      CUDA_MPS_PIPE_DIRECTORY: /tmp/nvidia-mps
+      CUDA_MPS_LOG_DIRECTORY: /tmp/nvidia-log
     command: ["python", "-m", "main.workers.queue_worker"]
     restart: always
     depends_on:
@@ -89,6 +116,8 @@ services:
       redis:         { condition: service_healthy }
     volumes:
       - ./.models:/models
+      - /tmp/nvidia-mps:/tmp/nvidia-mps
+      - /tmp/nvidia-log:/tmp/nvidia-log
     networks: [jockey-net]
 
   agent-service:
@@ -98,6 +127,9 @@ services:
     container_name: jockey-agent
     environment:
       <<: *common-env
+      # video-service runs on the vast pod, not in this compose network — reach it
+      # over the public Cloudflare tunnel (JWTs validate via the shared SECRET_KEY).
+      VIDEO_SERVICE_BASE_URL: ${VIDEO_SERVICE_BASE_URL:-https://video.voiceassistant.uk}
       LLM_PROVIDER: ${LLM_PROVIDER:-OPENAI}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       OPENAI_PLANNER_MODEL: ${OPENAI_PLANNER_MODEL:-gpt-4o}
@@ -110,25 +142,13 @@ services:
       STIRRUP_SEARCH: ${STIRRUP_SEARCH:-local}
       STIRRUP_TEXTGEN: ${STIRRUP_TEXTGEN:-local}
       TWELVE_LABS_API_KEY: ${TWELVE_LABS_API_KEY}
-      # Service hostnames overridden for host networking (see network_mode below).
-      # Postgres/Redis are published on non-default host ports (15432/16379) to
-      # avoid collision with the co-located Fsoft stack's :5432/:6379.
-      POSTGRES_HOST: localhost
-      POSTGRES_PORT: 15432
-      REDIS_HOST: localhost
-      REDIS_PORT: 16379
-      VIDEO_SERVICE_BASE_URL: http://localhost:1101
-      IAM_BASE_URL: http://localhost:1100
-      TOKEN_USAGE_BASE_URL: http://localhost:1103
     restart: always
     depends_on:
-      postgres:      { condition: service_healthy }
-      redis:         { condition: service_healthy }
-      video-service: { condition: service_started }
-    # NOTE: host networking is a workaround for the host iptables policy that blocks
-    # outbound egress from docker bridge networks (api.openai.com is unreachable from
-    # jockey-net). Revert to ports + networks once host-level egress is fixed.
-    network_mode: host
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_healthy }
+    ports:
+      - "1102:1102"
+    networks: [jockey-net]
 
   token-usage:
     build:
@@ -144,29 +164,36 @@ services:
       - "1103:1103"
     networks: [jockey-net]
 
+  billing:
+    build:
+      context: ..
+      dockerfile: backend/billing/Dockerfile
+    container_name: jockey-billing
+    environment:
+      <<: *common-env
+    restart: always
+    depends_on:
+      postgres: { condition: service_healthy }
+    ports:
+      - "1104:1104"
+    networks: [jockey-net]
+
   gateway:
     build: ./gateway
     container_name: jockey-gateway
     restart: always
-    depends_on: [iam, video-service, agent-service, token-usage]
-    environment:
-      # Render-time substitution by the nginx:1.27 entrypoint (envsubst on
-      # files under /etc/nginx/templates/). Default points at the in-network
-      # video-service alias; override via .env when video-service is rented
-      # on a vast.ai box and reached over Tailscale (e.g. `jockey-vast:1101`).
-      VIDEO_UPSTREAM: ${VIDEO_UPSTREAM:-video-service:1101}
+    # video-service deliberately not listed: it runs on the vast GPU pod and
+    # is reached via the Cloudflare-pinned `video.voiceassistant.uk` upstream
+    # (see extra_hosts below + gateway nginx template VIDEO_UPSTREAM).
+    depends_on: [iam, agent-service, token-usage, billing]
     ports:
       - "${GATEWAY_PORT:-8085}:80"
-    # agent-service runs in network_mode: host, so it has no DNS entry on jockey-net.
-    # Map the upstream name to the docker host's IP — agent-service binds the host's :1102.
-    # When using a Tailscale upstream for video-service, set VIDEO_UPSTREAM in .env
-    # to either (a) the tailnet IPv4 (e.g. `100.x.y.z:1101`, recommended — works
-    # from any docker network) or (b) `jockey-vast:1101` and add an
-    # `extra_hosts` mapping below pointing at the tailnet IP. MagicDNS doesn't
-    # resolve from bridge-network containers without piping tailscale into the
-    # container, so the literal IP is the cheapest path.
+    # `video.voiceassistant.uk` is pinned to a Cloudflare anycast IP to dodge
+    # intermittent SERVFAIL from Docker's embedded DNS forwarding through
+    # WSL2's host resolver (migration log 2026-05-23 problem 9). If the IP
+    # ever changes, `dig video.voiceassistant.uk @1.1.1.1` for a fresh one.
     extra_hosts:
-      - "agent-service:host-gateway"
+      - "video.voiceassistant.uk:172.67.133.180"
     networks: [jockey-net]
 
   # ---- Infra (from database/docker-compose.yml, redeclared for one-shot startup) ----

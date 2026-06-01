@@ -32,6 +32,7 @@
   --color-obsidian: #000000;
   --color-ember:    #ff4704;
   --color-signal:   #0447ff;
+  --color-accent-blue: #2563eb; /* guest landing CTA/demo accent (ElevenLabs-style light theme) */
 
   --radius-card: 16px;
   --radius-card-hover: 22px;
@@ -68,6 +69,24 @@ body {
   font-feature-settings: "kern" 1;
 }
 
+/* a11y: visible keyboard focus ring on all interactive elements (UX_REVIEW C6).
+   Uses :focus-visible so it only shows for keyboard/AT users, not mouse clicks. */
+:focus-visible {
+  outline: 2px solid var(--color-signal, #0447ff);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* a11y: honor reduced-motion — disable non-essential animation/transition. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* Console app pages use the eggshell ground; landing/auth keep their own backgrounds */
 .app-ground { background: #fdfcfc; }
 
@@ -97,6 +116,35 @@ body {
   background: conic-gradient(from var(--gradient-angle), #f6afff, #d9d9ff, #a7abff, #f6afff);
   animation: gradient-rotate 3s linear infinite;
 }
+
+/* Landing hero: drifting video-thumbnail motif (TwelveLabs-style, light skin).
+   Auto-disabled by the prefers-reduced-motion block above. */
+@keyframes hero-drift {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(var(--drift-x, 0), var(--drift-y, -22px), 0); }
+}
+.hero-drift {
+  animation: hero-drift var(--drift-dur, 11s) ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+/* Search "clip field": drifting video-clip cards with a scrubbing scan line.
+   Both auto-disabled by the prefers-reduced-motion block above. */
+@keyframes clip-float {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(var(--dx, 0), var(--dy, -16px), 0); }
+}
+.clip-float {
+  animation: clip-float var(--dur, 12s) ease-in-out infinite alternate;
+  will-change: transform;
+}
+@keyframes clip-scrub {
+  0%   { left: 6%;  opacity: 0; }
+  12%  { opacity: .85; }
+  88%  { opacity: .85; }
+  100% { left: 94%; opacity: 0; }
+}
+.clip-scrub { animation: clip-scrub var(--scrubdur, 3.4s) linear infinite; }
 
 /* gradient text fill used in landing hero headline */
 .gradient-text {

@@ -29,5 +29,10 @@ def segment(video_id: UUID, definition: SegmentDefinition) -> list[dict[str, Any
             meta["ocr_text"] = sh["ocr_text"]
         if "chunk_caption" in field_names:
             meta["chunk_caption"] = sh["chunk_caption"]
+        # Twelve Labs `shot_changes` schema: surface the per-shot caption as
+        # `description`. `angle_type` / `shot_type` enums require a vision pass
+        # we don't run at index time — left empty for now.
+        if "description" in field_names:
+            meta["description"] = (sh.get("chunk_caption") or "").strip()
         out.append({"t_start": sh["t_start"], "t_end": sh["t_end"], "metadata": meta})
     return out

@@ -24,24 +24,68 @@ class Settings(BaseServiceSettings):
     minio_bucket_edits: str = "edits"
     minio_bucket_thumbs: str = "thumbs"
 
-    # Grounding head
-    grounding_checkpoint: str = "/models/grounding/best.pt"
-    grounding_device: str = "cpu"           # "cuda" if GPU available
-    grounding_hidden_dim: int = 512
-    grounding_num_layers: int = 4
-    grounding_num_heads: int = 8
+    # Lighthouse (CG-DETR visual MR + QD-DETR CLAP audio MR).
+    # Checkpoints are downloaded from the official lighthouse release; see
+    # backend/video-service/scripts/download_lighthouse_weights.sh.
+    lighthouse_device: str = "cpu"
+    lighthouse_cg_detr_ckpt: str = "/models/lighthouse/clip_slowfast_cg_detr_qvhighlight.ckpt"
+    lighthouse_clap_qd_detr_ckpt: str = "/models/lighthouse/clap_qd_detr_clotho_moment.ckpt"
+    lighthouse_slowfast_ckpt: str = "/models/lighthouse/SLOWFAST_8x8_R50.pkl"
+    lighthouse_pann_ckpt: str = "/models/lighthouse/Cnn14_mAP=0.431.pth"
+    lighthouse_visual_feature_name: str = "clip_slowfast"   # "clip" to skip SlowFast on CPU-only setups
+    lighthouse_audio_feature_name: str = "clap"
+    lighthouse_clip_length_sec: float = 2.0                 # 75 clips × 2s = 150s window
+    lighthouse_max_window_sec: float = 150.0
+    lighthouse_window_overlap_ratio: float = 0.5            # for highlight sliding scan
+    lighthouse_highlight_query: str = "an interesting key moment or highlight from the video"
 
-    # QD-DETR backend (validated CLIP-only checkpoint from Moon et al.).
-    # `legacy` = our internal GroundingHead loaded from grounding_checkpoint;
-    # `qddetr` = official QDDETR class loaded from qddetr_checkpoint, runs CLIP-B
-    # feature extraction inline from the video file (no MinIO feature cache).
-    grounding_backend: str = "qddetr"
-    qddetr_checkpoint: str = "/third_party/qd_detr/run_on_video/qd_detr_ckpt/model_best.ckpt"
-    qddetr_clip_model: str = "ViT-B/32"
+    # Hierarchical summary (Analyze tile long-context Q&A)
+    summary_window_size_sec: float = 120.0                  # 2-min rolling windows
+    summary_llm_model: str = "openai/gpt-4o-mini"           # via OpenRouter
+    summary_max_segments_per_window: int = 8
 
-    # OpenRouter (used by video_qa + text-embedding caller)
+    # Analyze prompt: how many segments to retrieve for inline grounding citations
+    analyze_top_k_segments: int = 10
+    analyze_token_budget: int = 100_000
+
+    # Ground tile coarse-then-fine
+    ground_top_k_candidates: int = 5
+    ground_top_n_moments: int = 10
+    ground_window_pad_sec: float = 15.0
+    ground_iou_dedup_threshold: float = 0.5
+
+    # OpenRouter (used by video_qa + text-embedding caller + summarizer)
     openrouter_api_key: str = ""
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
     openai_api_key: str = ""
+
+    # Phase 2a: Knowledge graph extraction (per-window entity + relation pull).
+    # Off by default — flip on per-deployment once the LLM cost / latency budget
+    # is reviewed. Only runs for videos that belong to an Index; videos without
+    # an index_id skip the step regardless of this flag.
+    kg_enabled: bool = False
+    kg_qdrant_collection: str = "jockey_entities"
+    # General-purpose entity types — broad enough to cover lectures, vlogs, news,
+    # tutorials, documentaries, and most other instructional / spoken video.
+    # Order matters: the LLM tends to prefer earlier types when a string would
+    # fit two categories, so the more-information-dense lecture types come
+    # first. A future per-Index override (column on `indexes` table) can let a
+    # course be re-tuned to a narrower list like ("concept", "method",
+    # "formula") if precision matters more than coverage.
+    kg_entity_types: tuple[str, ...] = (
+        "concept",      # ideas, topics, theories, principles
+        "method",       # techniques, algorithms, procedures, how-tos
+        "person",       # speakers, professors, characters, public figures
+        "organization", # companies, schools, teams, agencies
+        "tool",         # software, frameworks, hardware, instruments
+        "event",        # historical events, episodes, occurrences
+        "location",     # places, settings, geographies
+        "object",       # physical things shown on screen
+    )
+    # Cosine-similarity threshold for canonicalising a freshly-extracted entity
+    # against existing entities in the same index. Lower = more aggressive
+    # merging; higher = more entities but less risk of collapsing distinct ideas.
+    kg_canonical_sim_threshold: float = 0.85
 
 
 @lru_cache

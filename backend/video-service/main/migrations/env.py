@@ -5,7 +5,15 @@ from sqlalchemy import engine_from_config, pool
 
 from cm_shared.db import Base
 from cm_shared.settings import get_base_settings
-from main.models import IndexingJob, Video  # noqa: F401
+from main.models import (  # noqa: F401
+    Entity,
+    EntityMention,
+    EntityRelation,
+    Index,
+    IndexingJob,
+    IndexVideo,
+    Video,
+)
 
 config = context.config
 if config.config_file_name is not None:

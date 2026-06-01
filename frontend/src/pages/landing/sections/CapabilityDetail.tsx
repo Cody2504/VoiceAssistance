@@ -16,6 +16,15 @@ interface Props {
   backgroundVideo?: string;
   /** Poster frame shown before the video can play / as fallback. */
   videoPoster?: string;
+  /** Custom full-bleed artwork node (e.g. animated clip field). Takes
+   *  precedence over backgroundVideo / backgroundImage when provided. */
+  artwork?: ReactNode;
+  /** Nodes layered ABOVE the background image/video but below the text —
+   *  e.g. small <video> cards positioned over baked-in thumbnails. */
+  overlay?: ReactNode;
+  /** Top padding for the centered text block. Lets a section lift its text
+   *  into a clearer band of the artwork. Default "pt-20 md:pt-28". */
+  contentTopClass?: string;
   /** Tint for the eyebrow + body text so it matches the palette. */
   toneClass?: string;
 }
@@ -39,6 +48,9 @@ export function CapabilityDetail({
   backgroundImage,
   backgroundVideo,
   videoPoster,
+  artwork,
+  overlay,
+  contentTopClass = "pt-20 md:pt-28",
   toneClass = "text-[var(--color-gravel)]",
 }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -57,7 +69,9 @@ export function CapabilityDetail({
       {/* Maintain a 16:9-ish aspect ratio so the artwork's edge labels stay visible */}
       <div className="relative w-full" style={{ aspectRatio: "1840 / 1100" }}>
         {/* Full-bleed artwork — object-cover matches the framer reference */}
-        {backgroundVideo ? (
+        {artwork ? (
+          artwork
+        ) : backgroundVideo ? (
           <>
             {videoPoster && (
               <img
@@ -89,8 +103,15 @@ export function CapabilityDetail({
           />
         ) : null}
 
+        {/* Video (or other) overlays positioned over the background artwork */}
+        {overlay ? (
+          <div className="absolute inset-0 z-[5]" aria-hidden="true">
+            {overlay}
+          </div>
+        ) : null}
+
         {/* Centered text overlay */}
-        <div className="absolute inset-x-0 top-0 z-10 mx-auto flex max-w-[820px] flex-col items-center px-6 pt-20 text-center md:pt-28">
+        <div className={cn("absolute inset-x-0 top-0 z-10 mx-auto flex max-w-[820px] flex-col items-center px-6 text-center", contentTopClass)}>
           <p
             className={cn(
               "mb-5 inline-flex items-center gap-2 text-[13px] uppercase tracking-[0.18em]",

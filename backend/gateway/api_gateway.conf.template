@@ -1,17 +1,18 @@
 upstream iam_upstream         { server iam:1100; }
-# VIDEO_UPSTREAM defaults to the local docker network alias. Override via
-# .env (VIDEO_UPSTREAM=jockey-vast:1101) when video-service runs on the
-# rented vast.ai box and is reached over the Tailscale tailnet.
-upstream video_upstream {
-    server ${VIDEO_UPSTREAM};
-    keepalive 8;
-}
 upstream agent_upstream       { server agent-service:1102; }
 upstream token_usage_upstream { server token-usage:1103; }
+upstream billing_upstream     { server billing:1104; }
+# Note: video-service is *not* a static upstream here — the /api/v1/videos
+# locations proxy directly to `https://video.voiceassistant.uk:443` so the
+# Cloudflare tunnel terminates SNI cleanly. See those `location` blocks below.
 
 server {
     listen 80;
-    resolver 127.0.0.11 valid=60s ipv6=off;
+    # Fallback resolvers — Docker's embedded DNS (127.0.0.11) intermittently
+    # SERVFAILs from WSL2 when resolving Cloudflare hostnames (migration log
+    # 2026-05-23 problem 9). 1.1.1.1 / 8.8.8.8 keep `video.voiceassistant.uk`
+    # resolvable when the embedded resolver flakes.
+    resolver 127.0.0.11 1.1.1.1 8.8.8.8 valid=300s ipv6=off;
 
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-Frame-Options "DENY" always;
@@ -57,6 +58,23 @@ server {
         proxy_set_header Host $video_host;
         proxy_set_header X-Original-URI $request_uri;
     }
+    # Indexes + knowledge-graph endpoints live on the same video-service.
+    location /api/v1/indexes {
+        set $video_host video.voiceassistant.uk;
+        proxy_pass https://$video_host:443;
+        proxy_ssl_server_name on;
+        proxy_ssl_name $video_host;
+        proxy_set_header Host $video_host;
+        proxy_set_header X-Original-URI $request_uri;
+    }
+    location /api/v1/indexes/ {
+        set $video_host video.voiceassistant.uk;
+        proxy_pass https://$video_host:443;
+        proxy_ssl_server_name on;
+        proxy_ssl_name $video_host;
+        proxy_set_header Host $video_host;
+        proxy_set_header X-Original-URI $request_uri;
+    }
 
     # ---- Agent (SSE) ----
     location /api/v1/chat/stream {
@@ -74,4 +92,10 @@ server {
     # ---- Token usage ----
     location /api/v1/usage  { proxy_pass http://token_usage_upstream; include /etc/nginx/conf.d/proxy_headers.inc; }
     location /api/v1/usage/ { proxy_pass http://token_usage_upstream; include /etc/nginx/conf.d/proxy_headers.inc; }
+
+    # ---- Billing (Stripe checkout + webhooks). The /webhooks endpoint under
+    # this prefix is unauthenticated by design — Stripe proves authenticity with
+    # an HMAC signature over the raw body, which nginx forwards unmodified. ----
+    location /api/v1/billing  { proxy_pass http://billing_upstream; include /etc/nginx/conf.d/proxy_headers.inc; }
+    location /api/v1/billing/ { proxy_pass http://billing_upstream; include /etc/nginx/conf.d/proxy_headers.inc; }
 }

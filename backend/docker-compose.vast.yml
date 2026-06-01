@@ -59,18 +59,15 @@ services:
       # API keys.
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
-      HF_API_KEY: ${HF_API_KEY}
       HF_TOKEN: ${HF_TOKEN}
-      # Grounding head — keep paths inside the container.
-      GROUNDING_CHECKPOINT: /models/grounding/best.pt
-      GROUNDING_DEVICE: cuda
-      GROUNDING_BACKEND: ${GROUNDING_BACKEND:-qddetr}
-      QDDETR_CHECKPOINT: /third_party/qd_detr/run_on_video/qd_detr_ckpt/model_best.ckpt
-      PYTHONPATH: /app:/shared:/workspace:/third_party/qd_detr
+      # Lighthouse — CG-DETR visual + QD-DETR CLAP audio. Checkpoints mounted
+      # at /models/lighthouse/* via the volume below; see
+      # backend/video-service/scripts/download_lighthouse_weights.sh.
+      LIGHTHOUSE_DEVICE: cuda
+      PYTHONPATH: /app:/shared
     restart: always
     volumes:
       - ${VAST_MODELS_PATH:-/workspace/models}:/models
-      - ../third_party/qd_detr:/third_party/qd_detr:ro
     deploy:
       resources:
         reservations:
@@ -104,12 +101,20 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-jockey_dev_secret}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
-      HF_API_KEY: ${HF_API_KEY}
       HF_TOKEN: ${HF_TOKEN}
-      PYTHONPATH: /app:/shared:/workspace
+      LIGHTHOUSE_DEVICE: cuda
+      PYTHONPATH: /app:/shared
+      # CUDA MPS: requires `nvidia-cuda-mps-control -d` running on the vast
+      # host. Vast.ai's shared-GPU instances may forbid the daemon; on a
+      # dedicated GPU box just `apt install nvidia-cuda-mps && sudo nvidia-cuda-mps-control -d`.
+      # If MPS isn't running, these env vars are inert.
+      CUDA_MPS_PIPE_DIRECTORY: /tmp/nvidia-mps
+      CUDA_MPS_LOG_DIRECTORY: /tmp/nvidia-log
     restart: always
     volumes:
       - ${VAST_MODELS_PATH:-/workspace/models}:/models
+      - /tmp/nvidia-mps:/tmp/nvidia-mps
+      - /tmp/nvidia-log:/tmp/nvidia-log
     depends_on:
       video-service: { condition: service_started }
     deploy:

@@ -1,7 +1,11 @@
+import os
+import shutil
+import subprocess
+import tempfile
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cm_shared.auth import TokenPayload, require_user
@@ -9,11 +13,16 @@ from cm_shared.db import get_session
 from cm_shared.queue import VIDEO_INDEX_QUEUE, get_queue
 from cm_shared.response import success_response
 from cm_shared.schemas import VideoOut
+from main.models.index import Index, IndexVideo
 from main.models.video import IndexingJob, Video
 from main.settings import get_settings
 from main.storage.minio import presigned_get, s3
 
 router = APIRouter(prefix="/api/v1/videos", tags=["videos"])
+
+
+_VIDEO_EXTS = (".mp4", ".mov", ".mkv", ".webm")
+_AUDIO_EXTS = (".mp3", ".wav", ".m4a", ".ogg", ".flac", ".aac")
 
 
 @router.post("", status_code=status.HTTP_202_ACCEPTED)
@@ -23,18 +32,27 @@ async def upload_video(
     session: AsyncSession = Depends(get_session),
 ):
     s = get_settings()
-    if not (file.filename or "").lower().endswith((".mp4", ".mov", ".mkv", ".webm")):
-        raise HTTPException(400, "Unsupported file extension (allowed: mp4/mov/mkv/webm)")
+    filename = (file.filename or "").lower()
+    ext = next((e for e in _VIDEO_EXTS + _AUDIO_EXTS if filename.endswith(e)), None)
+    if ext is None:
+        raise HTTPException(
+            400,
+            f"Unsupported file extension (allowed video: {','.join(_VIDEO_EXTS)}; "
+            f"audio: {','.join(_AUDIO_EXTS)})",
+        )
 
     video_id = uuid4()
     user_id = UUID(payload.sub)
-    key = f"{user_id}/{video_id}.mp4"
+    # Keep the original extension so downstream ffprobe / decoders pick the
+    # right container — using `.mp4` for an `.mp3` upload would confuse them.
+    key = f"{user_id}/{video_id}{ext}"
 
     s3().upload_fileobj(file.file, s.minio_bucket_videos, key,
-                        ExtraArgs={"ContentType": file.content_type or "video/mp4"})
+                        ExtraArgs={"ContentType": file.content_type or "application/octet-stream"})
 
     video = Video(
-        id=video_id, user_id=user_id, original_filename=file.filename or "upload.mp4",
+        id=video_id, user_id=user_id,
+        original_filename=file.filename or f"upload{ext}",
         minio_key=key, status="queued",
     )
     session.add(video)
@@ -50,11 +68,193 @@ async def upload_video(
     return success_response(VideoOut.model_validate(video, from_attributes=True).model_dump(mode="json"))
 
 
+def _ffprobe_duration(path: str) -> float:
+    """Container duration in seconds (0.0 if ffprobe fails)."""
+    try:
+        out = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+             "-of", "default=nokey=1:noprint_wrappers=1", path],
+            capture_output=True, text=True, check=True,
+        ).stdout.strip()
+        return float(out)
+    except Exception:  # noqa: BLE001
+        return 0.0
+
+
+@router.post("/chunked", status_code=status.HTTP_202_ACCEPTED)
+async def upload_chunked(
+    file: UploadFile = File(...),
+    chunk_seconds: int = Form(300),
+    index_title: str | None = Form(None),
+    index_id: str | None = Form(None),
+    payload: TokenPayload = Depends(require_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Ingest a LONG video by splitting it into ~`chunk_seconds` windows so each
+    chunk fits GPU memory + the per-job ingest timeout (Option B for long videos).
+
+    The chunks are grouped under one Index (cross-chunk KG + search) and each
+    carries `parent_video_id` + `offset_s` so retrieval can reconstruct global
+    timestamps (global_t = offset_s + local_t). ffmpeg stream-copies on keyframe
+    boundaries (no re-encode), so chunk durations vary slightly around
+    `chunk_seconds`; `offset_s` is the exact cumulative start of each chunk.
+
+    NOTE: for multi-GB sources POST this through the SSH local-forward
+    (127.0.0.1:11101) — the Cloudflare edge caps large request bodies.
+    """
+    s = get_settings()
+    user_id = UUID(payload.sub)
+    filename = file.filename or "upload.mp4"
+    ext = next((e for e in _VIDEO_EXTS if filename.lower().endswith(e)), None)
+    if ext is None:
+        raise HTTPException(400, f"chunked ingest supports video only ({','.join(_VIDEO_EXTS)})")
+    if chunk_seconds < 30:
+        raise HTTPException(400, "chunk_seconds must be >= 30")
+
+    workdir = tempfile.mkdtemp(prefix="chunked_")
+    src = os.path.join(workdir, f"src{ext}")
+    try:
+        with open(src, "wb") as fh:
+            shutil.copyfileobj(file.file, fh, length=8 * 1024 * 1024)
+
+        # Stream-copy split on keyframe boundaries; reset each chunk's PTS to 0
+        # so every chunk ingests as a normal 0-based video.
+        seg_tmpl = os.path.join(workdir, f"chunk_%04d{ext}")
+        try:
+            subprocess.run(
+                ["ffmpeg", "-y", "-i", src, "-c", "copy", "-map", "0",
+                 "-f", "segment", "-segment_time", str(chunk_seconds),
+                 "-reset_timestamps", "1", "-loglevel", "error", seg_tmpl],
+                check=True,
+            )
+        except subprocess.CalledProcessError as exc:
+            raise HTTPException(500, f"ffmpeg split failed: {exc}") from exc
+
+        chunk_files = sorted(f for f in os.listdir(workdir) if f.startswith("chunk_"))
+        if not chunk_files:
+            raise HTTPException(500, "ffmpeg produced no chunks")
+
+        base = filename.rsplit("/", 1)[-1]
+        parent_video_id = uuid4()
+        # Join an existing index (e.g. add several long videos to one collection)
+        # or create a fresh one for this source.
+        start_pos = 0
+        if index_id:
+            idx = await session.get(Index, UUID(index_id))
+            if not idx or idx.user_id != user_id:
+                raise HTTPException(404, "Index not found")
+            mx = (await session.execute(
+                select(func.max(IndexVideo.position)).where(IndexVideo.index_id == idx.id)
+            )).scalar()
+            start_pos = (mx + 1) if mx is not None else 0
+        else:
+            idx = Index(
+                user_id=user_id,
+                title=(index_title or base),
+                description=f"Chunked ingest of {base} ({len(chunk_files)} parts)",
+            )
+            session.add(idx)
+            await session.flush()  # populate idx.id
+
+        chunks_out: list[dict] = []
+        chunk_ids: list = []
+        offset = 0.0
+        n = len(chunk_files)
+        for i, cf in enumerate(chunk_files):
+            cpath = os.path.join(workdir, cf)
+            dur = _ffprobe_duration(cpath)
+            cvid = uuid4()
+            key = f"{user_id}/{cvid}{ext}"
+            with open(cpath, "rb") as fh:
+                s3().upload_fileobj(
+                    fh, s.minio_bucket_videos, key,
+                    ExtraArgs={"ContentType": file.content_type or "video/mp4"},
+                )
+            session.add(Video(
+                id=cvid, user_id=user_id,
+                original_filename=f"{base} [part {i + 1}/{n}]",
+                minio_key=key, status="queued",
+                parent_video_id=parent_video_id, offset_s=round(offset, 3),
+            ))
+            chunk_ids.append(cvid)
+            chunks_out.append({
+                "video_id": str(cvid), "part": i + 1,
+                "offset_s": round(offset, 3), "duration_s": round(dur, 3),
+            })
+            offset += dur
+        # Insert all chunk Video rows first so the index_videos FK (video_id ->
+        # videos.id) is satisfied — SQLAlchemy batches cross-table inserts and
+        # won't reliably order them otherwise.
+        await session.flush()
+        for i, cvid in enumerate(chunk_ids):
+            session.add(IndexVideo(index_id=idx.id, video_id=cvid, position=start_pos + i))
+        await session.commit()
+
+        for c in chunks_out:
+            get_queue(VIDEO_INDEX_QUEUE).enqueue(
+                "main.workers.queue_worker.index_video", c["video_id"], job_timeout=3600,
+            )
+
+        return success_response({
+            "parent_video_id": str(parent_video_id),
+            "index_id": str(idx.id),
+            "chunk_seconds": chunk_seconds,
+            "chunk_count": n,
+            "total_duration_s": round(offset, 3),
+            "chunks": chunks_out,
+        })
+    finally:
+        shutil.rmtree(workdir, ignore_errors=True)
+
+
 @router.get("")
 async def list_videos(payload: TokenPayload = Depends(require_user), session: AsyncSession = Depends(get_session)):
     user_id = UUID(payload.sub)
     rows = (await session.execute(select(Video).where(Video.user_id == user_id).order_by(Video.created_at.desc()))).scalars().all()
-    return success_response([VideoOut.model_validate(v, from_attributes=True).model_dump(mode="json") for v in rows])
+
+    # Chunked long videos are stored as N child parts (parent_video_id set). The
+    # parts stay in the DB / index for processing + retrieval, but the library UI
+    # should show ONE entry per long video — collapse the parts into a single
+    # synthetic parent entry (id = parent_video_id) and hide the parts themselves.
+    standalone = [v for v in rows if v.parent_video_id is None]
+    groups: dict = {}
+    for v in rows:
+        if v.parent_video_id is not None:
+            groups.setdefault(v.parent_video_id, []).append(v)
+
+    out = [VideoOut.model_validate(v, from_attributes=True).model_dump(mode="json") for v in standalone]
+    for parent_id, kids in groups.items():
+        kids.sort(key=lambda k: (k.offset_s or 0.0))
+        first = kids[0]
+        statuses = {k.status for k in kids}
+        if statuses == {"ready"}:
+            agg = "ready"
+        elif statuses & {"processing", "queued"}:
+            agg = "processing"
+        elif "error" in statuses:
+            agg = "error"
+        else:
+            agg = "ready"
+        base = (first.original_filename or "").split(" [part ")[0] or first.original_filename
+        out.append({
+            "id": str(parent_id),
+            "user_id": str(user_id),
+            "original_filename": base,
+            "duration_s": sum((k.duration_s or 0.0) for k in kids) or None,
+            "status": agg,
+            "shot_count": (sum((k.shot_count or 0) for k in kids) or None),
+            "error": None,
+            "created_at": min(k.created_at for k in kids).isoformat(),
+            "modality": first.modality,
+            "has_video": first.has_video,
+            "has_audio": first.has_audio,
+            "global_summary": None,
+            "parent_video_id": None,
+            "offset_s": None,
+        })
+
+    out.sort(key=lambda d: d["created_at"], reverse=True)
+    return success_response(out)
 
 
 @router.get("/{video_id}")
@@ -93,6 +293,16 @@ async def delete_video(
         s3().delete_object(Bucket=s.minio_bucket_videos, Key=f"features/{video_id}.npz")
     except Exception:
         pass
+    # Lighthouse feature caches (visual + audio).
+    try:
+        objs = s3().list_objects_v2(
+            Bucket=s.minio_bucket_videos,
+            Prefix=f"features/{video_id}/",
+        )
+        for obj in objs.get("Contents", []) or []:
+            s3().delete_object(Bucket=s.minio_bucket_videos, Key=obj["Key"])
+    except Exception:
+        pass
     try:
         objs = s3().list_objects_v2(Bucket=s.minio_bucket_thumbs, Prefix=f"{video_id}/")
         for obj in objs.get("Contents", []) or []:
@@ -100,17 +310,22 @@ async def delete_video(
     except Exception:
         pass
 
-    # Qdrant: drop every shot tied to this video_id.
+    # Qdrant: drop every shot/segment tied to this video_id across the three
+    # collections the ingest pipeline writes to.
     try:
         from qdrant_client import QdrantClient
         from qdrant_client.http import models as qm
         client = QdrantClient(host=s.qdrant_host, port=s.qdrant_port)
-        client.delete(
-            collection_name=s.qdrant_collection,
-            points_selector=qm.FilterSelector(
-                filter=qm.Filter(must=[qm.FieldCondition(key="video_id", match=qm.MatchValue(value=str(video_id)))]),
-            ),
+        selector = qm.FilterSelector(
+            filter=qm.Filter(must=[
+                qm.FieldCondition(key="video_id", match=qm.MatchValue(value=str(video_id))),
+            ]),
         )
+        for coll in (s.qdrant_collection, "jockey_segments_text", "jockey_videos"):
+            try:
+                client.delete(collection_name=coll, points_selector=selector)
+            except Exception:
+                pass
     except Exception:
         pass
 

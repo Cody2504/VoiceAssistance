@@ -5,6 +5,7 @@ import { User } from "lucide-react";
 
 import type { VideoSummary } from "@/apis/videos.api";
 import { streamChat, type ChatEvent } from "@/apis/chat.api";
+import type { ChatScopeValue } from "@/pages/chat/components/ChatScopeBar";
 import { AgentsThinking, type ThinkingStep } from "./AgentsThinking";
 import { ChatComposer } from "./ChatComposer";
 import { BrandAvatar } from "@/components/brand/BrandAvatar";
@@ -17,6 +18,7 @@ interface AttachmentSnapshot { id: string; name: string; }
 interface Turn {
   user: string;
   attachments: AttachmentSnapshot[];
+  image?: string;
   assistant: string;
   steps: ThinkingStep[];
   resultClips: ClipResult[];
@@ -25,9 +27,10 @@ interface Turn {
 
 interface Props {
   initialAttached?: VideoSummary[];
+  scope?: ChatScopeValue;
 }
 
-export function ChatThread({ initialAttached = [] }: Props) {
+export function ChatThread({ initialAttached = [], scope }: Props) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [attached, setAttached] = useState<VideoSummary[]>(initialAttached);
   const [busy, setBusy] = useState(false);
@@ -36,12 +39,13 @@ export function ChatThread({ initialAttached = [] }: Props) {
 
   useEffect(() => { bottom.current?.scrollIntoView({ behavior: "smooth" }); }, [turns]);
 
-  const send = async (message: string, videoIds: string[]) => {
+  const send = async (message: string, videoIds: string[], image?: string) => {
     setBusy(true);
     const snapshots: AttachmentSnapshot[] = attached.map((v) => ({ id: v.id, name: v.original_filename }));
     const newTurn: Turn = {
       user: message,
       attachments: snapshots,
+      image,
       assistant: "",
       steps: [],
       resultClips: [],
@@ -85,8 +89,30 @@ export function ChatThread({ initialAttached = [] }: Props) {
       }
     };
 
+    // Resolve final scope: when the user has explicitly chosen an Index (subset
+    // or whole), the scope bar wins over drag-attached videos. In subset mode we
+    // forward the picked video_ids; in whole-index mode we send the empty list
+    // so the backend expands to every video in the index.
+    let finalVideoIds: string[] | undefined = videoIds.length ? videoIds : undefined;
+    let finalIndexId: string | undefined;
+    if (scope) {
+      if (scope.mode === "whole" && scope.indexId) {
+        finalIndexId = scope.indexId;
+        finalVideoIds = undefined;
+      } else if (scope.mode === "subset" && scope.indexId) {
+        finalIndexId = scope.indexId;
+        finalVideoIds = scope.videoIds.length ? scope.videoIds : undefined;
+      }
+    }
+
     try {
-      await streamChat({ message, video_ids: videoIds.length ? videoIds : undefined, onEvent });
+      await streamChat({
+        message,
+        video_ids: finalVideoIds,
+        index_id: finalIndexId,
+        image,
+        onEvent,
+      });
     } finally {
       setBusy(false);
     }
@@ -118,6 +144,13 @@ export function ChatThread({ initialAttached = [] }: Props) {
                 </span>
                 You
               </div>
+              {t.image && (
+                <img
+                  src={t.image}
+                  alt="attached"
+                  className="mb-2 h-28 w-28 rounded-xl border border-neutral-200 object-cover"
+                />
+              )}
               <p className="text-neutral-900">{t.user}</p>
               {t.attachments.length > 0 && (
                 <p className="mt-1 text-xs text-neutral-500">

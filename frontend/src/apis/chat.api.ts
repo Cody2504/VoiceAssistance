@@ -24,12 +24,15 @@ export interface ChatStreamInput {
   conversation_id?: string;
   video_id?: string;
   video_ids?: string[];
+  index_id?: string;
   message: string;
+  /** Optional base64 data-URL image attached to the turn (find_scene_by_image). */
+  image?: string;
   signal?: AbortSignal;
   onEvent: (ev: ChatEvent) => void;
 }
 
-export async function streamChat({ conversation_id, video_id, video_ids, message, signal, onEvent }: ChatStreamInput) {
+export async function streamChat({ conversation_id, video_id, video_ids, index_id, message, image, signal, onEvent }: ChatStreamInput) {
   const token = localStorage.getItem(TOKEN_KEYS.ACCESS);
   const res = await fetch(`${API_BASE_URL}${ROUTES.CHAT_STREAM}`, {
     method: "POST",
@@ -38,7 +41,7 @@ export async function streamChat({ conversation_id, video_id, video_ids, message
       Accept: "text/event-stream",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ conversation_id, video_id, video_ids, message }),
+    body: JSON.stringify({ conversation_id, video_id, video_ids, index_id, message, image }),
     signal,
   });
   if (!res.ok || !res.body) throw new Error(`Chat stream failed: ${res.status}`);

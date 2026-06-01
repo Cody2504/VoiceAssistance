@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { FolderSearch, Search as SearchIcon, X } from "lucide-react";
-import { listVideos } from "@/apis/videos.api";
+import { listIndexes, type IndexSummary } from "@/apis/indexes.api";
 import { cn } from "@/lib/utils";
 
 interface IndexEntry {
@@ -8,7 +8,6 @@ interface IndexEntry {
   title: string;
   meta: string;
   variant: "default" | "mix" | "ads" | "edu" | "social" | "sports";
-  sample?: boolean;
 }
 
 const variantClass: Record<IndexEntry["variant"], string> = {
@@ -20,34 +19,48 @@ const variantClass: Record<IndexEntry["variant"], string> = {
   sports: "bg-gradient-to-br from-lime-100 via-emerald-100 to-orange-100",
 };
 
+const VARIANT_ROTATION: IndexEntry["variant"][] = [
+  "default", "edu", "mix", "social", "sports", "ads",
+];
+
+function fmtDuration(totalSec: number): string {
+  if (totalSec < 60) return `${Math.round(totalSec)}s`;
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
+function asEntry(i: IndexSummary, n: number): IndexEntry {
+  const dur = i.total_duration_s ? ` (${fmtDuration(i.total_duration_s)})` : "";
+  return {
+    id: i.id,
+    title: i.title || "Untitled Index",
+    meta: `${i.video_count} Video${i.video_count === 1 ? "" : "s"}${dur}`,
+    variant: VARIANT_ROTATION[n % VARIANT_ROTATION.length],
+  };
+}
+
 interface Props {
   selectedIndexId?: string;
   onSelect: (idx: { id: string; title: string }) => void;
 }
 
 /**
- * Index picker used by Search. Closed state mirrors the TwelveLabs reference:
+ * Index picker used by Search and Chat. Closed state mirrors the TwelveLabs reference:
  * a looping video clip behind a "Select an index" pill, with a soft warm/cool
- * inner-glow and hover-zoom on the video. Opens a modal of indexes (real
- * default + sample tiles).
+ * inner-glow and hover-zoom on the video. Opens a modal of the user's indexes.
  */
 export function IndexPicker({ selectedIndexId, onSelect }: Props) {
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState("");
-  const [count, setCount] = useState(0);
+  const [entries, setEntries] = useState<IndexEntry[]>([]);
 
   useEffect(() => {
-    listVideos().then((v) => setCount(v.length)).catch(() => setCount(0));
+    listIndexes()
+      .then((rows) => setEntries(rows.map((r, n) => asEntry(r, n))))
+      .catch(() => setEntries([]));
   }, []);
-
-  const entries: IndexEntry[] = [
-    { id: "default", title: "My Index (Default)", meta: `${count} Videos`, variant: "default" },
-    { id: "sample-sports", title: "Sample Index: Sports", meta: "19 Videos (2h 15m)", variant: "sports", sample: true },
-    { id: "sample-social", title: "Sample Index: Social Media", meta: "15 Videos (2h 17m)", variant: "social", sample: true },
-    { id: "sample-mix", title: "Sample Index: Mix", meta: "161 Videos (8h 35m)", variant: "mix", sample: true },
-    { id: "sample-edu", title: "Sample Index: E Learning", meta: "24 Videos (2h 41m)", variant: "edu", sample: true },
-    { id: "sample-ads", title: "Sample Index: Ads", meta: "27 Videos (47m 7s)", variant: "ads", sample: true },
-  ];
 
   const filtered = filter
     ? entries.filter((e) => e.title.toLowerCase().includes(filter.toLowerCase()))
@@ -164,11 +177,19 @@ export function IndexPicker({ selectedIndexId, onSelect }: Props) {
                     </div>
                   </div>
                   <h4 className="mt-2 text-[14px] font-medium text-[var(--color-obsidian)]">{e.title}</h4>
-                  {e.sample && (
-                    <p className="text-[11px] text-[var(--color-gravel)]">Sample</p>
-                  )}
                 </button>
               ))}
+              {filtered.length === 0 && (
+                <div className="col-span-full flex flex-col items-center gap-2 py-12 text-center text-[13px] text-[var(--color-gravel)]">
+                  <p>No indexes yet.</p>
+                  <a
+                    href="/indexes"
+                    className="rounded-full bg-[var(--color-obsidian)] px-4 py-1.5 text-[12px] text-white hover:bg-neutral-800"
+                  >
+                    Create one →
+                  </a>
+                </div>
+              )}
             </div>
           </div>
         </div>

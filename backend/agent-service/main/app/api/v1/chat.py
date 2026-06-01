@@ -12,7 +12,7 @@ from sse_starlette.sse import EventSourceResponse
 
 from cm_shared.auth import TokenPayload, require_user
 from cm_shared.db import get_session
-from cm_shared.internal import current_jwt
+from cm_shared.internal import current_image, current_jwt
 from cm_shared.schemas import ChatMessageIn
 from main.app.core.graph.graph import build_graph
 from main.app.db.models.conversation import Conversation, Message
@@ -35,6 +35,7 @@ async def _event_stream(
     user_id: UUID,
     conversation_id: UUID,
     video_ids: list[UUID] | None,
+    index_id: UUID | None,
     message: str,
     session: AsyncSession,
 ):
@@ -48,6 +49,7 @@ async def _event_stream(
         "user_id": str(user_id),
         "video_id": str(video_ids[0]) if video_ids else None,
         "video_ids": [str(v) for v in video_ids] if video_ids else None,
+        "index_id": str(index_id) if index_id else None,
         "router_steps": 0,
     }
     config = {"configurable": {"thread_id": str(conversation_id)}}
@@ -107,6 +109,8 @@ async def stream(
     auth_header = request.headers.get("authorization", "")
     if auth_header.lower().startswith("bearer "):
         current_jwt.set(auth_header.split(" ", 1)[1])
+    # Make any attached image available to image-conditioned tools (find_scene_by_image).
+    current_image.set(body.image or "")
 
     video_ids = body.video_ids or ([body.video_id] if body.video_id else None)
     primary_video = video_ids[0] if video_ids else None
@@ -122,5 +126,5 @@ async def stream(
 
     agent = get_agent()
     return EventSourceResponse(
-        _event_stream(agent, user_id, convo.id, video_ids, body.message, session)
+        _event_stream(agent, user_id, convo.id, video_ids, body.index_id, body.message, session)
     )

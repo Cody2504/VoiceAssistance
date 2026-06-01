@@ -109,14 +109,23 @@ def _llm_topic_title(joined_text: str, api_key: str) -> str | None:
         return None
 
 
-def _segment_from_shots(shots_in_topic: list[dict[str, Any]], want_summary: bool, api_key: str) -> dict[str, Any]:
+def _segment_from_shots(
+    shots_in_topic: list[dict[str, Any]],
+    want_summary: bool,
+    want_topic: bool,
+    api_key: str,
+) -> dict[str, Any]:
     t_start = shots_in_topic[0]["t_start"]
     t_end = shots_in_topic[-1]["t_end"]
     metadata: dict[str, Any] = {
         "shot_count": len(shots_in_topic),
         "shot_range": [shots_in_topic[0]["idx"], shots_in_topic[-1]["idx"]],
     }
-    if want_summary:
+    # Both legacy `topic_summary` and Twelve Labs `topic` get the same LLM
+    # rollup. `subtopics` / `key_points` would need richer LLM context per
+    # group; `transition_type` (hard_cut/gradual/host_introduction/natural_flow)
+    # would need adjacent-shot analysis. Both left for a future enrichment pass.
+    if want_summary or want_topic:
         joined = "\n".join(
             f"[{sh['idx']}] {(sh.get('chunk_caption') or sh.get('asr_text') or '').strip()}"
             for sh in shots_in_topic
@@ -125,7 +134,11 @@ def _segment_from_shots(shots_in_topic: list[dict[str, Any]], want_summary: bool
         title = None
         if api_key and joined:
             title = _llm_topic_title(joined, api_key)
-        metadata["topic_summary"] = title or _heuristic_title(shots_in_topic)
+        title = title or _heuristic_title(shots_in_topic)
+        if want_summary:
+            metadata["topic_summary"] = title
+        if want_topic:
+            metadata["topic"] = title
     return {"t_start": t_start, "t_end": t_end, "metadata": metadata}
 
 
@@ -136,6 +149,7 @@ def segment(video_id: UUID, definition: SegmentDefinition) -> list[dict[str, Any
 
     field_names = {f.name for f in definition.fields}
     want_summary = "topic_summary" in field_names
+    want_topic = "topic" in field_names
 
     # Group shots into contiguous topic runs. Boundary lands between i and
     # i+1 when adjacent cosine similarity falls below the threshold.
@@ -160,10 +174,13 @@ def segment(video_id: UUID, definition: SegmentDefinition) -> list[dict[str, Any
 
     s = get_settings()
     api_key = (s.openrouter_api_key or "").strip()
-    if not want_summary or not api_key or len(groups) == 0:
-        return [_segment_from_shots(g, want_summary, api_key) for g in groups]
+    needs_llm = (want_summary or want_topic) and api_key
+    if not needs_llm or len(groups) == 0:
+        return [_segment_from_shots(g, want_summary, want_topic, api_key) for g in groups]
     # LLM rollups parallelized — one OpenRouter call per group, up to 8 in
     # flight. Single-threaded loop was the bottleneck on shot-heavy footage
     # (each call ~3-10s; 20+ groups → 60-200s sequential vs ~8-20s parallel).
     with ThreadPoolExecutor(max_workers=8) as pool:
-        return list(pool.map(lambda g: _segment_from_shots(g, True, api_key), groups))
+        return list(
+            pool.map(lambda g: _segment_from_shots(g, want_summary, want_topic, api_key), groups)
+        )

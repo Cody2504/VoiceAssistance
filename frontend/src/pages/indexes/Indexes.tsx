@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router";
 import { Info, ArrowRight, Search as SearchIcon, ChevronDown, X, Play, MoreVertical } from "lucide-react";
 import { PillButton } from "@/components/ui/PillButton";
 import { listVideos, type VideoSummary } from "@/apis/videos.api";
+import { createIndex, deleteIndex, listIndexes, type IndexSummary } from "@/apis/indexes.api";
 import { cn } from "@/lib/utils";
 
 type SortKey = "recent" | "name" | "duration";
@@ -13,9 +14,10 @@ interface IndexCardData {
   videos: number;
   durationLabel: string;
   createdAt: string;
-  variant: "default" | "sample-mix" | "sample-ads" | "sample-edu" | "sample-social" | "sample-sports";
+  variant: "default" | "real-a" | "real-b" | "real-c" | "real-d" | "real-e";
   href?: string;
   sortableTime: number;
+  isReal: boolean;
 }
 
 function fmtDuration(totalSec: number): string {
@@ -26,14 +28,15 @@ function fmtDuration(totalSec: number): string {
   return `${m}m`;
 }
 
-function IndexCard({ data }: { data: IndexCardData }) {
+function IndexCard({ data, onDelete }: { data: IndexCardData; onDelete?: (id: string) => void }) {
+  const [menuOpen, setMenuOpen] = useState(false);
   const tile = {
     default: "bg-gradient-warm",
-    "sample-mix": "bg-gradient-to-br from-amber-100 via-orange-100 to-emerald-100",
-    "sample-ads": "bg-gradient-to-br from-rose-100 via-pink-100 to-violet-100",
-    "sample-edu": "bg-gradient-to-br from-sky-100 via-cyan-100 to-emerald-100",
-    "sample-social": "bg-gradient-to-br from-amber-100 via-rose-100 to-sky-100",
-    "sample-sports": "bg-gradient-to-br from-lime-100 via-emerald-100 to-orange-100",
+    "real-a": "bg-gradient-to-br from-amber-100 via-orange-100 to-emerald-100",
+    "real-b": "bg-gradient-to-br from-rose-100 via-pink-100 to-violet-100",
+    "real-c": "bg-gradient-to-br from-sky-100 via-cyan-100 to-emerald-100",
+    "real-d": "bg-gradient-to-br from-amber-100 via-rose-100 to-sky-100",
+    "real-e": "bg-gradient-to-br from-lime-100 via-emerald-100 to-orange-100",
   }[data.variant];
 
   const body = (
@@ -55,15 +58,39 @@ function IndexCard({ data }: { data: IndexCardData }) {
           <h4 className="text-[15px] font-medium text-[var(--color-obsidian)]">{data.title}</h4>
           <p className="mt-0.5 text-[12px] text-[var(--color-gravel)]">{data.createdAt}</p>
         </div>
-        <button
-          className="opacity-0 transition group-hover:opacity-100"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          }}
-        >
-          <MoreVertical size={16} className="text-[var(--color-gravel)]" />
-        </button>
+        {data.isReal && onDelete && (
+          <div className="relative">
+            <button
+              className="opacity-0 transition group-hover:opacity-100"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setMenuOpen((o) => !o);
+              }}
+            >
+              <MoreVertical size={16} className="text-[var(--color-gravel)]" />
+            </button>
+            {menuOpen && (
+              <div
+                className="absolute right-0 top-6 z-10 w-32 rounded-md border border-[var(--color-chalk)] bg-white p-1 shadow-hairline"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+              >
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    if (confirm(`Delete index "${data.title}"?`)) onDelete(data.id);
+                  }}
+                  className="block w-full rounded px-2 py-1 text-left text-[12px] text-rose-600 hover:bg-rose-50"
+                >
+                  Delete
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -75,19 +102,139 @@ function IndexCard({ data }: { data: IndexCardData }) {
   );
 }
 
+function CreateIndexModal({
+  open,
+  onClose,
+  onCreated,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCreated: (summary: IndexSummary) => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!open) return null;
+
+  const submit = async () => {
+    if (!title.trim()) {
+      setError("Title is required");
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      const created = await createIndex({
+        title: title.trim(),
+        description: description.trim() || undefined,
+      });
+      onCreated(created);
+      setTitle("");
+      setDescription("");
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to create index");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 p-6" onClick={onClose}>
+      <div
+        className="w-full max-w-[440px] rounded-2xl bg-white p-6 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-[16px] font-semibold text-[var(--color-obsidian)]">Create an Index</h2>
+          <button onClick={onClose} className="rounded p-1 text-[var(--color-gravel)] hover:bg-[var(--color-powder)]">
+            <X size={16} />
+          </button>
+        </div>
+        <p className="mb-4 text-[12px] text-[var(--color-gravel)]">
+          Group related videos (e.g. a lecture series) so cross-video queries can reason across them.
+        </p>
+        <label className="mb-3 block">
+          <span className="mb-1 block text-[12px] font-medium text-[var(--color-obsidian)]">Title</span>
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="e.g. ML Lectures Spring 2026"
+            className="h-9 w-full rounded-md border border-[var(--color-chalk)] bg-white px-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-[var(--color-obsidian)]/10"
+            autoFocus
+          />
+        </label>
+        <label className="mb-4 block">
+          <span className="mb-1 block text-[12px] font-medium text-[var(--color-obsidian)]">
+            Description <span className="text-[var(--color-gravel)]">(optional)</span>
+          </span>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={3}
+            className="w-full rounded-md border border-[var(--color-chalk)] bg-white px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-[var(--color-obsidian)]/10"
+          />
+        </label>
+        {error && <p className="mb-3 text-[12px] text-rose-600">{error}</p>}
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="rounded-full px-4 py-1.5 text-[13px] text-[var(--color-gravel)] hover:bg-[var(--color-powder)]"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={submit}
+            disabled={submitting}
+            className="rounded-full bg-[var(--color-obsidian)] px-4 py-1.5 text-[13px] text-white hover:bg-neutral-800 disabled:opacity-50"
+          >
+            {submitting ? "Creating…" : "Create"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const VARIANT_ROTATION: IndexCardData["variant"][] = [
+  "real-c", "real-a", "real-d", "real-b", "real-e",
+];
+
 export default function Indexes() {
-  const navigate = useNavigate();
   const [videos, setVideos] = useState<VideoSummary[]>([]);
+  const [indexes, setIndexes] = useState<IndexSummary[]>([]);
   const [filter, setFilter] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("recent");
   const [bannerVisible, setBannerVisible] = useState(true);
   const [sortOpen, setSortOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+
+  const reloadIndexes = useCallback(() => {
+    listIndexes()
+      .then(setIndexes)
+      .catch(() => setIndexes([]));
+  }, []);
 
   useEffect(() => {
     listVideos()
       .then(setVideos)
       .catch(() => setVideos([]));
-  }, []);
+    reloadIndexes();
+  }, [reloadIndexes]);
+
+  const handleDelete = useCallback(
+    async (id: string) => {
+      try {
+        await deleteIndex(id);
+        reloadIndexes();
+      } catch {
+        // best-effort UX; a toast layer would belong here
+      }
+    },
+    [reloadIndexes],
+  );
 
   const cards: IndexCardData[] = useMemo(() => {
     const totalDuration = videos.reduce((s, v) => s + (v.duration_s ?? 0), 0);
@@ -100,16 +247,25 @@ export default function Indexes() {
       variant: "default",
       href: "/playground/library",
       sortableTime: Date.now(),
+      isReal: false,
     };
-    const samples: IndexCardData[] = [
-      { id: "s1", title: "Sample Index: Mix", videos: 161, durationLabel: "8h 35m", createdAt: "Sample · Apr 03, 2026", variant: "sample-mix", sortableTime: Date.parse("2026-04-03") },
-      { id: "s2", title: "Sample Index: Ads", videos: 27, durationLabel: "47m 7s", createdAt: "Sample · Mar 21, 2026", variant: "sample-ads", sortableTime: Date.parse("2026-03-21") },
-      { id: "s3", title: "Sample Index: E Learning", videos: 24, durationLabel: "2h 41m", createdAt: "Sample · Mar 12, 2026", variant: "sample-edu", sortableTime: Date.parse("2026-03-12") },
-      { id: "s4", title: "Sample Index: Social Media", videos: 15, durationLabel: "2h 17m", createdAt: "Sample · Mar 04, 2026", variant: "sample-social", sortableTime: Date.parse("2026-03-04") },
-      { id: "s5", title: "Sample Index: Sports", videos: 19, durationLabel: "2h 15m", createdAt: "Sample · Feb 20, 2026", variant: "sample-sports", sortableTime: Date.parse("2026-02-20") },
-    ];
-    const all = [defaultCard, ...samples];
+    const realCards: IndexCardData[] = indexes.map((idx, n) => ({
+      id: idx.id,
+      title: idx.title || "Untitled Index",
+      videos: idx.video_count,
+      durationLabel: idx.total_duration_s ? fmtDuration(idx.total_duration_s) : "0s",
+      createdAt: `Created on ${new Date(idx.created_at).toLocaleDateString("en-US", {
+        month: "short",
+        day: "2-digit",
+        year: "numeric",
+      })}`,
+      variant: VARIANT_ROTATION[n % VARIANT_ROTATION.length],
+      href: `/indexes/${idx.id}`,
+      sortableTime: Date.parse(idx.created_at),
+      isReal: true,
+    }));
 
+    const all = [defaultCard, ...realCards];
     const filtered = filter
       ? all.filter((c) => c.title.toLowerCase().includes(filter.toLowerCase()))
       : all;
@@ -120,7 +276,7 @@ export default function Indexes() {
       return b.sortableTime - a.sortableTime;
     });
     return sorted;
-  }, [videos, filter, sortKey]);
+  }, [videos, indexes, filter, sortKey]);
 
   const sortLabel = { recent: "Recent upload", name: "Name (A→Z)", duration: "Video count" }[sortKey];
 
@@ -136,9 +292,7 @@ export default function Indexes() {
         <PillButton
           variant="ghost"
           rightIcon={<ArrowRight size={14} />}
-          onClick={() => navigate("/indexes")}
-          disabled
-          title="Index creation coming soon"
+          onClick={() => setCreateOpen(true)}
         >
           Create Index
         </PillButton>
@@ -205,9 +359,17 @@ export default function Indexes() {
 
       <div className="grid grid-cols-1 gap-x-6 gap-y-8 pb-12 sm:grid-cols-2 lg:grid-cols-3">
         {cards.map((c) => (
-          <IndexCard key={c.id} data={c} />
+          <IndexCard key={c.id} data={c} onDelete={c.isReal ? handleDelete : undefined} />
         ))}
       </div>
+
+      <CreateIndexModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreated={(created) => {
+          setIndexes((prev) => [created, ...prev]);
+        }}
+      />
 
       <div className="flex items-center justify-center gap-1 pb-10 text-[13px] text-[var(--color-gravel)]">
         <button className="grid h-7 w-7 place-items-center rounded-md border border-[var(--color-chalk)] bg-white hover:bg-[var(--color-powder)]">‹</button>

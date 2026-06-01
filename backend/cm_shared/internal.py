@@ -11,6 +11,10 @@ from cm_shared.settings import get_base_settings
 # to other services so endpoints protected by require_user accept them.
 current_jwt: ContextVar[str] = ContextVar("current_jwt", default="")
 
+# Optional base64 data-URL image attached to the current chat turn. The LLM can't
+# pass an image as a tool argument, so image-conditioned tools read it from here.
+current_image: ContextVar[str] = ContextVar("current_image", default="")
+
 
 def _auto_auth_headers(extra: dict | None) -> dict | None:
     token = current_jwt.get()
@@ -34,6 +38,7 @@ def _bases() -> dict[str, str]:
             "video-service": s.video_service_base_url,
             "agent-service": s.agent_service_base_url,
             "token-usage": s.token_usage_base_url,
+            "billing": s.billing_base_url,
         }
     )
     return _SERVICE_BASE_URLS

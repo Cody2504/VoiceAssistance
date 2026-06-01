@@ -66,6 +66,7 @@ export default function Sounds() {
       }
       examplesPanel={
         <ExamplesPanel<{ tag: string }>
+          kind="search"
           examples={EXAMPLES}
           onSelect={(p) => setTag(p.tag)}
         />

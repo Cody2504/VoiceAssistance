@@ -14,6 +14,9 @@ class AgentState(TypedDict, total=False):
     # Attached video(s) — passed in by the API layer
     video_id: str | None
     video_ids: list[str] | None
+    # Attached index — when set, the user is asking against an Index (lecture
+    # series / collection). `video_ids` may be empty (whole index) or a subset.
+    index_id: str | None
 
     # Most recent tool result, copied out for reflect/router context
     last_tool_name: str | None

@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Link } from "react-router";
-import { ImageIcon, UserCircle2 } from "lucide-react";
+import { Captions, ImageIcon, SquareArrowOutUpRight, UserCircle2, X } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
-import { searchCorpus, type CorpusSearchResponse, type CorpusShot } from "@/apis/videos.api";
+import { searchCorpus, searchCorpusByImage, type CorpusSearchResponse, type CorpusShot } from "@/apis/videos.api";
+import { VideoThumb } from "@/components/video/VideoThumb";
+import { VideoPreviewModal } from "@/components/video/VideoPreviewModal";
 import { formatSeconds } from "@/lib/utils";
 
 import { PlaygroundShell } from "./components/PlaygroundShell";
@@ -36,16 +37,31 @@ export default function Search() {
   const [indexSelection, setIndexSelection] = useState<{ id: string; title: string } | null>(null);
   const [searchOpts, setSearchOpts] = useState<SearchOptions>({ visual: true, audio: true, transcription: true });
   const [transcriptOpts, setTranscriptOpts] = useState<TranscriptionOptions>({ lexical: true, semantic: true });
+  // @Entity: an attached image used as the query (base64 data URL).
+  const [image, setImage] = useState<{ dataUrl: string; name: string } | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  // inline clip preview (opened from a result card)
+  const [preview, setPreview] = useState<{ videoId: string; t: number } | null>(null);
+
+  const onPickImage = (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose an image file");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setImage({ dataUrl: String(reader.result), name: file.name });
+    reader.readAsDataURL(file);
+  };
+
+  const canRun = image != null || form.query.trim().length > 0;
 
   const run = async () => {
-    if (!form.query.trim()) return;
+    if (!canRun) return;
     setRunning(true);
     try {
-      const r = await searchCorpus({
-        query: form.query.trim(),
-        top_n: form.top_n,
-        group_by: form.group_by,
-      });
+      const r = image
+        ? await searchCorpusByImage({ image: image.dataUrl, top_n: form.top_n, group_by: form.group_by })
+        : await searchCorpus({ query: form.query.trim(), top_n: form.top_n, group_by: form.group_by });
       setResult(r);
       if (r.shots.length === 0) toast.info("No matches found");
     } catch (err: unknown) {
@@ -63,7 +79,7 @@ export default function Search() {
       title="Search"
       subtitle="Find any moment in your videos."
       formPanel={
-        <FormPanel runLabel="Search" onRun={run} running={running} canRun={form.query.trim().length > 0}>
+        <FormPanel runLabel="Search" onRun={run} running={running} canRun={canRun}>
           <Field label="index" required>
             <IndexPicker
               selectedIndexId={indexSelection?.id}
@@ -80,20 +96,49 @@ export default function Search() {
                   placeholder="Search actions, objects, sounds and logos"
                   className="block min-h-[68px] w-full resize-none border-none bg-transparent text-[13px] leading-6 text-[var(--color-obsidian)] outline-none placeholder:text-[var(--color-gravel)]/80"
                 />
+                {image && (
+                  <div className="mb-1 inline-flex items-center gap-2 rounded-[10px] border border-[var(--color-chalk)] bg-[var(--color-powder)] px-2 py-1">
+                    <img src={image.dataUrl} alt="query entity" className="h-8 w-8 rounded object-cover" />
+                    <span className="max-w-[140px] truncate text-[11px] text-[var(--color-gravel)]" title={image.name}>
+                      {image.name}
+                    </span>
+                    <button
+                      type="button"
+                      aria-label="Remove image"
+                      onClick={() => setImage(null)}
+                      className="grid h-5 w-5 place-items-center rounded-full text-[var(--color-gravel)] hover:bg-[var(--color-chalk)] hover:text-[var(--color-obsidian)]"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                )}
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) onPickImage(f);
+                    e.target.value = "";
+                  }}
+                />
                 <div className="flex items-center gap-x-2 pb-0.5 pt-1">
                   <button
                     type="button"
-                    disabled
-                    aria-label="Add image"
-                    className="grid h-7 w-7 place-items-center rounded-[8px] border border-[var(--color-chalk)] text-[var(--color-gravel)] transition-all hover:rounded-[12px] hover:bg-[var(--color-powder)] disabled:opacity-40"
+                    aria-label="Search by image"
+                    title="Search by image"
+                    onClick={() => fileRef.current?.click()}
+                    className="grid h-7 w-7 place-items-center rounded-[8px] border border-[var(--color-chalk)] text-[var(--color-gravel)] transition-all hover:rounded-[12px] hover:bg-[var(--color-powder)]"
                   >
                     <ImageIcon size={14} />
                   </button>
                   <button
                     type="button"
-                    disabled
-                    aria-label="Insert entity"
-                    className="inline-flex h-7 items-center gap-1 rounded-[8px] border border-[var(--color-chalk)] px-2 text-[11px] text-[var(--color-gravel)] transition-all hover:rounded-[12px] hover:bg-[var(--color-powder)] disabled:opacity-40"
+                    aria-label="Search by image entity"
+                    title="Paste an image as a visual entity to search by"
+                    onClick={() => fileRef.current?.click()}
+                    className="inline-flex h-7 items-center gap-1 rounded-[8px] border border-[var(--color-chalk)] px-2 text-[11px] text-[var(--color-gravel)] transition-all hover:rounded-[12px] hover:bg-[var(--color-powder)]"
                   >
                     <UserCircle2 size={12} />
                     @ Entity
@@ -172,72 +217,102 @@ export default function Search() {
       }
       resultsPanel={
         result && (
-          <ResultsPanel
-            title={`Hits for "${result.query}"`}
-            counter={`${result.shots.length} result${result.shots.length === 1 ? "" : "s"} · group_by=${result.group_by}`}
-          >
-            {result.shots.length === 0 ? (
-              <p className="text-sm text-neutral-500">
-                No matches. Try a different phrasing or upload more videos in{" "}
-                <Link className="underline" to="/playground/library">Library</Link>.
-              </p>
-            ) : (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {result.shots.map((s) => (
-                  <ShotCard key={`${s.video_id}-${s.idx}`} shot={s} />
-                ))}
-              </div>
-            )}
-          </ResultsPanel>
+          <>
+            <ResultsPanel
+              title="Top search rankings"
+              counter={`${result.shots.length} result${result.shots.length === 1 ? "" : "s"} from ${
+                new Set(result.shots.map((s) => s.video_id)).size
+              } video${new Set(result.shots.map((s) => s.video_id)).size === 1 ? "" : "s"}`}
+            >
+              {result.shots.length === 0 ? (
+                <p className="text-sm text-neutral-500">
+                  No matches. Try a different phrasing or upload more videos in{" "}
+                  <Link className="underline" to="/playground/library">Library</Link>.
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                  {result.shots.map((s, i) => (
+                    <ShotCard
+                      key={`${s.video_id}-${s.idx}`}
+                      rank={i + 1}
+                      shot={s}
+                      onPreview={() => setPreview({ videoId: s.video_id, t: s.t_start })}
+                    />
+                  ))}
+                </div>
+              )}
+            </ResultsPanel>
+            <VideoPreviewModal
+              open={preview != null}
+              videoId={preview?.videoId ?? null}
+              startAt={preview?.t}
+              onClose={() => setPreview(null)}
+            />
+          </>
         )
       }
     />
   );
 }
 
-function ShotCard({ shot }: { shot: CorpusShot }) {
+function ShotCard({ rank, shot, onPreview }: { rank: number; shot: CorpusShot; onPreview: () => void }) {
+  const [showTranscript, setShowTranscript] = useState(false);
+  const range = `${formatSeconds(shot.t_start)} – ${formatSeconds(shot.t_end)}`;
   return (
-    <Link
-      to={`/video/${shot.video_id}`}
-      className="block transition hover:opacity-95"
-    >
-      <Card className="flex h-full flex-col gap-2 p-3 hover:border-neutral-400">
-        <div className="flex items-baseline justify-between gap-2">
-          <span className="truncate text-xs font-medium text-neutral-900" title={shot.original_filename}>
-            {shot.original_filename || "(untitled)"}
-          </span>
-          <span className="shrink-0 font-mono text-[10px] text-neutral-500">
-            score={shot.score?.toFixed(3) ?? "—"}
-          </span>
-        </div>
-        <span className="font-mono text-[11px] text-neutral-500">
-          {formatSeconds(shot.t_start)}–{formatSeconds(shot.t_end)}
+    <div className="flex flex-col gap-y-3 rounded-3xl bg-[var(--color-powder)] p-5">
+      {/* header: rank · filename · time range */}
+      <div className="flex min-w-0 items-center justify-between gap-2">
+        <span className="grid h-6 min-w-6 place-items-center rounded-md border border-[var(--color-chalk)] px-1.5 font-mono text-[11px] text-[var(--color-obsidian)]">
+          {rank}
         </span>
-        {shot.asr_text && (
-          <p className="line-clamp-2 text-[11px] leading-snug text-neutral-600">
-            “{shot.asr_text}”
-          </p>
-        )}
-        {shot.ocr_text && (
-          <p className="line-clamp-2 text-[11px] leading-snug text-neutral-500">
-            <span className="font-mono text-[9px] uppercase tracking-wider text-violet-600">OCR</span>{" "}
-            {shot.ocr_text}
-          </p>
-        )}
-        {shot.audio_tags && shot.audio_tags.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {shot.audio_tags.slice(0, 3).map((t) => (
-              <span
-                key={t.label}
-                className="rounded border border-neutral-200 bg-neutral-50 px-1 py-0.5 font-mono text-[9px] uppercase tracking-wide text-neutral-600"
-                title={`${t.label} · ${t.score.toFixed(3)}`}
-              >
-                {t.label}
-              </span>
-            ))}
-          </div>
-        )}
-      </Card>
-    </Link>
+        <span className="min-w-0 flex-1 truncate text-[13px] text-[var(--color-obsidian)]" title={shot.original_filename}>
+          {shot.original_filename || "(untitled)"}
+        </span>
+        <span className="shrink-0 rounded-md border border-[var(--color-chalk)] px-1 font-mono text-[11px] text-[var(--color-obsidian)]">
+          {range}
+        </span>
+      </div>
+
+      {/* clip preview — click to play at the matched moment */}
+      <button
+        type="button"
+        onClick={onPreview}
+        aria-label={`Play ${shot.original_filename} at ${range}`}
+        className="group relative block w-full overflow-hidden rounded-2xl bg-black focus-visible:outline-2 focus-visible:outline-signal"
+      >
+        <VideoThumb videoId={shot.video_id} shotIdx={shot.idx} className="aspect-video w-full" />
+        <span className="absolute right-2 top-2 rounded-md bg-black/70 px-1.5 py-0.5 font-mono text-[10px] text-white">
+          {(shot.score ?? shot.relevance ?? 0).toFixed(2)}
+        </span>
+      </button>
+
+      {/* transcript (toggle) */}
+      {showTranscript && shot.asr_text && (
+        <p className="max-h-28 overflow-auto text-[12px] leading-snug text-[var(--color-gravel)]">
+          “{shot.asr_text}”
+        </p>
+      )}
+
+      {/* footer: transcript toggle · see full video */}
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          disabled={!shot.asr_text}
+          aria-label={showTranscript ? "Hide transcript" : "Show transcript"}
+          aria-pressed={showTranscript}
+          onClick={() => setShowTranscript((v) => !v)}
+          className="inline-flex h-7 items-center gap-1 rounded-lg border border-[var(--color-chalk)] px-1.5 text-[12px] text-[var(--color-obsidian)] hover:bg-white disabled:opacity-40"
+        >
+          <Captions size={15} />
+        </button>
+        <Link
+          to={`/video/${shot.video_id}`}
+          className="inline-flex items-center gap-1 text-[12px] text-[var(--color-obsidian)] hover:underline"
+        >
+          See full video
+          <SquareArrowOutUpRight size={13} />
+        </Link>
+      </div>
+    </div>
   );
 }

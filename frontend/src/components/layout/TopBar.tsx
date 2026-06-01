@@ -24,7 +24,7 @@ export function TopBar() {
   })();
 
   return (
-    <div className="sticky top-0 z-30 flex h-14 items-center justify-end gap-2 border-b border-[var(--color-chalk)] bg-[var(--color-eggshell)]/85 px-6 backdrop-blur">
+    <div className="sticky top-0 z-30 flex h-14 items-center justify-end gap-2 bg-[var(--color-eggshell)]/85 px-6 backdrop-blur">
       <Link
         to="/pricing"
         className="hidden text-[13px] text-[var(--color-gravel)] hover:text-[var(--color-obsidian)] md:inline mr-2"

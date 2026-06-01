@@ -1,0 +1,18 @@
+{
+  "_comment": "Copy to scripts/e2e_config.json (gitignored) and fill in. CLI flags override these.",
+  "gateway_base": "http://localhost:8085",
+  "video_base": "http://127.0.0.1:11101",
+  "video_public_base": "https://video.voiceassistant.uk",
+  "email": "e2e@voiceassistant.uk",
+  "password": "e2e-test-pass-123",
+  "media_root": "video",
+  "media": {
+    "cooking": 3,
+    "basketball": 2,
+    "nature": 2
+  },
+  "ingest_timeout_s": 900,
+  "poll_interval_s": 10,
+  "pod_ssh": "ssh -p 31709 root@120.238.149.205",
+  "backfill_kg": true
+}

@@ -1,0 +1,17 @@
+3Blue1Brown — Essence of Linear Algebra (chapters 1–8)
+Playlist: https://www.youtube.com/playlist?list=PLZHQObOWTQDPD3MizzM2xVFitgF8hE_ab
+Downloaded ≤720p mp4 for the cross-video knowledge-graph E2E test.
+
+These chapters deliberately reuse concepts across videos — good signal for the
+cross-video KG (e.g. "linear transformation", "basis", "span", "matrix",
+"determinant", "column space" recur and should canonicalize into single entities
+with mentions spanning multiple videos).
+
+01  Vectors | Chapter 1
+02  Linear combinations, span, and basis vectors | Chapter 2
+03  Linear transformations and matrices | Chapter 3
+04  Matrix multiplication as composition | Chapter 4
+05  Three-dimensional linear transformations | Chapter 5
+06  The determinant | Chapter 6
+07  Inverse matrices, column space and null space | Chapter 7
+08  Nonsquare matrices as transformations between dimensions | Chapter 8

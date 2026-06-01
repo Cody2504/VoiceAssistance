@@ -1,8 +1,15 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Input } from "@/components/ui/input";
-import { askVideo, type VideoSummary } from "@/apis/videos.api";
+import { VideoPlayer, type VideoPlayerHandle } from "@/components/video/VideoPlayer";
+import {
+  askVideo,
+  getStreamUrl,
+  tileSupportsModality,
+  type AnalyzeResponse,
+  type VideoSummary,
+} from "@/apis/videos.api";
 
 import { PlaygroundShell } from "./components/PlaygroundShell";
 import { FormPanel, Field } from "./components/FormPanel";
@@ -18,17 +25,25 @@ interface FormState extends AnalyzePreset {
 
 const DEFAULT_FORM: FormState = { prompt: "", use_range: false };
 
-interface AnalyzeResult {
-  video_id: string;
-  question: string;
-  answer: string;
-}
-
 export default function Analyze() {
   const [video, setVideo] = useState<VideoSummary | null>(null);
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
   const [running, setRunning] = useState(false);
-  const [result, setResult] = useState<AnalyzeResult | null>(null);
+  const [result, setResult] = useState<AnalyzeResponse | null>(null);
+  const [streamUrl, setStreamUrl] = useState<string>("");
+  const supported = tileSupportsModality("analyze", video?.modality ?? null);
+  const player = useRef<VideoPlayerHandle>(null);
+
+  useEffect(() => {
+    if (!video) { setStreamUrl(""); return; }
+    let alive = true;
+    getStreamUrl(video.id)
+      .then((u) => { if (alive) setStreamUrl(u); })
+      .catch(() => setStreamUrl(""));
+    return () => { alive = false; };
+  }, [video?.id]);
+
+  const seek = (t: number) => player.current?.seekTo(t);
 
   const run = async () => {
     if (!video || !form.prompt.trim()) return;
@@ -51,7 +66,7 @@ export default function Analyze() {
     }
   };
 
-  const canRun = !!video && form.prompt.trim().length > 0 && !running;
+  const canRun = !!video && supported && form.prompt.trim().length > 0 && !running;
 
   return (
     <PlaygroundShell
@@ -118,13 +133,59 @@ export default function Analyze() {
         />
       }
       resultsPanel={
-        result && (
-          <ResultsPanel title="Answer" counter={`prompt: "${truncate(result.question, 80)}"`}>
-            <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-neutral-800">
-              {result.answer}
-            </pre>
-          </ResultsPanel>
-        )
+        <>
+          {video && !supported && (
+            <div className="mb-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+              This video has no usable visual or audio content for the Analyze tile
+              (modality: <code>{video.modality}</code>).
+            </div>
+          )}
+          {result && (
+            <ResultsPanel
+              title="Answer"
+              counter={`prompt: "${truncate(result.question, 80)}" · used ${result.used_windows} windows, ${result.used_segments} segments`}
+            >
+              <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
+                <div className="space-y-3">
+                  {streamUrl && <VideoPlayer ref={player} src={streamUrl} />}
+                  <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-neutral-800">
+                    {result.answer}
+                  </pre>
+                </div>
+
+                <div className="space-y-1.5">
+                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                    Citations
+                  </h3>
+                  {result.citations.length === 0 ? (
+                    <p className="text-xs text-neutral-500">No timestamps cited.</p>
+                  ) : (
+                    <ul className="max-h-[360px] space-y-1 overflow-y-auto pr-2">
+                      {result.citations.map((c, i) => (
+                        <li key={i}>
+                          <button
+                            type="button"
+                            onClick={() => seek(c.t_start)}
+                            className="w-full rounded border border-neutral-100 bg-white p-2 text-left text-xs transition hover:border-neutral-300 hover:bg-neutral-50"
+                          >
+                            <div className="flex items-baseline justify-between gap-2">
+                              <span className="font-mono text-[11px] text-neutral-700">
+                                {formatTime(c.t_start)}–{formatTime(c.t_end)}
+                              </span>
+                              <span className="font-mono text-[10px] text-neutral-500">
+                                seg {c.segment_idx}
+                              </span>
+                            </div>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            </ResultsPanel>
+          )}
+        </>
       }
     />
   );
@@ -132,4 +193,9 @@ export default function Analyze() {
 
 function truncate(s: string, n: number) {
   return s.length > n ? s.slice(0, n - 1) + "…" : s;
+}
+
+function formatTime(t: number) {
+  const s = Math.max(0, Math.round(t));
+  return `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
 }

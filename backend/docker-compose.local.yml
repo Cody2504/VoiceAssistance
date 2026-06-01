@@ -9,7 +9,6 @@ services:
     volumes:
       - ./video-service:/app
       - ./cm_shared:/shared/cm_shared
-      - ./jockey:/workspace/jockey
       - ./.models:/models
     command: ["sh", "-c", "alembic upgrade head && uvicorn main.main:app --host 0.0.0.0 --port 1101 --reload"]
 
@@ -17,14 +16,12 @@ services:
     volumes:
       - ./video-service:/app
       - ./cm_shared:/shared/cm_shared
-      - ./jockey:/workspace/jockey
       - ./.models:/models
 
   agent-service:
     volumes:
       - ./agent-service:/app
       - ./cm_shared:/shared/cm_shared
-      - ./jockey:/workspace/jockey
     command: ["sh", "-c", "alembic upgrade head && uvicorn main.main:app --host 0.0.0.0 --port 1102 --reload"]
 
   token-usage:
@@ -32,6 +29,12 @@ services:
       - ./token-usage:/app
       - ./cm_shared:/shared/cm_shared
     command: ["sh", "-c", "alembic upgrade head && uvicorn main.main:app --host 0.0.0.0 --port 1103 --reload"]
+
+  billing:
+    volumes:
+      - ./billing:/app
+      - ./cm_shared:/shared/cm_shared
+    command: ["sh", "-c", "alembic upgrade head && uvicorn main.main:app --host 0.0.0.0 --port 1104 --reload"]
 
   # Publish Qdrant on the host so the SSH reverse tunnel (vast → laptop) can
   # reach it via 127.0.0.1:6333. Local laptop containers continue to use the

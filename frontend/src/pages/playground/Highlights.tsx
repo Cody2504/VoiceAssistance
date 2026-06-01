@@ -77,6 +77,7 @@ export default function Highlights() {
       }
       examplesPanel={
         <ExamplesPanel<{ note: string }>
+          kind="analyze"
           examples={EXAMPLES}
           onSelect={(p) => setNote(p.note)}
         />
@@ -85,7 +86,7 @@ export default function Highlights() {
         result && (
           <ResultsPanel
             title="Top moments"
-            counter={`${result.moments.length} span${result.moments.length === 1 ? "" : "s"} · ${result.shots.length} ranked shots`}
+            counter={`${result.moments.length} span${result.moments.length === 1 ? "" : "s"} · ${result.shots?.length ?? 0} ranked shots`}
           >
             <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
               <div className="space-y-3">

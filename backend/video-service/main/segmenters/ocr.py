@@ -24,9 +24,11 @@ from uuid import UUID
 
 from main.api.segments_types import SegmentDefinition
 from main.models.video import Video
+from main.settings import get_settings
+from main.storage.minio import download_to_path
 
 from .qdrant_io import read_shots
-from .video_io import fetch_video, stream_url
+from .video_io import fetch_video
 
 log = logging.getLogger(__name__)
 
@@ -79,13 +81,11 @@ def _format_from_fresh(
     engine = _paddle(lang)
     if engine is None:
         return None
-    import urllib.request
 
-    url = stream_url(video, public=False)
     fd, video_path = tempfile.mkstemp(suffix=".mp4")
     os.close(fd)
     try:
-        urllib.request.urlretrieve(url, video_path)
+        download_to_path(get_settings().minio_bucket_videos, video.minio_key, video_path)
         field_names = {f.name for f in definition.fields}
         out: list[dict[str, Any]] = []
         for sh in shots:

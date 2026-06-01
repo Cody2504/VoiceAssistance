@@ -7,6 +7,8 @@ import PrivateRoutes from "@/routes/PrivateRoutes";
 import Landing from "@/pages/landing/Landing";
 import Pricing from "@/pages/pricing/Pricing";
 import PricingCalculator from "@/pages/pricing/PricingCalculator";
+import Solutions from "@/pages/solutions/Solutions";
+import Build from "@/pages/build/Build";
 import Library from "@/pages/playground/Library";
 import Search from "@/pages/playground/Search";
 import Analyze from "@/pages/playground/Analyze";
@@ -24,6 +26,7 @@ import Profile from "@/pages/profile/Profile";
 import S3TestPage from "@/pages/s3-test/S3TestPage";
 import Overview from "@/pages/overview/Overview";
 import Indexes from "@/pages/indexes/Indexes";
+import IndexDetail from "@/pages/indexes/IndexDetail";
 import Assets from "@/pages/assets/Assets";
 import Entities from "@/pages/entities/Entities";
 import Examples from "@/pages/examples/Examples";
@@ -38,6 +41,8 @@ export default function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/pricing-calculator" element={<PricingCalculator />} />
+        <Route path="/solutions" element={<Solutions />} />
+        <Route path="/build" element={<Build />} />
       </Route>
 
       <Route element={<AuthLayout />}>
@@ -51,6 +56,7 @@ export default function App() {
         <Route element={<MainLayout />}>
           <Route path="/overview" element={<Overview />} />
           <Route path="/indexes" element={<Indexes />} />
+          <Route path="/indexes/:indexId" element={<IndexDetail />} />
           <Route path="/assets" element={<Assets />} />
           <Route path="/entities" element={<Entities />} />
           <Route path="/examples" element={<Examples />} />

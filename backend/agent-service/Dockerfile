@@ -2,10 +2,9 @@ FROM jockey-base:dev
 
 WORKDIR /app
 
-ENV PYTHONPATH=/app:/shared:/workspace
+ENV PYTHONPATH=/app:/shared
 
 COPY backend/cm_shared /shared/cm_shared
-COPY pyproject.toml /workspace/pyproject.toml
 COPY backend/agent-service /app
 
 EXPOSE 1102

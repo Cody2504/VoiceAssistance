@@ -123,7 +123,7 @@ export const TIERS: Tier[] = [
     id: "developer",
     name: "Developer",
     subtitle: "Pay as you go",
-    cta: { label: "Upgrade", href: "/signup" },
+    cta: { label: "Upgrade", href: "/settings/billing" },
     accentClass: "bg-gradient-to-b from-rose-50 to-amber-50",
   },
   {

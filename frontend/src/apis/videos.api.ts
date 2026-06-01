@@ -1,6 +1,8 @@
 import axios from "axios";
 import { ROUTES } from "@/constants/routes";
 
+export type VideoModality = "video_audio" | "video_only" | "audio_only";
+
 export interface VideoSummary {
   id: string;
   user_id: string;
@@ -10,6 +12,27 @@ export interface VideoSummary {
   shot_count: number | null;
   error: string | null;
   created_at: string;
+  modality?: VideoModality | null;
+  has_video?: boolean | null;
+  has_audio?: boolean | null;
+  global_summary?: string | null;
+}
+
+/** Helper used by playground tiles to decide whether they should run on a given video. */
+export function tileSupportsModality(
+  tile: "search" | "analyze" | "ground" | "highlights" | "segment" | "sounds" | "recommend" | "moderate",
+  modality?: VideoModality | null,
+): boolean {
+  // If we don't know the modality yet (older videos, mid-migration), default to true.
+  if (!modality) return true;
+  if (modality === "audio_only") {
+    return tile === "analyze" || tile === "ground" || tile === "highlights" || tile === "sounds";
+  }
+  if (modality === "video_only") {
+    // No audio → sounds and audio-tagging features have nothing to chew on.
+    return tile !== "sounds";
+  }
+  return true; // video_audio supports everything
 }
 
 export async function listVideos(): Promise<VideoSummary[]> {
@@ -59,11 +82,23 @@ export interface ShotResult {
 
 export interface Span { t_start: number; t_end: number; score: number; }
 
+/**
+ * New Ground response shape — `moments` carries sub-second (start, end, score)
+ * spans from Lighthouse CG-DETR (or QD-DETR-CLAP for audio-only inputs).
+ * `shots`/`spans` are retained as optional for backwards compatibility with
+ * the legacy QD-DETR backend during migration.
+ */
+export interface GroundMoment { t_start: number; t_end: number; score: number; }
+
 export interface GroundResponse {
   video_id: string;
   query: string;
-  shots: ShotResult[];
-  spans: Span[];
+  moments?: GroundMoment[];
+  modality_used?: "visual" | "audio";
+  candidate_windows?: number;
+  // Legacy fields, kept for the QD-DETR fallback path.
+  shots?: ShotResult[];
+  spans?: Span[];
 }
 
 export async function groundVideo(id: string, query: string): Promise<GroundResponse> {
@@ -76,7 +111,28 @@ export async function searchVideo(id: string, query: string) {
   return r.data?.data;
 }
 
-export async function askVideo(id: string, question: string, t_start?: number, t_end?: number) {
+export interface AnalyzeCitation {
+  t_start: number;
+  t_end: number;
+  segment_idx: number;
+}
+
+export interface AnalyzeResponse {
+  video_id: string;
+  question: string;
+  answer: string;
+  citations: AnalyzeCitation[];
+  used_windows: number;
+  used_segments: number;
+  modality?: VideoModality | null;
+}
+
+export async function askVideo(
+  id: string,
+  question: string,
+  t_start?: number,
+  t_end?: number,
+): Promise<AnalyzeResponse> {
   const r = await axios.post(ROUTES.VIDEO_QA(id), { question, t_start, t_end });
   return r.data?.data;
 }
@@ -109,6 +165,21 @@ export async function searchCorpus(params: {
 }): Promise<CorpusSearchResponse> {
   const r = await axios.post(ROUTES.VIDEOS_SEARCH, {
     query: params.query,
+    top_n: params.top_n ?? 10,
+    group_by: params.group_by ?? "clip",
+  });
+  return r.data?.data;
+}
+
+/** @Entity image-as-query: find moments across the corpus that look like the
+ *  supplied image. `image` is a base64 data URL. */
+export async function searchCorpusByImage(params: {
+  image: string;
+  top_n?: number;
+  group_by?: "clip" | "video";
+}): Promise<CorpusSearchResponse> {
+  const r = await axios.post(ROUTES.VIDEOS_SEARCH_IMAGE, {
+    image: params.image,
     top_n: params.top_n ?? 10,
     group_by: params.group_by ?? "clip",
   });
@@ -213,7 +284,8 @@ export interface HighlightsResponse {
   video_id: string;
   duration_s: number | null;
   moments: Span[];
-  shots: ShotResult[];
+  shots?: ShotResult[];                       // legacy backend only
+  modality_used?: "visual" | "audio";
   query_used: string;
 }
 

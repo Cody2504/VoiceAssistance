@@ -85,8 +85,9 @@ export default function Landing() {
         body="Fast, precise, context-aware results that truly understand what you're looking for. Search across speech, text, audio and visuals to explore your video in every dimension."
         backgroundVideo="/twelvelabs/search-bg.mp4"
         videoPoster="/twelvelabs/search-bg.jpg"
+        contentTopClass="pt-6 md:pt-10"
         ctaTo="/playground/search"
-        toneClass="text-[#5e3b66]"
+        toneClass="text-[var(--color-obsidian)]"
       />
 
       <SampleApps
@@ -104,7 +105,7 @@ export default function Landing() {
         body="Create instant text formats like Q&As, hashtags, and summaries. Generate reports or get domain-specific analysis to answer your deepest questions."
         backgroundImage="/twelvelabs/analyze-bg.png"
         ctaTo="/playground/analyze"
-        toneClass="text-[#7d5d0c]"
+        toneClass="text-[var(--color-obsidian)]"
       />
 
       <SampleApps
@@ -122,7 +123,7 @@ export default function Landing() {
         body="Build features like semantic search and domain classification with embeddings that capture nuance — and make the most of all your data."
         backgroundImage="/twelvelabs/embed-bg.png"
         ctaTo="/playground/segment"
-        toneClass="text-[#26586d]"
+        toneClass="text-[var(--color-obsidian)]"
       />
 
       <SampleApps

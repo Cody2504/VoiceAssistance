@@ -46,7 +46,16 @@ def upload_fileobj(bucket: str, key: str, fileobj: BinaryIO, content_type: str =
 
 
 def download_to_path(bucket: str, key: str, dest: str) -> None:
-    s3().download_file(bucket, key, dest)
+    # boto3's high-level download_file uses a transfer manager that builds
+    # its own internal client and issues a virtual-hosted-style HEAD
+    # (videos.minio.voiceassistant.uk), which Cloudflare's tunnel doesn't
+    # route → 403. Fall back to a plain get_object + manual write that
+    # honours the path-style config we set on s3(). See MIGRATION_LOG
+    # 2026-05-23 problem #10.
+    resp = s3().get_object(Bucket=bucket, Key=key)
+    with open(dest, "wb") as fh:
+        for chunk in resp["Body"].iter_chunks(chunk_size=1024 * 1024):
+            fh.write(chunk)
 
 
 def presigned_get(bucket: str, key: str, expires: int = 3600, public: bool = True) -> str:

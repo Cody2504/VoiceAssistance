@@ -7,10 +7,14 @@ compute — pure filter + group over indexed data.
 Highlight tags
 --------------
 Any AudioSet label whose lowercase form contains one of the
-`HIGHLIGHT_KEYWORDS` triggers the shot. The default set covers crowd reaction
-("cheer", "applause", "crowd", "shout") and refereeing sounds ("whistle",
-"horn"). Score-weighted to ignore noise: a shot has to clear `MIN_SCORE` on
-at least one matching tag to count.
+`HIGHLIGHT_KEYWORDS` triggers the shot. The set covers three signal families:
+crowd reaction ("cheer", "applause", "crowd", "shout", "yell"), refereeing
+sounds ("whistle", "horn", "siren"), and scoring / impact action ("slam",
+"dunk"). The action sounds matter because broadcast sports audio is dominated
+by commentary + music, so the play itself (a dunk) is often the only highlight
+cue PANN surfaces above `MIN_SCORE` — crowd roar rarely makes the cached
+top-k on a commentated clip. Score-weighted to ignore noise: a shot has to
+clear `MIN_SCORE` on at least one matching tag to count.
 
 Grouping
 --------
@@ -27,7 +31,13 @@ from main.api.segments_types import SegmentDefinition
 from .qdrant_io import read_shots
 
 HIGHLIGHT_KEYWORDS = (
-    "cheer", "applause", "crowd", "shout", "whistle", "horn", "siren", "yell",
+    # crowd / reaction
+    "cheer", "applause", "crowd", "shout", "yell",
+    # referee / stoppage
+    "whistle", "horn", "siren",
+    # scoring / impact action — broadcast audio is commentary-dominated, so the
+    # play itself (a slam dunk) is often the only highlight cue above MIN_SCORE
+    "slam", "dunk",
 )
 MIN_SCORE = 0.15
 # Intensity bucketing from peak score for the segment.
@@ -78,37 +88,44 @@ def segment(video_id: UUID, definition: SegmentDefinition) -> list[dict[str, Any
     want_event = "event_type" in field_names
     want_intensity = "intensity" in field_names
     want_caption = "caption" in field_names
+    # Twelve Labs `plays` schema aliases.
+    want_play_type = "play_type" in field_names
+    want_excitement = "excitement_level" in field_names
+    want_description = "description" in field_names
 
     # First pass — flag highlight shots.
     flags: list[tuple[str, float] | None] = [
         _shot_highlight(sh.get("audio_tags", [])) for sh in shots
     ]
 
-    # Second pass — group contiguous flagged shots.
+    # Second pass — emit ONE segment per highlight shot (a distinct play).
+    # We deliberately do NOT merge contiguous highlight shots: each play should
+    # be its own scene. The old merge collapsed every adjacent highlight into a
+    # single whole-video segment. Shots without highlight audio are skipped, so
+    # non-play moments naturally fall into the gaps between plays.
     out: list[dict[str, Any]] = []
-    i = 0
-    while i < len(shots):
-        if flags[i] is None:
-            i += 1
+    for sh, fl in zip(shots, flags):
+        if fl is None:
             continue
-        j = i
-        peak_label, peak_score = flags[i]
-        while j + 1 < len(shots) and flags[j + 1] is not None:
-            lbl, sc = flags[j + 1]  # type: ignore[misc]
-            if sc > peak_score:
-                peak_label, peak_score = lbl, sc
-            j += 1
+        peak_label, peak_score = fl
+        event = _normalize_event(peak_label)
+        intensity = _intensity(peak_score)
+        caption = sh.get("chunk_caption", "")
 
         meta: dict[str, Any] = {}
         if want_event:
-            meta["event_type"] = _normalize_event(peak_label)
+            meta["event_type"] = event
         if want_intensity:
-            meta["intensity"] = _intensity(peak_score)
+            meta["intensity"] = intensity
         if want_caption:
-            caps = [sh.get("chunk_caption", "") for sh in shots[i : j + 1] if sh.get("chunk_caption")]
-            meta["caption"] = caps[0] if caps else ""
-
-        out.append({"t_start": shots[i]["t_start"], "t_end": shots[j]["t_end"], "metadata": meta})
-        i = j + 1
+            meta["caption"] = caption
+        # Twelve Labs aliases (`play_type`, `excitement_level`, `description`,
+        # `scoring_play`, `key_players`) are LEFT EMPTY so the shared `_enrich`
+        # LLM pass derives them PER PLAY from the shot context — caption + ASR
+        # commentary + the raw PANN audio tags (carried by `_format_context`).
+        # That lets the LLM name the play ("Three point shot" / "Turnover") and
+        # judge excitement from the crowd/commentary audio, instead of a coarse
+        # audio-score bucket that collapsed everything to one value.
+        out.append({"t_start": sh["t_start"], "t_end": sh["t_end"], "metadata": meta})
 
     return out

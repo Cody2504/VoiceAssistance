@@ -1,33 +1,33 @@
 # GPU build for vast.ai deployment.
 #
-# Extends the slim local image with the heavy segmenter deps (pyannote.audio,
-# PaddleOCR, InsightFace). The local Dockerfile stays unchanged so laptop
-# `docker compose up` keeps booting fast and small.
+# Uses the official PyTorch CUDA 12.4 runtime as the base. RTX 3090 / 4090 /
+# A100 / H100 all run torch 2.4.1 + cu124 happily. Bump to the 2.6 image only
+# if you're targeting RTX 50-series Blackwell (sm_120) — everything else
+# stays the same:
+#   docker compose -f docker-compose.vast.yml build \
+#       --build-arg BASE_IMAGE=pytorch/pytorch:2.6.0-cuda12.4-cudnn9-runtime
 #
-# IMPORTANT — pick a base image whose PyTorch wheels target the rented GPU's
-# compute capability:
-#   • RTX 4090 / 3090 / A100 / H100 (Hopper or older Ada): any PyTorch ≥2.2
-#     with cu121 works. Default `jockey-base:dev` is fine.
-#   • RTX 50-series (Blackwell, sm_120 — 5070 Ti / 5080 / 5090): needs
-#     PyTorch ≥2.6 built against cu124+. Set the build arg below:
-#         docker compose -f docker-compose.vast.yml build \
-#             --build-arg BASE_IMAGE=pytorch/pytorch:2.6.0-cuda12.4-cudnn9-runtime
-#     Without this, every CUDA kernel launch fails with
-#     "no kernel image is available for execution on the device".
-ARG BASE_IMAGE=jockey-base:dev
+# NB: the bootstrap script (scripts/vast-bootstrap.sh) is the preferred way
+# to run on a vast pod — it skips Docker entirely and `uv pip install`s
+# everything directly into the pod's existing torch+CUDA environment. This
+# Dockerfile is kept for users who actually build & push a GPU image.
+ARG BASE_IMAGE=pytorch/pytorch:2.4.1-cuda12.4-cudnn9-runtime
 FROM ${BASE_IMAGE} AS base
 
 WORKDIR /app
-ENV PYTHONPATH=/app:/shared:/workspace
+ENV PYTHONPATH=/app:/shared
 ENV HF_HOME=/models/hf-cache
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ffmpeg libgl1 libglib2.0-0 ca-certificates curl \
+    ffmpeg libgl1 libglib2.0-0 libsndfile1 ca-certificates curl \
  && rm -rf /var/lib/apt/lists/*
+
+# uv (astral) — faster than pip, used for the remaining installs in this image.
+RUN pip install --no-cache-dir uv && uv --version
 
 # Heavy GPU-only deps. Pinned conservatively — adjust on the box if you
 # need newer/older.
-RUN pip install --no-cache-dir \
+RUN uv pip install --system --no-cache \
     "pyannote.audio>=3.1" \
     "paddleocr>=2.7" \
     "insightface>=0.7" \
@@ -36,12 +36,18 @@ RUN pip install --no-cache-dir \
 
 # PaddlePaddle GPU is platform-conditional and big — keep it as a separate
 # layer so a rebuild that only touches application code doesn't redo it.
-RUN pip install --no-cache-dir "paddlepaddle-gpu>=2.6"
+RUN uv pip install --system --no-cache "paddlepaddle-gpu>=2.6"
 
 COPY backend/cm_shared /shared/cm_shared
-COPY jockey /workspace/jockey
-COPY pyproject.toml /workspace/pyproject.toml
 COPY backend/video-service /app
+
+# Lighthouse runtime deps + library itself. The library is installed with
+# --no-deps because its setup.py pins `numpy<=1.23.5`, which collides with
+# the rest of our stack (transformers, decord, scenedetect, ...). All actual
+# runtime deps are pinned in /app/requirements.txt at versions that work.
+RUN uv pip install --system --no-cache -r /shared/requirements.txt -r /app/requirements.txt \
+ && uv pip install --system --no-cache --no-deps \
+      "lighthouse-mr @ git+https://github.com/line/lighthouse.git@main"
 
 EXPOSE 1101
 

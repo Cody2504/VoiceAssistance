@@ -34,6 +34,17 @@ class BaseServiceSettings(BaseSettings):
     video_service_base_url: str = "http://video-service:1101"
     agent_service_base_url: str = "http://agent-service:1102"
     token_usage_base_url: str = "http://token-usage:1103"
+    billing_base_url: str = "http://billing:1104"
+
+    # ---- Stripe (billing-service; DEMO uses TEST-mode keys, no real money) ----
+    stripe_secret_key: str = ""           # sk_test_...
+    stripe_publishable_key: str = ""      # pk_test_... (unused by hosted Checkout; kept for parity)
+    stripe_webhook_secret: str = ""       # whsec_... (from `stripe listen`)
+    stripe_price_developer: str = ""      # price_... for the Developer plan
+    # Where Stripe redirects the browser after hosted checkout. Defaults to the
+    # Vite dev server; override per deploy.
+    billing_success_url: str = "http://localhost:5173/settings/billing?checkout=success"
+    billing_cancel_url: str = "http://localhost:5173/settings/billing?checkout=cancelled"
 
     @property
     def database_url(self) -> str:

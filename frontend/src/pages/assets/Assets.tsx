@@ -159,7 +159,7 @@ export default function Assets() {
 
   return (
     <div className="mx-auto max-w-[1180px] px-8 py-6">
-      <div className="mb-6 flex items-start justify-between gap-3">
+      <div className="mb-2 flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
           <h1 className="text-[32px] font-light tracking-[-0.64px] text-[var(--color-obsidian)]">
             Assets
@@ -189,6 +189,14 @@ export default function Assets() {
           </button>
         </div>
       </div>
+
+      <p className="mb-5 max-w-[680px] text-[12px] text-[var(--color-gravel)]">
+        Every video here is indexed and searchable on its own. Group related videos into an{" "}
+        <a href="/indexes" className="text-[var(--color-obsidian)] underline">
+          Index
+        </a>{" "}
+        to enable cross-video questions like comparisons and concept tracing across a course.
+      </p>
 
       <div className="mb-3 flex items-center gap-3">
         <div className="relative max-w-[420px] flex-1">

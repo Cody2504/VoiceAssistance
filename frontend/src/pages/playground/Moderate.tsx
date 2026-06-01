@@ -65,6 +65,7 @@ export default function Moderate() {
       }
       examplesPanel={
         <ExamplesPanel<{ threshold: number }>
+          kind="analyze"
           examples={EXAMPLES}
           onSelect={(p) => setThreshold(p.threshold)}
         />
