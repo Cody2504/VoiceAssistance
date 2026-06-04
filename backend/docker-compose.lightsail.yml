@@ -1,0 +1,25 @@
+# docker-compose.lightsail.yml — overrides for the always-on demo box.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.lightsail.yml up -d
+#
+# Unlike docker-compose.local.yml this adds NO source mounts and NO command
+# overrides: the production images already run `alembic upgrade head && uvicorn`
+# (no --reload), and the box runs the pre-built images shipped via `docker load`.
+services:
+  # Publish Qdrant on 6333 to match the cloudflared ingress
+  # (config.yml → tcp://127.0.0.1:6333), same as the laptop's local override.
+  qdrant:
+    ports:
+      - "6333:6333"
+
+  # Object storage is AWS S3 (videoassistant-demo, ap-southeast-1) — no MinIO here.
+  # video-service / video-worker are GPU services that run on the Vast pod.
+  # Park all four behind an unused profile so a plain `up` never starts them.
+  minio:
+    profiles: ["disabled"]
+  minio-init:
+    profiles: ["disabled"]
+  video-service:
+    profiles: ["disabled"]
+  video-worker:
+    profiles: ["disabled"]

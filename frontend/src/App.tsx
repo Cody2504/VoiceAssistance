@@ -4,10 +4,13 @@ import MainLayout from "@/layouts/MainLayout";
 import PublicLayout from "@/layouts/PublicLayout";
 import AuthLayout from "@/layouts/AuthLayout";
 import PrivateRoutes from "@/routes/PrivateRoutes";
+import Home from "@/pages/home/Home";
 import Landing from "@/pages/landing/Landing";
 import Pricing from "@/pages/pricing/Pricing";
 import PricingCalculator from "@/pages/pricing/PricingCalculator";
 import Solutions from "@/pages/solutions/Solutions";
+import SolutionPage from "@/pages/solutions/SolutionPage";
+import { SOLUTIONS } from "@/pages/solutions/industryData";
 import Build from "@/pages/build/Build";
 import Library from "@/pages/playground/Library";
 import Search from "@/pages/playground/Search";
@@ -38,10 +41,15 @@ export default function App() {
   return (
     <Routes>
       <Route element={<PublicLayout />}>
-        <Route path="/" element={<Landing />} />
+        <Route path="/" element={<Home />} />
+        <Route path="/product/product-overview" element={<Landing />} />
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/pricing-calculator" element={<PricingCalculator />} />
         <Route path="/solutions" element={<Solutions />} />
+        <Route path="/solutions/media-and-entertainment" element={<SolutionPage data={SOLUTIONS["media-and-entertainment"]} />} />
+        <Route path="/solutions/advertising" element={<SolutionPage data={SOLUTIONS.advertising} />} />
+        <Route path="/solutions/government-and-security" element={<SolutionPage data={SOLUTIONS["government-and-security"]} />} />
+        <Route path="/solutions/automotive" element={<SolutionPage data={SOLUTIONS.automotive} />} />
         <Route path="/build" element={<Build />} />
       </Route>
 

@@ -17,7 +17,7 @@ def s3():
         aws_access_key_id=s.minio_root_user,
         aws_secret_access_key=s.minio_root_password,
         config=Config(signature_version="s3v4", s3={"addressing_style": "path"}),
-        region_name="us-east-1",
+        region_name=s.minio_region,
     )
 
 
@@ -37,7 +37,7 @@ def _s3_public():
         aws_access_key_id=s.minio_root_user,
         aws_secret_access_key=s.minio_root_password,
         config=Config(signature_version="s3v4", s3={"addressing_style": "path"}),
-        region_name="us-east-1",
+        region_name=s.minio_region,
     )
 
 

@@ -32,26 +32,35 @@ const LINKS = [
   {
     label: "Platform",
     items: [
-      { name: "Search", to: "/playground/search" },
-      { name: "Analyze", to: "/playground/analyze" },
-      { name: "Segment", to: "/playground/segment" },
+      { name: "Platform Overview", to: "/product/product-overview" },
+      { name: "Models", to: "/product/product-overview#models" },
+      { name: "Pricing", to: "/pricing" },
       { name: "Examples", to: "/examples" },
     ],
   },
   {
-    label: "Resources",
+    label: "Solutions",
     items: [
-      { name: "Pricing", to: "/pricing" },
-      { name: "API Docs", to: "#" },
-      { name: "Tutorials", to: "#tutorials" },
-      { name: "Research", to: "#" },
+      { name: "Media & Entertainment", to: "/solutions/media-and-entertainment" },
+      { name: "Advertising", to: "/solutions/advertising" },
+      { name: "Government & Security", to: "/solutions/government-and-security" },
+      { name: "Automotive", to: "/solutions/automotive" },
+    ],
+  },
+  {
+    label: "Developers",
+    items: [
+      { name: "Developer Hub", to: "/build" },
+      { name: "API Docs", to: "/build#api" },
+      { name: "SDKs", to: "/build#sdks" },
+      { name: "Sample Apps", to: "/build#samples" },
     ],
   },
   {
     label: "Company",
     items: [
-      { name: "About", to: "#" },
-      { name: "Contact", to: "#" },
+      { name: "About", to: "/solutions" },
+      { name: "Contact", to: "/#cta" },
       { name: "Privacy", to: "#" },
       { name: "Terms", to: "#" },
     ],
@@ -62,7 +71,7 @@ export function Footer() {
   const year = new Date().getFullYear();
   return (
     <footer className="border-t border-[var(--color-chalk)] bg-[var(--color-eggshell)]">
-      <div className="mx-auto grid max-w-[1200px] gap-10 px-6 py-16 md:grid-cols-[1.4fr_repeat(3,minmax(0,1fr))]">
+      <div className="mx-auto grid max-w-[1200px] gap-10 px-6 py-16 md:grid-cols-[1.4fr_repeat(4,minmax(0,1fr))]">
         <div>
           <Link to="/" aria-label="Jockey"><Logo size="md" /></Link>
           <p className="mt-4 max-w-[280px] text-[13px] leading-[1.55] text-[var(--color-gravel)]">

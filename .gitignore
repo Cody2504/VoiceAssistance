@@ -48,8 +48,12 @@ jockey/open_source/models/
 # Extracted features (large; regenerate from videos)
 features/
 
+# Downloaded model assets (SG-DETR checkpoints + InternVideo2 features; multi-GB)
+assets/
+
 # Cloned reference repos
 molmo2/
+vendor/
 
 # Codesight metadata
 .codesight/
@@ -63,3 +67,5 @@ data/
 demo_screenshots/
 log/
 .claude/
+# SSH / TLS private keys — never commit
+*.pem

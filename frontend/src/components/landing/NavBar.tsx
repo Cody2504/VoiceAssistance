@@ -13,9 +13,6 @@ import {
   ShieldCheck,
   Car,
   Code2,
-  TerminalSquare,
-  Blocks,
-  MessagesSquare,
   BookOpen,
   Newspaper,
   Users,
@@ -63,16 +60,16 @@ const NAV: NavEntry[] = [
       {
         heading: "Platform",
         items: [
-          { label: "Platform Overview", desc: "Search, analyze & segment video", to: "/", icon: Boxes },
-          { label: "Models", desc: "Our encoder + VLM, benchmarked", to: "/#models", icon: Sparkles },
+          { label: "Platform Overview", desc: "Search, analyze & segment video", to: "/product/product-overview", icon: Boxes },
+          { label: "Models", desc: "Our encoder + VLM, benchmarked", to: "/product/product-overview#models", icon: Sparkles },
         ],
       },
       {
         heading: "Capabilities",
         items: [
-          { label: "Search", desc: "Find any scene in natural language", to: "/#capabilities", icon: Search },
-          { label: "Analyze", desc: "Summaries, chapters, Q&A", to: "/#capabilities", icon: Sparkles },
-          { label: "Segment", desc: "Labeled, time-stamped chapters", to: "/#capabilities", icon: Layers },
+          { label: "Search", desc: "Find any scene in natural language", to: "/product/product-overview", icon: Search },
+          { label: "Analyze", desc: "Summaries, chapters, Q&A", to: "/product/product-overview", icon: Sparkles },
+          { label: "Segment", desc: "Labeled, time-stamped chapters", to: "/product/product-overview", icon: Layers },
         ],
       },
     ],
@@ -85,10 +82,10 @@ const NAV: NavEntry[] = [
       {
         heading: "By industry",
         items: [
-          { label: "Media & Entertainment", desc: "Archive search, clip generation", to: "/solutions#industries", icon: Clapperboard },
-          { label: "Advertising", desc: "Contextual ad matching", to: "/solutions#industries", icon: Megaphone },
-          { label: "Government & Security", desc: "Evidence & anomaly detection", to: "/solutions#industries", icon: ShieldCheck },
-          { label: "Automotive", desc: "Scene understanding at scale", to: "/solutions#industries", icon: Car },
+          { label: "Media & Entertainment", desc: "Archive search, clip generation", to: "/solutions/media-and-entertainment", icon: Clapperboard },
+          { label: "Advertising", desc: "Contextual ad matching", to: "/solutions/advertising", icon: Megaphone },
+          { label: "Government & Security", desc: "Evidence & anomaly detection", to: "/solutions/government-and-security", icon: ShieldCheck },
+          { label: "Automotive", desc: "Scene understanding at scale", to: "/solutions/automotive", icon: Car },
         ],
       },
       {
@@ -101,29 +98,7 @@ const NAV: NavEntry[] = [
       },
     ],
   },
-  {
-    label: "Build",
-    variant: "mega",
-    groups: [
-      {
-        heading: "Develop",
-        items: [
-          { label: "Developer Hub", desc: "Guides, examples & quick links", to: "/build", icon: Code2 },
-          { label: "API Docs", desc: "Endpoints & references", to: "/build#api", icon: BookOpen },
-          { label: "SDKs", desc: "Python & Node client libraries", to: "/build#sdks", icon: TerminalSquare },
-          { label: "Sample Apps", desc: "Clone, run, ship today", to: "/build#samples", icon: Blocks },
-        ],
-      },
-      {
-        heading: "Community & support",
-        items: [
-          { label: "Community", desc: "Built by the community", to: "/build#support", icon: Users },
-          { label: "Discord", desc: "Ask & share", to: "/build#support", icon: MessagesSquare },
-          { label: "Support", desc: "Talk to our team", to: "/build#support", icon: LifeBuoy },
-        ],
-      },
-    ],
-  },
+  { label: "Build", to: "/build" },
   {
     label: "Resources",
     variant: "list",
@@ -163,6 +138,8 @@ export function NavBar() {
   const [open, setOpen] = useState<string | null>(null);
   const [langOpen, setLangOpen] = useState(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The marketing surface is one light eggshell theme everywhere (ElevenLabs style).
+  const isDarkHome = false;
 
   // hover with a small close delay so the cursor can travel into the panel
   function openMenu(label: string) {
@@ -187,19 +164,28 @@ export function NavBar() {
   const currentLang = LANGS.find((l) => i18n.language?.startsWith(l.code)) ?? LANGS[0];
 
   return (
-    <header className="sticky top-0 z-40 border-b border-[var(--color-chalk)] bg-[var(--color-eggshell)]/85 backdrop-blur">
+    <header
+      className={cn(
+        "sticky top-0 z-40 border-b backdrop-blur",
+        isDarkHome
+          ? "border-white/10 bg-[#050606]/86 text-[#f4f2ea]"
+          : "border-[var(--color-chalk)] bg-[var(--color-eggshell)]/85"
+      )}
+    >
       {/* soft gradient wash bleeding from the right (topbar.png) */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-y-0 right-0 w-1/2"
-        style={{
-          background:
-            "linear-gradient(90deg, rgba(253,252,252,0) 0%, rgba(168,230,178,0.16) 55%, rgba(255,196,156,0.18) 78%, rgba(246,175,255,0.20) 100%)",
-        }}
-      />
+      {!isDarkHome && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 right-0 w-1/2"
+          style={{
+            background:
+              "linear-gradient(90deg, rgba(253,252,252,0) 0%, rgba(168,230,178,0.16) 55%, rgba(255,196,156,0.18) 78%, rgba(246,175,255,0.20) 100%)",
+          }}
+        />
+      )}
 
       <div className="relative mx-auto flex h-16 max-w-[1280px] items-center gap-7 px-6">
-        <Link to="/" className="shrink-0" aria-label="Jockey">
+        <Link to="/" className={cn("shrink-0", isDarkHome && "text-[#f4f2ea]")} aria-label="Jockey">
           <Logo size="sm" />
         </Link>
 
@@ -220,9 +206,13 @@ export function NavBar() {
                   onClick={() => setOpen(open === entry.label ? null : entry.label)}
                   className={cn(
                     "inline-flex cursor-pointer items-center gap-1 rounded-lg px-3 py-2 text-[14px] transition",
-                    open === entry.label
-                      ? "text-[var(--color-obsidian)]"
-                      : "text-[var(--color-obsidian)]/80 hover:text-[var(--color-obsidian)]"
+                    isDarkHome
+                      ? open === entry.label
+                        ? "text-white"
+                        : "text-white/72 hover:text-white"
+                      : open === entry.label
+                        ? "text-[var(--color-obsidian)]"
+                        : "text-[var(--color-obsidian)]/80 hover:text-[var(--color-obsidian)]"
                   )}
                 >
                   {entry.label}
@@ -240,7 +230,12 @@ export function NavBar() {
               <Link
                 key={entry.label}
                 to={entry.to!}
-                className="rounded-lg px-3 py-2 text-[14px] text-[var(--color-obsidian)]/80 transition hover:text-[var(--color-obsidian)]"
+                className={cn(
+                  "rounded-lg px-3 py-2 text-[14px] transition",
+                  isDarkHome
+                    ? "text-white/72 hover:text-white"
+                    : "text-[var(--color-obsidian)]/80 hover:text-[var(--color-obsidian)]"
+                )}
               >
                 {entry.label}
               </Link>
@@ -261,7 +256,12 @@ export function NavBar() {
               aria-label="Select language"
               aria-expanded={langOpen}
               onClick={() => setLangOpen((v) => !v)}
-              className="inline-flex h-9 cursor-pointer items-center gap-1 rounded-full px-2.5 text-[13px] text-[var(--color-obsidian)]/80 transition hover:text-[var(--color-obsidian)]"
+              className={cn(
+                "inline-flex h-9 cursor-pointer items-center gap-1 rounded-full px-2.5 text-[13px] transition",
+                isDarkHome
+                  ? "text-white/70 hover:text-white"
+                  : "text-[var(--color-obsidian)]/80 hover:text-[var(--color-obsidian)]"
+              )}
             >
               <Globe size={16} />
               <ChevronDown size={13} />
@@ -288,7 +288,12 @@ export function NavBar() {
           {user ? (
             <Link
               to="/overview"
-              className="inline-flex h-9 cursor-pointer items-center rounded-full bg-[var(--color-obsidian)] px-4 text-[13px] font-medium text-white transition hover:bg-neutral-800"
+              className={cn(
+                "inline-flex h-9 cursor-pointer items-center rounded-full px-4 text-[13px] font-medium transition",
+                isDarkHome
+                  ? "bg-[#f4f2ea] text-[#050606] hover:bg-white"
+                  : "bg-[var(--color-obsidian)] text-white hover:bg-neutral-800"
+              )}
             >
               Open app ↗
             </Link>
@@ -296,13 +301,23 @@ export function NavBar() {
             <>
               <Link
                 to="/signup"
-                className="inline-flex h-9 cursor-pointer items-center gap-1 rounded-full bg-[var(--color-obsidian)] px-4 text-[13px] font-medium text-white transition hover:bg-neutral-800"
+                className={cn(
+                  "inline-flex h-9 cursor-pointer items-center gap-1 rounded-full px-4 text-[13px] font-medium transition",
+                  isDarkHome
+                    ? "bg-[#f4f2ea] text-[#050606] hover:bg-white"
+                    : "bg-[var(--color-obsidian)] text-white hover:bg-neutral-800"
+                )}
               >
                 Playground ↗
               </Link>
               <a
                 href="/#cta"
-                className="hidden h-9 cursor-pointer items-center rounded-full border border-[var(--color-chalk)] bg-white px-4 text-[13px] font-medium text-[var(--color-obsidian)] transition hover:bg-[var(--color-powder)] sm:inline-flex"
+                className={cn(
+                  "hidden h-9 cursor-pointer items-center rounded-full border px-4 text-[13px] font-medium transition sm:inline-flex",
+                  isDarkHome
+                    ? "border-white/14 text-[#f4f2ea] hover:border-white/35 hover:bg-white/[0.04]"
+                    : "border-[var(--color-chalk)] bg-white text-[var(--color-obsidian)] hover:bg-[var(--color-powder)]"
+                )}
               >
                 Talk to sales ↗
               </a>

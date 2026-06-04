@@ -34,6 +34,13 @@
   --color-signal:   #0447ff;
   --color-accent-blue: #2563eb; /* guest landing CTA/demo accent (ElevenLabs-style light theme) */
 
+  /* Type families. Display = light serif (Waldenburg substitute, ElevenLabs
+     editorial whisper-weight); body = Inter; mono = Geist Mono for technical
+     annotations. Tailwind v4 turns these into font-display / font-mono utils. */
+  --font-display: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
   --radius-card: 16px;
   --radius-card-hover: 22px;
   --radius-pill: 9999px;
@@ -195,4 +202,12 @@ body {
   padding: 2px 6px;
   border-radius: 4px;
   font-variant-numeric: tabular-nums;
+}
+
+/* ElevenLabs-style hairline elevation: cards hover by ~1px shadow, not depth.
+   Replaces border outlines on white surfaces sitting on the eggshell ground. */
+.shadow-card {
+  box-shadow:
+    rgba(0, 0, 0, 0.4) 0px 0px 1.143px 0px,
+    rgba(0, 0, 0, 0.04) 0px 2px 4px 0px;
 }

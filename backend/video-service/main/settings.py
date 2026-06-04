@@ -20,6 +20,9 @@ class Settings(BaseServiceSettings):
     minio_public_endpoint: str = "http://localhost:9000"
     minio_root_user: str = "jockey"
     minio_root_password: str = "jockey_dev_secret"
+    # SigV4 region. Local MinIO ignores it; real AWS S3 requires it to match the
+    # bucket's region or presigned URLs 403. Override via MINIO_REGION on the pod.
+    minio_region: str = "us-east-1"
     minio_bucket_videos: str = "videos"
     minio_bucket_edits: str = "edits"
     minio_bucket_thumbs: str = "thumbs"
@@ -38,6 +41,16 @@ class Settings(BaseServiceSettings):
     lighthouse_max_window_sec: float = 150.0
     lighthouse_window_overlap_ratio: float = 0.5            # for highlight sliding scan
     lighthouse_highlight_query: str = "an interesting key moment or highlight from the video"
+
+    # InternVideo2 grounding (EXPERIMENTAL, behind a flag) — parallel to the
+    # CG-DETR/lighthouse path. See services/iv2_grounding_service.py +
+    # pipeline/ground_iv2.py. Validated standalone on a 3090; not yet wired into
+    # the default Ground tile. Switch the Ground backend with this flag.
+    grounding_backend: str = "lighthouse"                   # "lighthouse" | "iv2"
+    iv2_device: str = "cpu"
+    iv2_video_ckpt: str = "/models/iv2/video_encoder.pt"    # SG-DETR FE traced InternVideo2-1b
+    iv2_text_ckpt: str = "/models/iv2/text_encoder.pt"      # InternVideo2 text tower (bert-large)
+    iv2_clip_length_sec: float = 2.0
 
     # Hierarchical summary (Analyze tile long-context Q&A)
     summary_window_size_sec: float = 120.0                  # 2-min rolling windows

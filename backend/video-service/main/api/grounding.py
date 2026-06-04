@@ -16,6 +16,7 @@ from cm_shared.response import success_response
 from cm_shared.schemas import GroundQuery
 from main.models.video import Video
 from main.pipeline.ground_v2 import run_grounding_v2
+from main.settings import get_settings
 
 router = APIRouter(prefix="/api/v1/videos", tags=["grounding"])
 
@@ -33,7 +34,13 @@ async def ground(
     if v.status != "ready":
         raise HTTPException(409, f"Video is not ready (status={v.status})")
 
-    result = run_grounding_v2(str(video_id), body.query, modality=v.modality)
+    # Backend dispatch: default CG-DETR/lighthouse, or experimental InternVideo2
+    # cosine grounding when grounding_backend == "iv2". Same response shape.
+    if get_settings().grounding_backend == "iv2":
+        from main.pipeline.ground_iv2 import run_grounding_iv2
+        result = run_grounding_iv2(str(video_id), body.query, modality=v.modality)
+    else:
+        result = run_grounding_v2(str(video_id), body.query, modality=v.modality)
     return success_response({
         "video_id": result.video_id,
         "query": result.query,
