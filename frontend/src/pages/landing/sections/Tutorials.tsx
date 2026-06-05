@@ -56,7 +56,7 @@ export function Tutorials() {
         {CARDS.map((c) => (
           <div
             key={c.title}
-            className="flex flex-col rounded-[20px] border border-[var(--color-chalk)] bg-white p-5 transition-all hover:shadow-hairline"
+            className="flex flex-col rounded-[20px] border border-[var(--color-chalk)] bg-white p-5 transition-[box-shadow] duration-200 ease-out hover:shadow-hairline"
           >
             <span className="self-start rounded-md bg-[var(--color-powder)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--color-gravel)]">
               {c.tag}

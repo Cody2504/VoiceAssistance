@@ -65,7 +65,7 @@ export function Hero() {
         <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
           <Link
             to="/signup"
-            className="inline-flex h-11 cursor-pointer items-center gap-1.5 rounded-full bg-[var(--color-obsidian)] px-6 text-[14px] font-medium text-white transition hover:bg-neutral-800"
+            className="inline-flex h-11 cursor-pointer items-center gap-1.5 rounded-full bg-[var(--color-obsidian)] px-6 text-[14px] font-medium text-white transition duration-150 ease-out hover:bg-neutral-800 active:scale-[0.97]"
           >
             Start free ↗
           </Link>

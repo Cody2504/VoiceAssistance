@@ -14,13 +14,13 @@ export function CallToAction() {
         <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
           <Link
             to="/signup"
-            className="inline-flex h-11 items-center rounded-full bg-[var(--color-obsidian)] px-6 text-[14px] font-medium text-white transition hover:bg-neutral-800"
+            className="inline-flex h-11 items-center rounded-full bg-[var(--color-obsidian)] px-6 text-[14px] font-medium text-white transition duration-150 ease-out hover:bg-neutral-800 active:scale-[0.97]"
           >
             Try on Playground
           </Link>
           <Link
             to="/pricing"
-            className="inline-flex h-11 items-center rounded-full border border-[var(--color-chalk)] bg-white px-6 text-[14px] font-medium text-[var(--color-obsidian)] transition hover:bg-[var(--color-powder)]"
+            className="inline-flex h-11 items-center rounded-full border border-[var(--color-chalk)] bg-white px-6 text-[14px] font-medium text-[var(--color-obsidian)] transition duration-150 ease-out hover:bg-[var(--color-powder)] active:scale-[0.97]"
           >
             Talk to sales
           </Link>

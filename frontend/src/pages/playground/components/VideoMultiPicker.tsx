@@ -167,7 +167,7 @@ export function VideoMultiPicker({
             <div className="border-t border-neutral-200 px-6 py-3 text-right">
               <button
                 onClick={() => setOpen(false)}
-                className="rounded-full bg-[var(--color-obsidian)] px-4 py-1.5 text-[13px] text-white hover:bg-neutral-800"
+                className="rounded-full bg-[var(--color-obsidian)] px-4 py-1.5 text-[13px] text-white transition duration-150 ease-out hover:bg-neutral-800 active:scale-[0.97]"
               >
                 Done
               </button>

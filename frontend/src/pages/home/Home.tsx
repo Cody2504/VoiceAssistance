@@ -111,7 +111,7 @@ function Container({ children, className = "" }: { children: React.ReactNode; cl
 
 export default function Home() {
   return (
-    <main className="bg-[var(--color-eggshell)] text-[var(--color-obsidian)]">
+    <main className="bg-[#f4f3f3] text-[var(--color-obsidian)]">
       <Hero />
       <ResultsBand />
       <Capabilities />
@@ -262,10 +262,31 @@ function Callout({ className, label, lines }: { className: string; label: string
   );
 }
 
-/* ---------------- capabilities (frosted shell, click-to-swap video) ---------------- */
+/* ---------------- capabilities (frosted shell, auto-rotating list) ---------------- */
+const CAP_ROTATE_MS = 4500;
 function Capabilities() {
   const [active, setActive] = useState(0);
-  const cap = CAPS[active];
+  const [paused, setPaused] = useState(false);
+  // Auto-advance like the real site; pause on hover and skip entirely for
+  // reduced-motion users. Re-arms on every `active` change, so a manual click
+  // grants a full interval before the next auto-step.
+  useEffect(() => {
+    if (paused) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const id = window.setInterval(() => setActive((a) => (a + 1) % CAPS.length), CAP_ROTATE_MS);
+    return () => window.clearInterval(id);
+  }, [paused, active]);
+
+  // All clips stay mounted (remounting a <video> reloads it → a flash). Only the
+  // active clip plays; the rest are paused to save decode cost.
+  const vidRefs = useRef<(HTMLVideoElement | null)[]>([]);
+  useEffect(() => {
+    vidRefs.current.forEach((v, i) => {
+      if (!v) return;
+      if (i === active) void v.play().catch(() => {});
+      else v.pause();
+    });
+  }, [active]);
   return (
     <section className="relative overflow-hidden">
       {/* full-bleed pastel wash so the frosted shell actually reads as frosted */}
@@ -292,7 +313,11 @@ function Capabilities() {
       </div>
 
       {/* frosted interactive shell */}
-      <div className="mt-12 overflow-hidden rounded-[48px] border border-[var(--color-chalk)] bg-white/55 shadow-card backdrop-blur">
+      <div
+        className="mt-12 overflow-hidden rounded-[48px] border border-[var(--color-chalk)] bg-white/55 shadow-card backdrop-blur"
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+      >
         <div className="grid items-center md:grid-cols-[0.82fr_1.18fr]">
           <div className="p-8 md:p-12">
             {CAPS.map((c, i) => {
@@ -307,35 +332,116 @@ function Capabilities() {
                 >
                   <h3
                     className={
-                      "text-[22px] font-medium tracking-[-0.3px] transition " +
+                      "text-[22px] font-medium tracking-[-0.3px] transition-colors duration-300 ease-out " +
                       (on ? "text-[var(--color-obsidian)]" : "text-[var(--color-obsidian)]/45 hover:text-[var(--color-obsidian)]/70")
                     }
                   >
                     {c.title}
                   </h3>
-                  {on && (
-                    <p className="mt-3 max-w-[430px] text-[14px] leading-[1.6] text-[var(--color-gravel)]">{c.body}</p>
-                  )}
+                  {/* grid-rows 0fr→1fr expands the active item's body + progress smoothly */}
+                  <div
+                    className={
+                      "grid transition-[grid-template-rows,opacity] duration-300 ease-out " +
+                      (on ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")
+                    }
+                  >
+                    <div className="overflow-hidden">
+                      <p className="pt-3 max-w-[430px] text-[14px] leading-[1.6] text-[var(--color-gravel)]">{c.body}</p>
+                      {on && (
+                        <div className="mt-4 h-px w-full overflow-hidden bg-[var(--color-chalk)]">
+                          <div
+                            className="h-full w-full origin-left bg-[var(--color-obsidian)]"
+                            style={{
+                              animation: `cap-progress ${CAP_ROTATE_MS}ms linear forwards`,
+                              animationPlayState: paused ? "paused" : "running",
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </button>
               );
             })}
           </div>
           <div className="flex items-center justify-center p-6 md:py-10 md:pr-10">
-            <video
-              key={cap.v}
-              src={`/twelvelabs/${cap.v}.webm`}
-              autoPlay
-              muted
-              loop
-              playsInline
-              preload="auto"
-              className="w-full max-w-[600px] object-contain"
-            />
+            <div className="relative w-full max-w-[600px]">
+              {CAPS.map((c, i) => (
+                <video
+                  key={c.v}
+                  ref={(el) => {
+                    vidRefs.current[i] = el;
+                  }}
+                  src={`/twelvelabs/${c.v}.webm`}
+                  muted
+                  loop
+                  playsInline
+                  preload="auto"
+                  aria-hidden={i !== active}
+                  className={
+                    "w-full object-contain transition-opacity duration-300 ease-out " +
+                    (i === active ? "relative opacity-100" : "absolute inset-0 h-full opacity-0")
+                  }
+                />
+              ))}
+            </div>
           </div>
         </div>
       </div>
       </Container>
     </section>
+  );
+}
+
+// Per-character color wave: a 2-char band of brand hues sweeps across each stat
+// number and loops, matching the twelvelabs.io stat band. Runs only while in
+// view; reduced-motion users see solid ink (no wave). Chars are aria-hidden and
+// the full value is exposed via aria-label so screen readers read it normally.
+const WAVE_HUES = ["#7a4dff", "#ff8caa", "#2563eb", "#87e3a5", "#ffd060"];
+
+function ColorWaveNumber({ text, className }: { text: string; className?: string }) {
+  const chars = [...text];
+  const ref = useRef<HTMLDivElement>(null);
+  const [head, setHead] = useState(-3);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !timer) {
+          timer = setInterval(() => setHead((h) => (h > chars.length + 3 ? -3 : h + 1)), 220);
+        } else if (!entry.isIntersecting && timer) {
+          clearInterval(timer);
+          timer = undefined;
+        }
+      },
+      { threshold: 0.4 },
+    );
+    io.observe(el);
+    return () => {
+      io.disconnect();
+      if (timer) clearInterval(timer);
+    };
+  }, [chars.length]);
+
+  return (
+    <div ref={ref} className={className} aria-label={text}>
+      {chars.map((ch, i) => {
+        const lit = head - i >= 0 && head - i < 2;
+        return (
+          <span
+            key={i}
+            aria-hidden="true"
+            style={{ color: lit ? WAVE_HUES[i % WAVE_HUES.length] : undefined, transition: "color 200ms ease" }}
+          >
+            {ch === " " ? " " : ch}
+          </span>
+        );
+      })}
+    </div>
   );
 }
 
@@ -353,13 +459,20 @@ function Metrics() {
         </p>
       </div>
 
-      <div className="mt-12 grid gap-px overflow-hidden rounded-[16px] border border-[var(--color-chalk)] bg-[var(--color-chalk)] sm:grid-cols-3">
-        {METRICS.map((m) => (
-          <div key={m.value} className="bg-[var(--color-eggshell)] p-8">
-            <div className="text-[48px] font-medium leading-none tracking-[-1.5px] tabular-nums text-[var(--color-obsidian)]">
-              {m.value}
-            </div>
-            <p className="mt-4 max-w-[260px] text-[14px] leading-[1.5] text-[var(--color-gravel)]">{m.label}</p>
+      <div className="mt-14 flex flex-col gap-10 sm:flex-row sm:gap-0">
+        {METRICS.map((m, i) => (
+          <div
+            key={m.value}
+            className={
+              "flex-1 sm:px-10 sm:first:pl-0 sm:last:pr-0 " +
+              (i > 0 ? "sm:border-l sm:border-[var(--color-chalk)]" : "")
+            }
+          >
+            <ColorWaveNumber
+              text={m.value}
+              className="text-[48px] font-medium leading-none tracking-[-1.5px] tabular-nums text-[var(--color-obsidian)]"
+            />
+            <p className="mt-12 max-w-[260px] text-[14px] leading-[1.5] text-[var(--color-gravel)]">{m.label}</p>
           </div>
         ))}
       </div>

@@ -145,22 +145,30 @@ export function AgentsThinking({ steps, assistantHasContent, complete }: Props) 
         </span>
       </button>
 
-      {open && (
-        <ol className="relative space-y-1 border-t border-neutral-200 px-4 py-3 text-sm">
-          <div
-            className="pointer-events-none absolute bottom-4 left-[26px] top-4 w-px bg-neutral-200"
-            aria-hidden
-          />
-          {derived.map((s) => (
-            <StepRow
-              key={s.key}
-              step={s}
-              expanded={!!expanded[s.key]}
-              onToggle={() => setExpanded((m) => ({ ...m, [s.key]: !m[s.key] }))}
+      {/* grid-rows 0fr→1fr animates the panel height smoothly (no snap) */}
+      <div
+        className={cn(
+          "grid transition-[grid-template-rows,opacity] duration-200 ease-out",
+          open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+        )}
+      >
+        <div className="overflow-hidden">
+          <ol className="relative space-y-1 border-t border-neutral-200 px-4 py-3 text-sm">
+            <div
+              className="pointer-events-none absolute bottom-4 left-[26px] top-4 w-px bg-neutral-200"
+              aria-hidden
             />
-          ))}
-        </ol>
-      )}
+            {derived.map((s) => (
+              <StepRow
+                key={s.key}
+                step={s}
+                expanded={!!expanded[s.key]}
+                onToggle={() => setExpanded((m) => ({ ...m, [s.key]: !m[s.key] }))}
+              />
+            ))}
+          </ol>
+        </div>
+      </div>
     </div>
   );
 }
@@ -229,26 +237,33 @@ function StepRow({
           </span>
         )}
       </button>
-      {expanded && hasBody && (
-        <div className="ml-1.5 mt-1 rounded border border-neutral-100 bg-neutral-50/60 p-2 text-xs text-neutral-700">
-          {step.kind === "phase" ? (
-            <p className="whitespace-pre-wrap">{step.body}</p>
-          ) : (
-            <div className="space-y-2">
-              <div>
-                <div className="mb-1 font-mono text-[10px] uppercase text-neutral-500">args</div>
-                <pre className="overflow-x-auto whitespace-pre-wrap">{JSON.stringify(step.args, null, 2)}</pre>
-              </div>
-              {step.result !== undefined && (
+      <div
+        className={cn(
+          "grid transition-[grid-template-rows,opacity] duration-200 ease-out",
+          expanded && hasBody ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+        )}
+      >
+        <div className="overflow-hidden">
+          <div className="ml-1.5 mt-1 rounded border border-neutral-100 bg-neutral-50/60 p-2 text-xs text-neutral-700">
+            {step.kind === "phase" ? (
+              <p className="whitespace-pre-wrap">{step.body}</p>
+            ) : (
+              <div className="space-y-2">
                 <div>
-                  <div className="mb-1 font-mono text-[10px] uppercase text-neutral-500">result</div>
-                  <pre className="overflow-x-auto whitespace-pre-wrap">{JSON.stringify(step.result, null, 2)}</pre>
+                  <div className="mb-1 font-mono text-[10px] uppercase text-neutral-500">args</div>
+                  <pre className="overflow-x-auto whitespace-pre-wrap">{JSON.stringify(step.args, null, 2)}</pre>
                 </div>
-              )}
-            </div>
-          )}
+                {step.result !== undefined && (
+                  <div>
+                    <div className="mb-1 font-mono text-[10px] uppercase text-neutral-500">result</div>
+                    <pre className="overflow-x-auto whitespace-pre-wrap">{JSON.stringify(step.result, null, 2)}</pre>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
-      )}
+      </div>
     </li>
   );
 }

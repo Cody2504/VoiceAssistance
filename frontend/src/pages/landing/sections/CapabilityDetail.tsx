@@ -3,6 +3,8 @@ import { Link } from "react-router";
 import { cn } from "@/lib/utils";
 
 interface Props {
+  /** Anchor id so the nav can deep-link to this section (e.g. #search). */
+  id?: string;
   eyebrow: string;
   /** Optional icon shown to the left of the eyebrow label. */
   eyebrowIcon?: ReactNode;
@@ -39,6 +41,7 @@ interface Props {
  * the peripheral edges so that a centered text card never occludes them.
  */
 export function CapabilityDetail({
+  id,
   eyebrow,
   eyebrowIcon,
   title,
@@ -65,7 +68,7 @@ export function CapabilityDetail({
   }, [backgroundVideo]);
 
   return (
-    <section className="relative w-full overflow-hidden">
+    <section id={id} className="relative w-full scroll-mt-24 overflow-hidden">
       {/* Maintain a 16:9-ish aspect ratio so the artwork's edge labels stay visible */}
       <div className="relative w-full" style={{ aspectRatio: "1840 / 1100" }}>
         {/* Full-bleed artwork — object-cover matches the framer reference */}
@@ -136,7 +139,7 @@ export function CapabilityDetail({
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link
               to={ctaTo}
-              className="inline-flex h-10 items-center gap-1.5 rounded-full bg-[var(--color-obsidian)] px-5 text-[13px] font-medium text-white transition hover:bg-neutral-800"
+              className="inline-flex h-10 items-center gap-1.5 rounded-full bg-[var(--color-obsidian)] px-5 text-[13px] font-medium text-white transition duration-150 ease-out hover:bg-neutral-800 active:scale-[0.97]"
             >
               Learn more ↗
             </Link>

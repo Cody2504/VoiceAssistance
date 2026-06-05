@@ -17,7 +17,7 @@ export function Logo({ size = "md", className }: Props) {
   const px = size === "sm" ? 24 : 28;
   const text = size === "sm" ? "text-base" : "text-lg";
   return (
-    <span className={cn("inline-flex items-center gap-2 font-semibold tracking-tight", text, className)}>
+    <span className={cn("inline-flex items-center gap-2 font-semibold leading-none tracking-tight", text, className)}>
       <svg
         width={px}
         height={px}

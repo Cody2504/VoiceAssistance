@@ -30,12 +30,12 @@ export function VideoPreviewModal({ open, videoId, startAt, onClose }: Props) {
 
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-6" onClick={onClose}>
+    <div className="overlay-in fixed inset-0 z-50 grid place-items-center bg-black/60 p-6" onClick={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-3xl overflow-hidden rounded-lg bg-black"
+        className="modal-pop relative w-full max-w-3xl overflow-hidden rounded-lg bg-black"
       >
-        <button onClick={onClose} className="absolute right-3 top-3 z-10 rounded-full bg-black/60 p-1.5 text-white hover:bg-black/80">
+        <button onClick={onClose} className="absolute right-3 top-3 z-10 rounded-full bg-black/60 p-1.5 text-white transition duration-150 ease-out hover:bg-black/80 active:scale-95">
           <X size={16} />
         </button>
         {url ? (

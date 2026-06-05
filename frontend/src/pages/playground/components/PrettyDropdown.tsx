@@ -71,11 +71,16 @@ export function PrettyDropdown({
         <ChevronDown size={14} className="shrink-0 text-neutral-500" />
       </button>
 
-      {open && (
-        <ul
-          role="listbox"
-          className="absolute z-50 mt-1 w-full overflow-hidden rounded-lg border border-neutral-200 bg-white py-1 shadow-[0_4px_16px_0_rgba(28,29,27,0.18)]"
-        >
+      <ul
+        role="listbox"
+        inert={!open}
+        className={cn(
+          "absolute z-50 mt-1 w-full origin-top overflow-hidden rounded-lg border border-neutral-200 bg-white py-1 shadow-[0_4px_16px_0_rgba(28,29,27,0.18)] transition duration-150 ease-out",
+          open
+            ? "translate-y-0 scale-100 opacity-100"
+            : "pointer-events-none -translate-y-1 scale-[0.98] opacity-0",
+        )}
+      >
           {items.map((item) => {
             const isSelected = item.value === value;
             return (
@@ -108,8 +113,7 @@ export function PrettyDropdown({
               </li>
             );
           })}
-        </ul>
-      )}
+      </ul>
     </div>
   );
 }

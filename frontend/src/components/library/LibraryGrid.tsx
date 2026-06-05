@@ -66,14 +66,14 @@ export function LibraryGrid({ onPreview }: Props) {
         <button
           type="button"
           onClick={() => (document.querySelector("input[type=file]") as HTMLInputElement | null)?.click()}
-          className="rounded-md bg-neutral-900 px-3 py-1 text-xs font-medium text-white hover:bg-neutral-700"
+          className="rounded-md bg-neutral-900 px-3 py-1 text-xs font-medium text-white transition duration-150 ease-out hover:bg-neutral-700 active:scale-95"
         >
           Upload
         </button>
       </div>
       {uploadPct !== null && (
         <div className="mb-2 h-1 w-full overflow-hidden rounded-full bg-neutral-100">
-          <div className="h-full bg-neutral-900 transition-all" style={{ width: `${uploadPct}%` }} />
+          <div className="h-full bg-neutral-900 transition-[width] duration-300 ease-out" style={{ width: `${uploadPct}%` }} />
         </div>
       )}
 

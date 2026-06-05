@@ -44,6 +44,19 @@
   --radius-card: 16px;
   --radius-card-hover: 22px;
   --radius-pill: 9999px;
+
+  /* Motion curves. Tailwind's built-in easings are too soft; these are stronger
+     custom variants. Overriding --ease-out / --ease-in-out upgrades the
+     `ease-out` / `ease-in-out` utilities app-wide, and they're available as
+     var(--ease-*) for keyframes below. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Spinners: 0.6s reads as snappier than Tailwind's default 1s (perceived
+     performance). Overrides the `animate-spin` utility app-wide; `animate-pulse`
+     (skeletons) is untouched. */
+  --animate-spin: spin 0.6s linear infinite;
 }
 
 :root {
@@ -74,6 +87,22 @@ body {
   color: #111315;
   -webkit-font-smoothing: antialiased;
   font-feature-settings: "kern" 1;
+}
+
+/* Default eased hover for interactive elements. A color/background/border change
+   that snaps instantly reads as broken (Emil); this gives every link/button a
+   150ms color transition by default. Lives in @layer base so any explicit
+   Tailwind transition utility (utilities layer) still wins, and the global
+   prefers-reduced-motion block below neutralizes it for motion-sensitive users.
+   Note: div/li-based hover targets (e.g. Card) aren't covered — add
+   `transition-colors` to those directly. */
+@layer base {
+  a,
+  button,
+  [role="button"],
+  summary {
+    transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease;
+  }
 }
 
 /* a11y: visible keyboard focus ring on all interactive elements (UX_REVIEW C6).
@@ -170,6 +199,37 @@ body {
 .fade-rise-delayed { animation: fade-rise 320ms ease-out 120ms both; }
 @media (prefers-reduced-motion: reduce) {
   .fade-rise, .fade-rise-delayed { animation: none; }
+}
+
+/* Popover / menu entrance — scales up from the trigger edge. Set the
+   transform-origin per use (origin-top, origin-top-right, …) so it grows out
+   of its trigger rather than its own center. Auto-disabled by the
+   prefers-reduced-motion block at the top of this file. */
+@keyframes pop-in {
+  from { opacity: 0; transform: scale(0.96) translateY(-4px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+.pop-in { animation: pop-in 150ms var(--ease-out) both; }
+
+/* Modal entrance — backdrop fades, panel grows from scale(0.96). Modals stay
+   centered (transform-origin: center) because they aren't anchored to a trigger. */
+@keyframes overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.overlay-in { animation: overlay-in 200ms ease-out both; }
+@keyframes modal-pop {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.modal-pop { animation: modal-pop 200ms var(--ease-out) both; }
+
+/* Auto-rotating capability list — progress bar under the active item fills over
+   the rotate interval (GPU scaleX from origin-left). Pause-on-hover is handled
+   inline via animation-play-state; neutralized under prefers-reduced-motion. */
+@keyframes cap-progress {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
 }
 
 /* ---------- gradient blob field (used on landing hero + auth right pane) ---------- */

@@ -8,14 +8,16 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { GoogleButton } from "@/components/auth/GoogleButton";
+import { GOOGLE_CLIENT_ID } from "@/config";
 
 interface Props {
   mode: "login" | "signup";
 }
 
 export function AuthForm({ mode }: Props) {
-  const { t } = useTranslation();
-  const { login, register } = useAuth();
+  const { t, i18n } = useTranslation();
+  const { login, register, loginWithGoogle } = useAuth();
   const nav = useNavigate();
   const [showPw, setShowPw] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -48,6 +50,18 @@ export function AuthForm({ mode }: Props) {
     }
   };
 
+  const handleGoogle = async (credential: string) => {
+    try {
+      await loginWithGoogle(credential);
+      nav("/workspace");
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        t("auth.errors.generic");
+      toast.error(msg);
+    }
+  };
+
   const titleKey = mode === "login" ? "auth.login.title" : "auth.signup.title";
   const submitKey = mode === "login" ? "auth.login.submit" : "auth.signup.submit";
 
@@ -68,7 +82,7 @@ export function AuthForm({ mode }: Props) {
             autoComplete="email"
             {...rhfRegister("email")}
             className="h-12 w-full rounded-lg border bg-white px-4 text-[15px] text-[var(--ink)] outline-none transition placeholder:text-[var(--ink-muted)] focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20"
-            style={{ borderColor: errors.email ? "var(--danger)" : "var(--line)" }}
+            style={{ borderColor: errors.email ? "var(--danger)" : "var(--color-chalk)" }}
           />
           {errors.email && (
             <p className="mt-1.5 text-[12px]" style={{ color: "var(--danger)" }}>{errors.email.message}</p>
@@ -86,13 +100,13 @@ export function AuthForm({ mode }: Props) {
               autoComplete={mode === "login" ? "current-password" : "new-password"}
               {...rhfRegister("password")}
               className="h-12 w-full rounded-lg border bg-white px-4 pr-12 text-[15px] text-[var(--ink)] outline-none transition placeholder:text-[var(--ink-muted)] focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20"
-              style={{ borderColor: errors.password ? "var(--danger)" : "var(--line)" }}
+              style={{ borderColor: errors.password ? "var(--danger)" : "var(--color-chalk)" }}
             />
             <button
               type="button"
               onClick={() => setShowPw((v) => !v)}
               aria-label={showPw ? t("auth.hide_password") : t("auth.show_password")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1 text-[var(--ink-muted)] hover:text-[var(--ink)]"
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1 text-[var(--ink-muted)] transition duration-150 ease-out hover:text-[var(--ink)] active:scale-90"
             >
               {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
@@ -116,18 +130,12 @@ export function AuthForm({ mode }: Props) {
       <button
         type="submit"
         disabled={submitting}
-        className="mt-7 inline-flex h-12 w-full items-center justify-center rounded-lg bg-[var(--ink)] text-[15px] font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-60"
+        className="mt-7 inline-flex h-12 w-full items-center justify-center rounded-lg bg-[var(--ink)] text-[15px] font-semibold text-white transition duration-150 ease-out hover:bg-black active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100"
       >
         {submitting ? t("auth.submitting") : t(submitKey)}
       </button>
 
-      <div className="my-7 flex items-center gap-3 text-[11px] uppercase tracking-[0.18em] text-[var(--ink-muted)]">
-        <span className="h-px flex-1 bg-[var(--line)]" />
-        {t("auth.or")}
-        <span className="h-px flex-1 bg-[var(--line)]" />
-      </div>
-
-      <p className="text-center text-[15px] text-[var(--ink-soft)]">
+      <p className="mt-7 text-center text-[15px] text-[var(--ink-soft)]">
         {mode === "login" ? (
           <>
             {t("auth.login.no_account")}{" "}
@@ -144,6 +152,26 @@ export function AuthForm({ mode }: Props) {
           </>
         )}
       </p>
+
+      {GOOGLE_CLIENT_ID && (
+        <>
+          <div className="my-6 flex items-center gap-3 text-[11px] uppercase tracking-[0.18em] text-[var(--ink-muted)]">
+            <span className="h-px flex-1 bg-[var(--color-chalk)]" />
+            {t("auth.or")}
+            <span className="h-px flex-1 bg-[var(--color-chalk)]" />
+          </div>
+
+          <GoogleButton
+            // Match the button language to the app's resolved language ("en"/
+            // "vi") via the GIS script's hl param, so it doesn't fall back to
+            // the Google account locale (which showed Vietnamese on an EN UI).
+            locale={i18n.resolvedLanguage || "en"}
+            text={mode === "login" ? "continue_with" : "signup_with"}
+            onCredential={(credential) => void handleGoogle(credential)}
+            onError={() => toast.error(t("auth.errors.generic"))}
+          />
+        </>
+      )}
     </form>
   );
 }

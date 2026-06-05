@@ -6,11 +6,11 @@ interface Props {
 export function QuoteCard({ quote, attribution }: Props) {
   return (
     <figure
-      className="rounded-[var(--radius-lg)] bg-white p-5 text-sm leading-relaxed text-[var(--ink-soft)] shadow-[0_12px_32px_rgba(0,0,0,0.08)]"
-      style={{ maxWidth: 280 }}
+      className="rounded-[28px] bg-white p-9 text-center shadow-[0_28px_70px_-28px_rgba(0,0,0,0.22)]"
+      style={{ maxWidth: 380 }}
     >
-      <blockquote className="m-0 italic">&ldquo;{quote}&rdquo;</blockquote>
-      <figcaption className="mt-3 text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--ink-muted)] not-italic">
+      <blockquote className="m-0 text-[18px] leading-[1.55] text-[var(--ink-soft)]">&ldquo;{quote}&rdquo;</blockquote>
+      <figcaption className="mt-6 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ink-muted)] not-italic">
         {attribution}
       </figcaption>
     </figure>

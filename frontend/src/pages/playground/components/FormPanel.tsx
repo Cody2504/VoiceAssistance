@@ -30,7 +30,7 @@ export function FormPanel({
         type="button"
         onClick={onRun}
         disabled={!canRun || running}
-        className="mt-1 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[var(--color-obsidian)] text-[14px] font-medium text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-[var(--color-chalk)] disabled:text-[var(--color-slate)]"
+        className="mt-1 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[var(--color-obsidian)] text-[14px] font-medium text-white transition duration-150 ease-out hover:bg-neutral-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[var(--color-chalk)] disabled:text-[var(--color-slate)] disabled:active:scale-100"
       >
         {running ? (
           <>

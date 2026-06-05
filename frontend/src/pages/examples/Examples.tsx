@@ -138,7 +138,7 @@ export default function Examples() {
             <button
               key={ex.id}
               onClick={() => navigate(ex.route)}
-              className="group relative h-[280px] w-full overflow-hidden rounded-[60px] border border-[var(--color-chalk)] bg-[var(--color-powder)]/60 text-left transition-all hover:rounded-[80px] hover:shadow-hairline"
+              className="group relative h-[280px] w-full overflow-hidden rounded-[60px] border border-[var(--color-chalk)] bg-[var(--color-powder)]/60 text-left transition-[border-radius,box-shadow] duration-200 ease-out hover:rounded-[80px] hover:shadow-hairline"
             >
               {/* Hover fill — full card color on hover */}
               <div

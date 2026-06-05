@@ -129,7 +129,7 @@ export default function Search() {
                     aria-label="Search by image"
                     title="Search by image"
                     onClick={() => fileRef.current?.click()}
-                    className="grid h-7 w-7 place-items-center rounded-[8px] border border-[var(--color-chalk)] text-[var(--color-gravel)] transition-all hover:rounded-[12px] hover:bg-[var(--color-powder)]"
+                    className="grid h-7 w-7 place-items-center rounded-[8px] border border-[var(--color-chalk)] text-[var(--color-gravel)] transition-[border-radius,background-color] duration-200 ease-out hover:rounded-[12px] hover:bg-[var(--color-powder)]"
                   >
                     <ImageIcon size={14} />
                   </button>
@@ -138,7 +138,7 @@ export default function Search() {
                     aria-label="Search by image entity"
                     title="Paste an image as a visual entity to search by"
                     onClick={() => fileRef.current?.click()}
-                    className="inline-flex h-7 items-center gap-1 rounded-[8px] border border-[var(--color-chalk)] px-2 text-[11px] text-[var(--color-gravel)] transition-all hover:rounded-[12px] hover:bg-[var(--color-powder)]"
+                    className="inline-flex h-7 items-center gap-1 rounded-[8px] border border-[var(--color-chalk)] px-2 text-[11px] text-[var(--color-gravel)] transition-[border-radius,background-color] duration-200 ease-out hover:rounded-[12px] hover:bg-[var(--color-powder)]"
                   >
                     <UserCircle2 size={12} />
                     @ Entity

@@ -85,7 +85,7 @@ export function ChatComposer({ attached, onRemove, onSend, onDropVideo, busy, pl
               type="button"
               onClick={() => setImage(null)}
               aria-label="Remove image"
-              className="absolute -right-2 -top-2 grid h-6 w-6 place-items-center rounded-full bg-neutral-900 text-white shadow hover:bg-neutral-700 focus-visible:outline-2 focus-visible:outline-signal"
+              className="absolute -right-2 -top-2 grid h-6 w-6 place-items-center rounded-full bg-neutral-900 text-white shadow transition duration-150 ease-out hover:bg-neutral-700 active:scale-90 focus-visible:outline-2 focus-visible:outline-signal"
             >
               <X size={13} />
             </button>
@@ -120,7 +120,7 @@ export function ChatComposer({ attached, onRemove, onSend, onDropVideo, busy, pl
         <div className="flex items-center gap-1">
           <button
             type="button"
-            className="rounded-full p-2 text-neutral-600 hover:bg-neutral-100"
+            className="rounded-full p-2 text-neutral-600 transition duration-150 ease-out hover:bg-neutral-100 active:scale-95"
             title="Attach (drag a video from the library here)"
           >
             <Plus size={16} />
@@ -128,7 +128,7 @@ export function ChatComposer({ attached, onRemove, onSend, onDropVideo, busy, pl
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="rounded-full p-2 text-neutral-600 hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-signal"
+            className="rounded-full p-2 text-neutral-600 transition duration-150 ease-out hover:bg-neutral-100 active:scale-95 focus-visible:outline-2 focus-visible:outline-signal"
             title="Attach an image — ask Jockey to find the matching scene"
             aria-label="Attach image"
           >
@@ -138,7 +138,7 @@ export function ChatComposer({ attached, onRemove, onSend, onDropVideo, busy, pl
             type="button"
             onClick={() => setChatMode((m) => !m)}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition",
+              "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition duration-150 ease-out active:scale-[0.97]",
               chatMode ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-700",
             )}
           >
@@ -151,7 +151,7 @@ export function ChatComposer({ attached, onRemove, onSend, onDropVideo, busy, pl
           type="button"
           onClick={submit}
           disabled={busy || !text.trim()}
-          className="grid h-9 w-9 place-items-center rounded-full bg-neutral-900 text-white transition hover:bg-neutral-700 disabled:bg-neutral-200 disabled:text-neutral-400"
+          className="grid h-9 w-9 place-items-center rounded-full bg-neutral-900 text-white transition duration-150 ease-out hover:bg-neutral-700 active:scale-95 disabled:bg-neutral-200 disabled:text-neutral-400 disabled:active:scale-100"
           aria-label="Send"
         >
           <Send size={14} />

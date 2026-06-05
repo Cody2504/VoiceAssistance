@@ -28,7 +28,7 @@ const MODELS: Model[] = [
 
 export function Models() {
   return (
-    <section id="models" className="mx-auto max-w-[1200px] px-6 py-24">
+    <section id="models" className="mx-auto max-w-[1200px] scroll-mt-24 px-6 py-24">
       <header className="mb-12 text-center">
         <h2 className="text-[40px] font-light leading-[1.08] tracking-[-1px] text-[var(--color-obsidian)] md:text-[48px]">
           Our stable of models.

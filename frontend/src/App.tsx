@@ -1,4 +1,5 @@
-import { Navigate, Route, Routes } from "react-router";
+import { useEffect } from "react";
+import { Navigate, Route, Routes, useLocation } from "react-router";
 
 import MainLayout from "@/layouts/MainLayout";
 import PublicLayout from "@/layouts/PublicLayout";
@@ -37,9 +38,38 @@ import SettingsLayout from "@/pages/settings/SettingsLayout";
 import BillingPlan from "@/pages/settings/BillingPlan";
 import { Organization, APIKeysPage, Usage, RateLimits, Webhooks, ProfilePage } from "@/pages/settings/SettingsStubs";
 
+/**
+ * Smoothly scroll to the #anchor in the URL after navigation. react-router does
+ * not do this on its own. We retry across a few frames because the target
+ * section may mount a tick after a cross-page navigation. scroll-mt-* on the
+ * targets keeps them clear of the sticky navbar.
+ */
+function ScrollToHash() {
+  const { pathname, hash } = useLocation();
+  useEffect(() => {
+    if (!hash) return;
+    const id = decodeURIComponent(hash.slice(1));
+    let raf = 0;
+    let tries = 0;
+    const tryScroll = () => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      } else if (tries++ < 20) {
+        raf = requestAnimationFrame(tryScroll);
+      }
+    };
+    raf = requestAnimationFrame(tryScroll);
+    return () => cancelAnimationFrame(raf);
+  }, [pathname, hash]);
+  return null;
+}
+
 export default function App() {
   return (
-    <Routes>
+    <>
+      <ScrollToHash />
+      <Routes>
       <Route element={<PublicLayout />}>
         <Route path="/" element={<Home />} />
         <Route path="/product/product-overview" element={<Landing />} />
@@ -103,6 +133,7 @@ export default function App() {
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+      </Routes>
+    </>
   );
 }

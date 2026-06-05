@@ -82,7 +82,7 @@ export function ExamplesPanel<P>({ examples, onSelect, kind }: Props<P>) {
           key={ex.id}
           type="button"
           onClick={() => onSelect(ex.preset)}
-          className="group relative h-[170px] w-full overflow-hidden rounded-[24px] border border-[var(--color-chalk)] bg-[var(--color-powder)]/60 text-left transition-all hover:shadow-hairline"
+          className="group relative h-[170px] w-full overflow-hidden rounded-[24px] border border-[var(--color-chalk)] bg-[var(--color-powder)]/60 text-left transition-[box-shadow] duration-200 ease-out hover:shadow-hairline"
         >
           {/* Inner hover-fill layer */}
           <div

@@ -69,10 +69,10 @@ export default function Solutions() {
           strategic asset your teams can actually use.
         </p>
         <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-          <a href="/#cta" className="inline-flex h-11 cursor-pointer items-center rounded-full bg-[var(--color-obsidian)] px-6 text-[14px] font-medium text-white transition hover:bg-neutral-800">
+          <a href="/#cta" className="inline-flex h-11 cursor-pointer items-center rounded-full bg-[var(--color-obsidian)] px-6 text-[14px] font-medium text-white transition duration-150 ease-out hover:bg-neutral-800 active:scale-[0.97]">
             Talk to sales
           </a>
-          <Link to="/signup" className="inline-flex h-11 cursor-pointer items-center rounded-full border border-[var(--color-chalk)] bg-white px-6 text-[14px] font-medium text-[var(--color-obsidian)] transition hover:bg-[var(--color-powder)]">
+          <Link to="/signup" className="inline-flex h-11 cursor-pointer items-center rounded-full border border-[var(--color-chalk)] bg-white px-6 text-[14px] font-medium text-[var(--color-obsidian)] transition duration-150 ease-out hover:bg-[var(--color-powder)] active:scale-[0.97]">
             Start free ↗
           </Link>
         </div>
@@ -155,10 +155,10 @@ export default function Solutions() {
           Start building with Jockey.
         </h2>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-          <Link to="/signup" className="inline-flex h-11 cursor-pointer items-center rounded-full bg-[var(--color-obsidian)] px-6 text-[14px] font-medium text-white transition hover:bg-neutral-800">
+          <Link to="/signup" className="inline-flex h-11 cursor-pointer items-center rounded-full bg-[var(--color-obsidian)] px-6 text-[14px] font-medium text-white transition duration-150 ease-out hover:bg-neutral-800 active:scale-[0.97]">
             Start free ↗
           </Link>
-          <a href="/#cta" className="inline-flex h-11 cursor-pointer items-center rounded-full border border-[var(--color-chalk)] bg-white px-6 text-[14px] font-medium text-[var(--color-obsidian)] transition hover:bg-[var(--color-powder)]">
+          <a href="/#cta" className="inline-flex h-11 cursor-pointer items-center rounded-full border border-[var(--color-chalk)] bg-white px-6 text-[14px] font-medium text-[var(--color-obsidian)] transition duration-150 ease-out hover:bg-[var(--color-powder)] active:scale-[0.97]">
             Talk to sales
           </a>
         </div>

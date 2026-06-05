@@ -188,7 +188,7 @@ function CreateIndexModal({
           <button
             onClick={submit}
             disabled={submitting}
-            className="rounded-full bg-[var(--color-obsidian)] px-4 py-1.5 text-[13px] text-white hover:bg-neutral-800 disabled:opacity-50"
+            className="rounded-full bg-[var(--color-obsidian)] px-4 py-1.5 text-[13px] text-white transition duration-150 ease-out hover:bg-neutral-800 active:scale-[0.97] disabled:opacity-50 disabled:active:scale-100"
           >
             {submitting ? "Creating…" : "Create"}
           </button>

@@ -41,7 +41,7 @@ export function UserMenu({ initials, onClose }: Props) {
   return (
     <div
       ref={ref}
-      className="absolute right-0 top-12 z-50 w-[360px] rounded-2xl border border-[var(--color-chalk)] bg-white p-5 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.18)]"
+      className="pop-in absolute right-0 top-12 z-50 w-[360px] origin-top-right rounded-2xl border border-[var(--color-chalk)] bg-white p-5 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.18)]"
     >
       <div className="mb-4 flex justify-center">
         <div className="grid h-12 w-12 place-items-center rounded-xl bg-[#fdd6b3] text-[15px] font-medium text-[var(--color-obsidian)]">
@@ -100,7 +100,7 @@ export function UserMenu({ initials, onClose }: Props) {
       <Link
         to="/pricing"
         onClick={onClose}
-        className="mb-3 flex h-11 w-full items-center justify-center gap-1.5 rounded-full bg-[var(--color-obsidian)] text-[14px] font-medium text-white transition hover:bg-neutral-800"
+        className="mb-3 flex h-11 w-full items-center justify-center gap-1.5 rounded-full bg-[var(--color-obsidian)] text-[14px] font-medium text-white transition duration-150 ease-out hover:bg-neutral-800 active:scale-[0.98]"
       >
         Upgrade ↑
       </Link>

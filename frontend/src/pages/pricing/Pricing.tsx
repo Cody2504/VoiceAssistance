@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { ArrowUpRight, Plus, Minus, Sparkles } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 import {
   FAMILIES,
@@ -59,7 +60,7 @@ function TierCard({ tier }: { tier: (typeof TIERS)[number] }) {
 
       <Link
         to={tier.cta.href}
-        className="mt-6 inline-flex h-10 w-fit items-center gap-1.5 rounded-full bg-[var(--ink)] px-5 text-sm font-semibold text-white transition hover:bg-black"
+        className="mt-6 inline-flex h-10 w-fit items-center gap-1.5 rounded-full bg-[var(--ink)] px-5 text-sm font-semibold text-white transition duration-150 ease-out hover:bg-black active:scale-[0.97]"
       >
         {tier.cta.label}
         <ArrowUpRight className="h-3.5 w-3.5" />
@@ -146,9 +147,17 @@ function FAQItem({ q, a }: { q: string; a: string }) {
           {open ? <Minus className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
         </span>
       </button>
-      {open && (
-        <p className="pb-5 pr-8 text-sm leading-relaxed text-[var(--ink-soft)]">{a}</p>
-      )}
+      {/* grid-rows 0fr→1fr animates the answer height smoothly (no snap) */}
+      <div
+        className={cn(
+          "grid transition-all duration-300 ease-out",
+          open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+        )}
+      >
+        <div className="overflow-hidden">
+          <p className="pb-5 pr-8 text-sm leading-relaxed text-[var(--ink-soft)]">{a}</p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -172,7 +181,7 @@ export default function Pricing() {
         <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
           <Link
             to="/pricing-calculator"
-            className="inline-flex h-11 items-center gap-1.5 rounded-full bg-[var(--ink)] px-6 text-sm font-semibold text-white transition hover:bg-black"
+            className="inline-flex h-11 items-center gap-1.5 rounded-full bg-[var(--ink)] px-6 text-sm font-semibold text-white transition duration-150 ease-out hover:bg-black active:scale-[0.97]"
           >
             Pricing Calculator
             <ArrowUpRight className="h-3.5 w-3.5" />
@@ -199,7 +208,7 @@ export default function Pricing() {
       </section>
 
       {/* Comparison */}
-      <section className="mt-20">
+      <section id="compare" className="mt-20 scroll-mt-24">
         <h2 className="text-center text-2xl font-semibold tracking-tight md:text-3xl">
           Compare plans side-by-side
         </h2>

@@ -34,6 +34,11 @@ class RefreshRequest(BaseModel):
     refresh_token: str
 
 
+class GoogleAuthRequest(BaseModel):
+    """The ID-token (JWT `credential`) returned by Google Identity Services."""
+    credential: str
+
+
 # -------- Videos --------
 VideoStatus = Literal["queued", "processing", "ready", "error"]
 VideoModality = Literal["video_audio", "video_only", "audio_only"]

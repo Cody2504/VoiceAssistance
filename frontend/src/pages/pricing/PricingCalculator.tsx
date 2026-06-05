@@ -300,7 +300,7 @@ export default function PricingCalculator() {
               </p>
               <Link
                 to="/signup"
-                className="mt-4 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-full bg-[var(--ink)] px-5 text-sm font-semibold text-white transition hover:bg-black"
+                className="mt-4 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-full bg-[var(--ink)] px-5 text-sm font-semibold text-white transition duration-150 ease-out hover:bg-black active:scale-[0.98]"
               >
                 Get started
                 <ArrowUpRight className="h-3.5 w-3.5" />

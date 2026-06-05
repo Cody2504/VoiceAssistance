@@ -192,7 +192,7 @@ export default function BillingPlan() {
               type="button"
               onClick={onUpgrade}
               disabled={redirecting}
-              className="inline-flex h-10 items-center gap-1 rounded-[12px] bg-[var(--color-obsidian)] px-[18px] text-[14px] font-medium text-white transition-all hover:rounded-[16px] hover:bg-neutral-800 disabled:opacity-60"
+              className="inline-flex h-10 items-center gap-1 rounded-[12px] bg-[var(--color-obsidian)] px-[18px] text-[14px] font-medium text-white transition-all duration-200 ease-out hover:rounded-[16px] hover:bg-neutral-800 active:scale-[0.98] disabled:opacity-60 disabled:active:scale-100"
             >
               {redirecting ? (
                 <>
@@ -221,7 +221,7 @@ export default function BillingPlan() {
           type="button"
           onClick={onUpgrade}
           disabled={redirecting}
-          className="inline-flex h-10 w-fit items-center gap-1 rounded-[12px] border border-[var(--color-obsidian)] bg-transparent px-[18px] text-[14px] font-medium text-[var(--color-obsidian)] transition-all hover:rounded-[16px] hover:bg-black/5 disabled:opacity-60"
+          className="inline-flex h-10 w-fit items-center gap-1 rounded-[12px] border border-[var(--color-obsidian)] bg-transparent px-[18px] text-[14px] font-medium text-[var(--color-obsidian)] transition-all duration-200 ease-out hover:rounded-[16px] hover:bg-black/5 active:scale-[0.98] disabled:opacity-60 disabled:active:scale-100"
         >
           {isPaid ? "Update payment method" : "Register payment method"}
         </button>

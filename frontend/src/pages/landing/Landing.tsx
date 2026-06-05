@@ -79,6 +79,7 @@ export default function Landing() {
       <Capabilities />
 
       <CapabilityDetail
+        id="search"
         eyebrow="Search"
         eyebrowIcon={<SearchIcon size={22} />}
         title="Find any scene in natural language."
@@ -99,6 +100,7 @@ export default function Landing() {
       />
 
       <CapabilityDetail
+        id="analyze"
         eyebrow="Analyze"
         eyebrowIcon={<AnalyzeIcon size={22} />}
         title="Summarize, analyze and describe."
@@ -117,6 +119,7 @@ export default function Landing() {
       />
 
       <CapabilityDetail
+        id="segment"
         eyebrow="Segment"
         eyebrowIcon={<EmbedIcon size={22} />}
         title="Turn video into labeled chapters."

@@ -458,7 +458,7 @@ export default function Segment() {
                     <div className="relative rounded-[6px] bg-neutral-50">
                       <div className="absolute right-2 top-2 z-10 flex items-center gap-1">
                         <label
-                          className="inline-flex cursor-pointer items-center gap-1 rounded-[7px] border border-neutral-700 bg-white px-1.5 py-1 text-[10px] text-neutral-900 shadow-[0_0_3px_0_rgba(29,28,27,0.4)] hover:bg-neutral-100"
+                          className="inline-flex cursor-pointer items-center gap-1 rounded-[7px] border border-neutral-700 bg-white px-1.5 py-1 text-[10px] text-neutral-900 shadow-[0_0_3px_0_rgba(29,28,27,0.4)] transition-colors hover:bg-neutral-100"
                           title="Attach a reference image (visual hint for the segmenter)"
                         >
                           <Paperclip size={12} />

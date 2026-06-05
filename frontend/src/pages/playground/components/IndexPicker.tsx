@@ -98,7 +98,7 @@ export function IndexPicker({ selectedIndexId, onSelect }: Props) {
               muted
               playsInline
               preload="auto"
-              className="absolute left-1/2 top-1/2 h-full w-full -translate-x-1/2 -translate-y-1/2 object-cover transition-transform duration-200 ease-in-out group-hover/panel:scale-[1.2]"
+              className="absolute left-1/2 top-1/2 h-full w-full -translate-x-1/2 -translate-y-1/2 object-cover transition-transform duration-200 ease-out group-hover/panel:scale-[1.2]"
             >
               <source src="/twelvelabs/index-loop.mp4" type="video/mp4" />
             </video>
@@ -111,7 +111,7 @@ export function IndexPicker({ selectedIndexId, onSelect }: Props) {
                   "inset -4px -4px 41px 0 rgba(253, 227, 162, 0.65), inset 4px 4px 41px 0 rgba(168, 230, 178, 0.65)",
               }}
             />
-            <span className="absolute left-1/2 top-1/2 inline-flex -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 rounded-[8px] bg-[var(--color-obsidian)] px-3 py-1.5 text-[13px] font-medium text-white transition-all duration-200 hover:rounded-[12px] hover:bg-neutral-800">
+            <span className="absolute left-1/2 top-1/2 inline-flex -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 rounded-[8px] bg-[var(--color-obsidian)] px-3 py-1.5 text-[13px] font-medium text-white transition-[border-radius,background-color] duration-200 ease-out hover:rounded-[12px] hover:bg-neutral-800">
               Select an index
               <FolderSearch size={14} />
             </span>
@@ -184,7 +184,7 @@ export function IndexPicker({ selectedIndexId, onSelect }: Props) {
                   <p>No indexes yet.</p>
                   <a
                     href="/indexes"
-                    className="rounded-full bg-[var(--color-obsidian)] px-4 py-1.5 text-[12px] text-white hover:bg-neutral-800"
+                    className="rounded-full bg-[var(--color-obsidian)] px-4 py-1.5 text-[12px] text-white transition duration-150 ease-out hover:bg-neutral-800 active:scale-[0.97]"
                   >
                     Create one →
                   </a>

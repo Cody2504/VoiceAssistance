@@ -84,7 +84,7 @@ export default function Recommend() {
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {result.results.map((r) => (
                   <Link key={r.video_id} to={`/video/${r.video_id}`} className="block">
-                    <Card className="flex h-full flex-col gap-2 p-4 hover:border-neutral-400">
+                    <Card className="flex h-full flex-col gap-2 p-4 transition-colors hover:border-neutral-400">
                       <div className="flex items-baseline justify-between gap-2">
                         <span className="truncate text-sm font-medium text-neutral-900" title={r.original_filename}>
                           {r.original_filename || "(untitled)"}

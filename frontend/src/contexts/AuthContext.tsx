@@ -15,6 +15,7 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: (credential: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -62,6 +63,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(u);
   }, []);
 
+  const loginWithGoogle = useCallback(async (credential: string) => {
+    const res = await axios.post(ROUTES.GOOGLE_AUTH, { credential }, { skipAuth: true });
+    const { user: u, tokens } = res.data.data;
+    persistTokens(tokens.access_token, tokens.refresh_token);
+    setUser(u);
+  }, []);
+
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEYS.ACCESS);
     localStorage.removeItem(TOKEN_KEYS.REFRESH);
@@ -70,8 +78,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, loading, isAuthenticated: !!user, login, register, logout }),
-    [user, loading, login, register, logout],
+    () => ({ user, loading, isAuthenticated: !!user, login, register, loginWithGoogle, logout }),
+    [user, loading, login, register, loginWithGoogle, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -8,15 +8,6 @@ import {
   Sparkles,
   Layers,
   Boxes,
-  Clapperboard,
-  Megaphone,
-  ShieldCheck,
-  Car,
-  Code2,
-  BookOpen,
-  Newspaper,
-  Users,
-  LifeBuoy,
   type LucideIcon,
 } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
@@ -24,13 +15,18 @@ import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
 /**
- * Marketing top bar, mimicking the TwelveLabs nav (topbar.png):
- *   logo · Platform ▾ · Pricing · Solutions ▾ · Build ▾ · Resources ▾ · Company ▾
+ * Marketing top bar (guest surface), mirroring the TwelveLabs nav:
+ *   logo · Platform ▾ · Pricing ▾ · Solutions ▾ · About Us
  *   · 🌐 · Playground (filled pill) · Talk to sales (outlined pill)
  *
- * Platform / Solutions / Build open mega-menus whose contents mirror, in order:
- *   twelvelabs.io/product/product-overview · /enterprise · /developer-hub
- * Hover- and keyboard-openable. Guest (logged-out) surface only.
+ * Menus open on hover/focus and animate in (fade + slide + subtle scale) so
+ * they glide rather than snap. prefers-reduced-motion neutralises the motion
+ * via the global transition guard in index.css.
+ *
+ *   - Platform  → "mega": two icon columns, items deep-link to product sections
+ *   - Pricing   → "list": plain text list (Compare Plans / Pricing Calculator)
+ *   - Solutions → "split": framer-style overlay, enterprise | industries split
+ *   - About Us  → plain link, no panel
  */
 
 interface MenuItem {
@@ -38,7 +34,6 @@ interface MenuItem {
   desc?: string;
   to: string;
   icon?: LucideIcon;
-  external?: boolean;
 }
 interface MenuGroup {
   heading?: string;
@@ -48,8 +43,8 @@ interface NavEntry {
   label: string;
   to?: string;
   groups?: MenuGroup[];
-  /** mega = wide multi-column panel; list = narrow single column */
-  variant?: "mega" | "list";
+  /** mega = wide icon grid · list = narrow text list · split = two-pane overlay */
+  variant?: "mega" | "list" | "split";
 }
 
 const NAV: NavEntry[] = [
@@ -67,64 +62,46 @@ const NAV: NavEntry[] = [
       {
         heading: "Capabilities",
         items: [
-          { label: "Search", desc: "Find any scene in natural language", to: "/product/product-overview", icon: Search },
-          { label: "Analyze", desc: "Summaries, chapters, Q&A", to: "/product/product-overview", icon: Sparkles },
-          { label: "Segment", desc: "Labeled, time-stamped chapters", to: "/product/product-overview", icon: Layers },
+          { label: "Search", desc: "Find any scene in natural language", to: "/product/product-overview#search", icon: Search },
+          { label: "Analyze", desc: "Summaries, chapters, Q&A", to: "/product/product-overview#analyze", icon: Sparkles },
+          { label: "Segment", desc: "Labeled, time-stamped chapters", to: "/product/product-overview#segment", icon: Layers },
         ],
       },
     ],
   },
-  { label: "Pricing", to: "/pricing" },
+  {
+    label: "Pricing",
+    variant: "list",
+    groups: [
+      {
+        items: [
+          { label: "Compare Plans", to: "/pricing#compare" },
+          { label: "Pricing Calculator", to: "/pricing-calculator" },
+        ],
+      },
+    ],
+  },
   {
     label: "Solutions",
-    variant: "mega",
+    variant: "split",
     groups: [
+      // left pane — enterprise
       {
-        heading: "By industry",
-        items: [
-          { label: "Media & Entertainment", desc: "Archive search, clip generation", to: "/solutions/media-and-entertainment", icon: Clapperboard },
-          { label: "Advertising", desc: "Contextual ad matching", to: "/solutions/advertising", icon: Megaphone },
-          { label: "Government & Security", desc: "Evidence & anomaly detection", to: "/solutions/government-and-security", icon: ShieldCheck },
-          { label: "Automotive", desc: "Scene understanding at scale", to: "/solutions/automotive", icon: Car },
-        ],
+        items: [{ label: "Enterprise Overview", to: "/solutions" }],
       },
+      // right pane — by industry
       {
-        heading: "Enterprise",
+        heading: "Solutions",
         items: [
-          { label: "Overview", desc: "Video AI for enterprises", to: "/solutions", icon: Boxes },
-          { label: "Case Studies", desc: "Real-world results", to: "/solutions#cases", icon: Newspaper },
-          { label: "Security", desc: "Secure by design", to: "/solutions#security", icon: ShieldCheck },
+          { label: "Media & Entertainment", to: "/solutions/media-and-entertainment" },
+          { label: "Advertising", to: "/solutions/advertising" },
+          { label: "Government & Security", to: "/solutions/government-and-security" },
+          { label: "Automotive", to: "/solutions/automotive" },
         ],
       },
     ],
   },
-  { label: "Build", to: "/build" },
-  {
-    label: "Resources",
-    variant: "list",
-    groups: [
-      {
-        items: [
-          { label: "Blog", to: "/#tutorials", icon: Newspaper },
-          { label: "Tutorials", to: "/#tutorials", icon: BookOpen },
-          { label: "Docs", to: "/build", icon: Code2 },
-        ],
-      },
-    ],
-  },
-  {
-    label: "Company",
-    variant: "list",
-    groups: [
-      {
-        items: [
-          { label: "About", to: "/", icon: Users },
-          { label: "Careers", to: "/", icon: Users },
-          { label: "Contact", to: "/#cta", icon: LifeBuoy },
-        ],
-      },
-    ],
-  },
+  { label: "About Us", to: "/" },
 ];
 
 const LANGS = [
@@ -185,7 +162,11 @@ export function NavBar() {
       )}
 
       <div className="relative mx-auto flex h-16 max-w-[1280px] items-center gap-7 px-6">
-        <Link to="/" className={cn("shrink-0", isDarkHome && "text-[#f4f2ea]")} aria-label="Jockey">
+        <Link
+          to="/"
+          className={cn("flex h-16 shrink-0 items-center", isDarkHome && "text-[#f4f2ea]")}
+          aria-label="Jockey"
+        >
           <Logo size="sm" />
         </Link>
 
@@ -218,13 +199,22 @@ export function NavBar() {
                   {entry.label}
                   <ChevronDown
                     size={14}
-                    className={cn("transition-transform", open === entry.label && "rotate-180")}
+                    className={cn("transition-transform duration-200", open === entry.label && "rotate-180")}
                   />
                 </button>
 
-                {open === entry.label && (
-                  <MegaPanel entry={entry} onNavigate={() => setOpen(null)} />
-                )}
+                {/* always mounted so it can animate both in and out */}
+                <div
+                  aria-hidden={open !== entry.label}
+                  className={cn(
+                    "absolute left-0 top-full z-50 origin-top pt-2 transition duration-200 ease-out",
+                    open === entry.label
+                      ? "translate-y-0 scale-100 opacity-100"
+                      : "pointer-events-none -translate-y-1 scale-[0.98] opacity-0"
+                  )}
+                >
+                  <MenuPanel entry={entry} onNavigate={() => setOpen(null)} />
+                </div>
               </div>
             ) : (
               <Link
@@ -266,23 +256,29 @@ export function NavBar() {
               <Globe size={16} />
               <ChevronDown size={13} />
             </button>
-            {langOpen && (
-              <div className="absolute right-0 top-full z-50 mt-1 w-40 rounded-xl border border-[var(--color-chalk)] bg-white p-1 shadow-[0_20px_50px_-25px_rgba(0,0,0,0.4)]">
-                {LANGS.map((l) => (
-                  <button
-                    key={l.code}
-                    onClick={() => { void i18n.changeLanguage(l.code); setLangOpen(false); }}
-                    className={cn(
-                      "flex w-full cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-left text-[13px] transition hover:bg-[var(--color-powder)]",
-                      currentLang.code === l.code ? "text-[var(--color-obsidian)]" : "text-[var(--color-gravel)]"
-                    )}
-                  >
-                    {l.label}
-                    {currentLang.code === l.code && <span className="text-[var(--color-accent-blue)]">●</span>}
-                  </button>
-                ))}
-              </div>
-            )}
+            <div
+              aria-hidden={!langOpen}
+              className={cn(
+                "absolute right-0 top-full z-50 mt-1 w-40 origin-top-right rounded-xl border border-[var(--color-chalk)] bg-white p-1 shadow-[0_20px_50px_-25px_rgba(0,0,0,0.4)] transition duration-200 ease-out",
+                langOpen
+                  ? "translate-y-0 scale-100 opacity-100"
+                  : "pointer-events-none -translate-y-1 scale-[0.98] opacity-0"
+              )}
+            >
+              {LANGS.map((l) => (
+                <button
+                  key={l.code}
+                  onClick={() => { void i18n.changeLanguage(l.code); setLangOpen(false); }}
+                  className={cn(
+                    "flex w-full cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-left text-[13px] transition hover:bg-[var(--color-powder)]",
+                    currentLang.code === l.code ? "text-[var(--color-obsidian)]" : "text-[var(--color-gravel)]"
+                  )}
+                >
+                  {l.label}
+                  {currentLang.code === l.code && <span className="text-[var(--color-accent-blue)]">●</span>}
+                </button>
+              ))}
+            </div>
           </div>
 
           {user ? (
@@ -325,59 +321,96 @@ export function NavBar() {
           )}
         </div>
       </div>
-
-      {/* hovering over a menu's panel keeps it open */}
     </header>
   );
 }
 
-function MegaPanel({ entry, onNavigate }: { entry: NavEntry; onNavigate: () => void }) {
+const CARD =
+  "rounded-2xl border border-[var(--color-chalk)] bg-white p-3 shadow-[0_30px_80px_-35px_rgba(0,0,0,0.45)]";
+const EYEBROW =
+  "px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-slate)]";
+
+function MenuPanel({ entry, onNavigate }: { entry: NavEntry; onNavigate: () => void }) {
+  if (entry.variant === "split") return <SplitPanel entry={entry} onNavigate={onNavigate} />;
+
   const isMega = entry.variant === "mega";
   return (
-    <div
-      className={cn(
-        "absolute left-0 top-full z-50 mt-1 rounded-2xl border border-[var(--color-chalk)] bg-white p-3 shadow-[0_30px_80px_-35px_rgba(0,0,0,0.45)]",
-        isMega ? "w-[560px]" : "w-56"
-      )}
-    >
-      <div className={cn("grid gap-x-3 gap-y-1", isMega ? "grid-cols-2" : "grid-cols-1")}>
+    <div className={cn(CARD, isMega ? "w-[560px]" : "w-56")}>
+      <div className={cn("grid gap-x-3", isMega ? "grid-cols-2 gap-y-1" : "grid-cols-1")}>
         {entry.groups!.map((group, gi) => (
           <div key={gi}>
-            {group.heading && (
-              <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-slate)]">
-                {group.heading}
-              </p>
+            {group.heading && <p className={EYEBROW}>{group.heading}</p>}
+            {group.items.map((item) =>
+              isMega ? (
+                <RichItem key={item.label + item.to} item={item} onNavigate={onNavigate} />
+              ) : (
+                <TextItem key={item.label + item.to} item={item} onNavigate={onNavigate} />
+              )
             )}
-            {group.items.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.label + item.to}
-                  to={item.to}
-                  onClick={onNavigate}
-                  className="group flex items-start gap-3 rounded-xl px-3 py-2 transition hover:bg-[var(--color-powder)]"
-                >
-                  {Icon && (
-                    <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--color-chalk)] bg-[var(--color-eggshell)] text-[var(--color-obsidian)] transition group-hover:border-[var(--color-accent-blue)] group-hover:text-[var(--color-accent-blue)]">
-                      <Icon size={16} />
-                    </span>
-                  )}
-                  <span>
-                    <span className="block text-[14px] font-medium text-[var(--color-obsidian)]">
-                      {item.label}
-                    </span>
-                    {item.desc && (
-                      <span className="block text-[12px] leading-snug text-[var(--color-gravel)]">
-                        {item.desc}
-                      </span>
-                    )}
-                  </span>
-                </Link>
-              );
-            })}
           </div>
         ))}
       </div>
     </div>
+  );
+}
+
+/** Framer-style "SOLUTIONS-OVERLAY": enterprise pane | divider | industries pane. */
+function SplitPanel({ entry, onNavigate }: { entry: NavEntry; onNavigate: () => void }) {
+  const [left, right] = entry.groups!;
+  return (
+    <div className={cn(CARD, "w-[600px]")}>
+      <div className="flex items-stretch">
+        <div className="w-[214px] shrink-0 pr-2">
+          {left.heading && <p className={EYEBROW}>{left.heading}</p>}
+          {left.items.map((item) => (
+            <TextItem key={item.label + item.to} item={item} onNavigate={onNavigate} />
+          ))}
+        </div>
+        <div aria-hidden className="mx-1 w-px self-stretch bg-[var(--color-chalk)]" />
+        <div className="flex-1 pl-2">
+          {right.heading && <p className={EYEBROW}>{right.heading}</p>}
+          {right.items.map((item) => (
+            <TextItem key={item.label + item.to} item={item} onNavigate={onNavigate} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Icon + title + description row (Platform mega menu). */
+function RichItem({ item, onNavigate }: { item: MenuItem; onNavigate: () => void }) {
+  const Icon = item.icon;
+  return (
+    <Link
+      to={item.to}
+      onClick={onNavigate}
+      className="group flex items-start gap-3 rounded-xl px-3 py-2 transition hover:bg-[var(--color-powder)]"
+    >
+      {Icon && (
+        <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--color-chalk)] bg-[var(--color-eggshell)] text-[var(--color-obsidian)] transition group-hover:border-[var(--color-accent-blue)] group-hover:text-[var(--color-accent-blue)]">
+          <Icon size={16} />
+        </span>
+      )}
+      <span>
+        <span className="block text-[14px] font-medium text-[var(--color-obsidian)]">{item.label}</span>
+        {item.desc && (
+          <span className="block text-[12px] leading-snug text-[var(--color-gravel)]">{item.desc}</span>
+        )}
+      </span>
+    </Link>
+  );
+}
+
+/** Plain text row (Pricing list + Solutions split). */
+function TextItem({ item, onNavigate }: { item: MenuItem; onNavigate: () => void }) {
+  return (
+    <Link
+      to={item.to}
+      onClick={onNavigate}
+      className="block rounded-xl px-3 py-2.5 text-[14px] font-medium text-[var(--color-obsidian)]/85 transition hover:bg-[var(--color-powder)] hover:text-[var(--color-obsidian)]"
+    >
+      {item.label}
+    </Link>
   );
 }

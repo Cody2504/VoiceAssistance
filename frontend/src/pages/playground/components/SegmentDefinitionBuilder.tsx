@@ -298,7 +298,7 @@ export function SegmentBuilderModal({ open, value, onChange, onClose }: SegmentB
           <button
             type="button"
             onClick={apply}
-            className="rounded-lg bg-[var(--color-obsidian)] px-3 py-1.5 text-sm text-white hover:opacity-90 focus-visible:outline-2 focus-visible:outline-signal"
+            className="rounded-lg bg-[var(--color-obsidian)] px-3 py-1.5 text-sm text-white transition duration-150 ease-out hover:opacity-90 active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-signal"
           >
             Apply
           </button>

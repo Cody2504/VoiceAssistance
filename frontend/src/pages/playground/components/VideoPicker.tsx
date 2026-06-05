@@ -219,7 +219,7 @@ export function VideoPickerModal({
               <Link
                 to="/assets"
                 onClick={onClose}
-                className="mt-2 inline-flex items-center gap-2 rounded-full bg-neutral-900 px-4 py-2 text-[13px] font-medium text-white transition hover:bg-neutral-700"
+                className="mt-2 inline-flex items-center gap-2 rounded-full bg-neutral-900 px-4 py-2 text-[13px] font-medium text-white transition duration-150 ease-out hover:bg-neutral-700 active:scale-[0.97]"
               >
                 Open Assets <span aria-hidden>→</span>
               </Link>
