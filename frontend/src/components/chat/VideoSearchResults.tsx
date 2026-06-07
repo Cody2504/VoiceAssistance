@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 
 import { VideoThumb } from "@/components/video/VideoThumb";
+import { formatSeconds } from "@/lib/utils";
 
 export interface ClipResult {
   video_id: string;
@@ -18,6 +19,9 @@ export interface ClipResult {
    * shot, shows shot duration, click plays from t_start. Default "clip".
    */
   display_mode?: "parent_video" | "clip";
+  /** Relevance score 0..1 (grounding moments) — shown as a % beneath the clip
+   *  so the user can compare the top-k candidates (top-1 isn't always right). */
+  score?: number;
 }
 
 interface Props {
@@ -58,6 +62,16 @@ export function VideoSearchResults({ clips, visible = 3, onPreview }: Props) {
                 <p className="truncate text-xs text-neutral-700" title={c.original_filename}>
                   {c.original_filename}
                 </p>
+              )}
+              {!isParent && c.score !== undefined && (
+                <div className="flex items-center justify-between gap-1 px-0.5 text-xs">
+                  <span className="tabular-nums text-neutral-700">
+                    {formatSeconds(c.t_start)}–{formatSeconds(c.t_end)}
+                  </span>
+                  <span className="shrink-0 font-medium text-emerald-600">
+                    {Math.round(c.score * 100)}%
+                  </span>
+                </div>
               )}
             </div>
           );

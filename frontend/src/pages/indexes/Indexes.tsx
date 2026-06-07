@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { Info, ArrowRight, Search as SearchIcon, ChevronDown, X, Play, MoreVertical } from "lucide-react";
 import { PillButton } from "@/components/ui/PillButton";
-import { listVideos, type VideoSummary } from "@/apis/videos.api";
-import { createIndex, deleteIndex, listIndexes, type IndexSummary } from "@/apis/indexes.api";
+import { createIndex, deleteIndex, type IndexSummary } from "@/apis/indexes.api";
+import { useVideosQuery, useIndexesQuery, qk } from "@/apis/queries";
+import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
 type SortKey = "recent" | "name" | "duration";
@@ -203,8 +205,10 @@ const VARIANT_ROTATION: IndexCardData["variant"][] = [
 ];
 
 export default function Indexes() {
-  const [videos, setVideos] = useState<VideoSummary[]>([]);
-  const [indexes, setIndexes] = useState<IndexSummary[]>([]);
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const { data: videos = [] } = useVideosQuery();
+  const { data: indexes = [] } = useIndexesQuery();
   const [filter, setFilter] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("recent");
   const [bannerVisible, setBannerVisible] = useState(true);
@@ -212,17 +216,8 @@ export default function Indexes() {
   const [createOpen, setCreateOpen] = useState(false);
 
   const reloadIndexes = useCallback(() => {
-    listIndexes()
-      .then(setIndexes)
-      .catch(() => setIndexes([]));
-  }, []);
-
-  useEffect(() => {
-    listVideos()
-      .then(setVideos)
-      .catch(() => setVideos([]));
-    reloadIndexes();
-  }, [reloadIndexes]);
+    qc.invalidateQueries({ queryKey: qk.indexes(user?.id) });
+  }, [qc, user?.id]);
 
   const handleDelete = useCallback(
     async (id: string) => {
@@ -366,9 +361,7 @@ export default function Indexes() {
       <CreateIndexModal
         open={createOpen}
         onClose={() => setCreateOpen(false)}
-        onCreated={(created) => {
-          setIndexes((prev) => [created, ...prev]);
-        }}
+        onCreated={() => reloadIndexes()}
       />
 
       <div className="flex items-center justify-center gap-1 pb-10 text-[13px] text-[var(--color-gravel)]">

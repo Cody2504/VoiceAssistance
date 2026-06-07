@@ -173,14 +173,17 @@ export function ChatThread({ initialAttached = [], scope }: Props) {
                 />
               )}
 
-              {t.resultClips.length > 0 && (
+              {/* Final output (clips / summary cards) only after the agent
+                  finishes thinking — otherwise tool_result events render the
+                  answer mid-stream, before the later thinking steps appear. */}
+              {turnComplete && t.resultClips.length > 0 && (
                 <VideoSearchResults
                   clips={t.resultClips}
                   onPreview={(videoId, time) => setPreview({ videoId, t: time })}
                 />
               )}
 
-              {t.summaries.length > 0 && (
+              {turnComplete && t.summaries.length > 0 && (
                 <div className="divide-y divide-neutral-100">
                   {t.summaries.map((s, j) => (
                     <VideoSummaryCard
@@ -230,6 +233,24 @@ function extractClips(tool: string, result: unknown): ClipResult[] {
   const r = result as Record<string, unknown>;
   const videoId = (r.video_id as string) ?? "";
   if (!(tool.includes("ground") || tool.includes("search"))) return [];
+
+  // ground_video returns time-range `moments` (no shots). Surface the TOP-3 as
+  // clickable clip cards — the top-1 isn't always the right moment, so the user
+  // can scan candidates. Each plays from its t_start; score shown as a %.
+  if (tool.includes("ground")) {
+    const moments = (r.moments as Array<Record<string, unknown>>) ?? [];
+    return moments
+      .filter((m) => typeof m.t_start === "number" && typeof m.t_end === "number")
+      .sort((a, b) => (typeof b.score === "number" ? b.score : 0) - (typeof a.score === "number" ? a.score : 0))
+      .slice(0, 3)
+      .map((m) => ({
+        video_id: videoId,
+        t_start: m.t_start as number,
+        t_end: m.t_end as number,
+        score: typeof m.score === "number" ? (m.score as number) : undefined,
+        display_mode: "clip" as const,
+      }));
+  }
 
   const shots = (r.shots as Array<Record<string, unknown>>) ?? [];
   // group_by is the LLM-chosen presentation hint coming from the corpus search.

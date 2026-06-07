@@ -113,6 +113,18 @@ body {
   border-radius: 4px;
 }
 
+/* Text fields indicate focus via the caret (and their own border/ring); the loud
+   signal outline above is meant for buttons/links/keyboard nav, not inputs. Keep
+   it off text inputs so the chat composer + filters focus cleanly — no blue ring.
+   This rule is unlayered like the one above, so it overrides it for inputs. */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[contenteditable="true"]:focus-visible {
+  outline: none;
+  border-radius: revert;
+}
+
 /* a11y: honor reduced-motion — disable non-essential animation/transition. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

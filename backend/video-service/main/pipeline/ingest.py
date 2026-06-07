@@ -187,7 +187,15 @@ def _ingest_with_video(local_path: str, video_id: UUID, mod, scratch: str) -> In
     # well-edited content while keeping a predictable grid for the summarizer.
     from main.encoders.indexer import detect_shots, _get_video_duration, extract_frames  # type: ignore
     duration = mod.duration_s or _get_video_duration(local_path)
-    shots = detect_shots(local_path, refine_with_speech=False)
+    if s.shot_detector == "transnet":
+        try:
+            from main.segmenters.transnet import detect_shots_transnet
+            shots = detect_shots_transnet(local_path, s.transnet_weights, device=_torch_device())
+        except Exception as exc:  # noqa: BLE001
+            log.warning("ingest:transnet failed (%s) — falling back to PySceneDetect", exc)
+            shots = detect_shots(local_path, refine_with_speech=False)
+    else:
+        shots = detect_shots(local_path, refine_with_speech=False)
     segments = _align_segments_to_shots(duration, shots, segment_len=SEGMENT_LEN_SEC)
     log.info("ingest:visual segments=%d duration=%.1fs", len(segments), duration)
 
@@ -249,15 +257,22 @@ def _ingest_with_video(local_path: str, video_id: UUID, mod, scratch: str) -> In
         fallback=lambda: [0.0 for _ in segments],
     )
 
-    # Lighthouse full-video CLIP+SlowFast features (cached to S3 for query-time
-    # MR / highlights). Encoded once over the whole file; query time only runs
-    # the DETR head on slices.
-    lighthouse_visual_key = _encode_lighthouse_visual(local_path, video_id, scratch)
+    # Full-video visual features for query-time MR / highlights, cached to S3.
+    # IV2 path (grounding_backend=iv2): InternVideo2 [n,512] -> SG-DETR head.
+    # Legacy path: Lighthouse CLIP+SlowFast -> CG-DETR. Encoded once over the
+    # whole file; query time only runs the head on slices.
+    if s.grounding_backend == "iv2":
+        lighthouse_visual_key = _encode_iv2_visual(local_path, video_id, scratch)
+    else:
+        lighthouse_visual_key = _encode_lighthouse_visual(local_path, video_id, scratch)
 
     # Audio CLAP features (cached) — only when audio is present. Used by the
-    # Ground tile's audio fallback (rare for video+audio, normal for audio-only).
+    # Ground/Highlights audio fallback. Skipped under grounding_backend=iv2 for
+    # video+audio: IV2+SG-DETR already serves visual Highlights, so loading the
+    # heavy CLIP+SlowFast/CG-DETR LighthouseService just to cache unused CLAP is
+    # wasteful (audio-ONLY clips still go through the audio branch / lighthouse).
     lighthouse_audio_key: str | None = None
-    if mod.has_audio:
+    if mod.has_audio and s.grounding_backend != "iv2":
         lighthouse_audio_key = _encode_lighthouse_audio(local_path, video_id, scratch)
 
     return IngestArtifacts(
@@ -489,6 +504,19 @@ def _score_toxic(transcripts):
 # ---------------------------------------------------------------------------
 # Lighthouse feature pre-compute & S3 cache
 # ---------------------------------------------------------------------------
+
+
+def _encode_iv2_visual(local_path: str, video_id: UUID, scratch: str) -> str:
+    """Encode the whole video with InternVideo2 (`[n_clips, 512]`, no TEF) and
+    cache to S3 for query-time SG-DETR Ground/Highlights. TEF is appended at
+    query time inside the grounding service."""
+    from main.services.iv2_grounding_service import get_iv2_grounding
+    s = get_settings()
+    feats = get_iv2_grounding().encode_video_to_features(local_path)
+    key = f"features/{video_id}/iv2/visual.npy"
+    _put_npy_to_s3(feats, s.minio_bucket_videos, key, scratch)
+    log.info("ingest:iv2_visual cached clips=%d key=%s", feats.shape[0], key)
+    return key
 
 
 def _encode_lighthouse_visual(local_path: str, video_id: UUID, scratch: str) -> str:

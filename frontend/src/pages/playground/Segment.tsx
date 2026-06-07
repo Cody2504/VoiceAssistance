@@ -365,10 +365,13 @@ export default function Segment() {
                 <div>
                   {video && streamUrl ? (
                     <div className="overflow-hidden rounded-[14px] bg-neutral-200">
+                      {/* Form-panel preview only — the results player below owns
+                          the timeline playhead. If this one also drove `playhead`,
+                          the two players (both auto-played by seekTo) would fight
+                          and the timeline marker would ping-pong on every seek. */}
                       <VideoPlayer
                         ref={formPlayer}
                         src={streamUrl}
-                        onTimeUpdate={(t) => setPlayhead(t)}
                       />
                     </div>
                   ) : (
@@ -660,7 +663,6 @@ export default function Segment() {
                   playhead={playhead}
                   onSeek={(t) => {
                     player.current?.seekTo(t);
-                    formPlayer.current?.seekTo(t);
                     setPlayhead(t);
                   }}
                   activePerTrack={activeStartByTrack}
@@ -680,7 +682,6 @@ export default function Segment() {
                   activeByTrack={activeByTrack}
                   onSeek={(t) => {
                     player.current?.seekTo(t);
-                    formPlayer.current?.seekTo(t);
                     setPlayhead(t);
                   }}
                 />

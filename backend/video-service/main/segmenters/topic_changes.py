@@ -1,8 +1,12 @@
 """Cut 1 / Task 11.6 — topic_changes segmenter.
 
-Detects when the subject of the video shifts by looking at consecutive shot
-ViCLIP embeddings (already cached in Qdrant by the indexing pipeline). Pure
-CPU — cosine on 768-d float vectors, no model load.
+Splits a video into topic/step segments. The PRIMARY signal is SEMANTIC: an LLM
+reads the ordered per-shot captions + transcripts and marks where the activity /
+step / subject changes — so fixed-camera procedural videos (cooking demos,
+lectures, how-tos) split by step even when the picture barely changes. The
+FALLBACK (no API key, no text, single shot, or LLM failure) is the original
+VISUAL signal below: cosine on consecutive shot ViCLIP embeddings (768-d float,
+CPU, no model load).
 
 Algorithm
 ---------
@@ -142,6 +146,112 @@ def _segment_from_shots(
     return {"t_start": t_start, "t_end": t_end, "metadata": metadata}
 
 
+def _visual_groups(shots: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
+    """Fallback grouping: split where adjacent ViCLIP cosine drops below the
+    threshold (the original visual-only behavior). Used when there is no LLM
+    available / no text to read."""
+    groups: list[list[dict[str, Any]]] = [[shots[0]]]
+    for prev, curr in zip(shots, shots[1:]):
+        sim = _cosine(prev.get("vector") or [], curr.get("vector") or [])
+        if sim < TOPIC_SIM_THRESHOLD:
+            groups.append([curr])
+        else:
+            groups[-1].append(curr)
+    if MIN_SHOTS_PER_TOPIC > 1:
+        merged: list[list[dict[str, Any]]] = []
+        for g in groups:
+            if merged and len(g) < MIN_SHOTS_PER_TOPIC:
+                merged[-1].extend(g)
+            else:
+                merged.append(g)
+        groups = merged
+    return groups
+
+
+def _groups_from_boundaries(
+    shots: list[dict[str, Any]], starts: list[int]
+) -> list[list[dict[str, Any]]]:
+    """Build contiguous shot groups from a sorted list of group-START indices."""
+    groups: list[list[dict[str, Any]]] = []
+    for gi, start in enumerate(starts):
+        end = starts[gi + 1] if gi + 1 < len(starts) else len(shots)
+        chunk = shots[start:end]
+        if chunk:
+            groups.append(chunk)
+    return groups
+
+
+def _semantic_boundaries(shots: list[dict[str, Any]], api_key: str) -> list[int] | None:
+    """Ask the LLM where topics/steps change based on per-shot captions + ASR.
+
+    Returns sorted group-START indices (always beginning with 0), or None on any
+    failure / empty text so the caller falls back to visual-similarity. This is
+    the signal that splits FIXED-CAMERA procedural videos (e.g. a cooking demo:
+    rice prep -> rolling -> cutting -> serving) that visual similarity can't see
+    because the picture barely changes between steps.
+    """
+    import json
+    import os
+
+    lines: list[str] = []
+    for i, sh in enumerate(shots):
+        cap = (sh.get("chunk_caption") or "").strip()
+        asr = (sh.get("asr_text") or "").strip()
+        piece = cap
+        if asr:
+            piece = f"{cap} | transcript: {asr}" if cap else f"transcript: {asr}"
+        lines.append(f"{i}: {piece[:300]}")
+    joined = "\n".join(line for line in lines if line.split(": ", 1)[-1].strip())
+    if not joined.strip():
+        return None
+
+    model = os.environ.get("VLM_MODEL", "qwen/qwen3-vl-8b-instruct")
+    try:
+        from openai import OpenAI
+
+        client = OpenAI(api_key=api_key, base_url="https://openrouter.ai/api/v1")
+        resp = client.chat.completions.create(
+            model=model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You split a video into topics/steps from per-shot captions and "
+                        "transcripts. A NEW topic begins when the activity, step, or subject "
+                        "changes -- EVEN IF the scene/camera looks identical (e.g. a cooking "
+                        "demo: rice prep, rolling, cutting and serving are distinct steps). "
+                        "Group consecutive shots of the same step together; do not over-split. "
+                        "Return ONLY a JSON array of the shot indices where a new topic begins, "
+                        "always including 0, strictly increasing and within range."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        f"{len(shots)} shots (index: caption | transcript):\n{joined[:6000]}\n\n"
+                        "Boundary indices as a JSON array, e.g. [0, 3, 7]."
+                    ),
+                },
+            ],
+            max_tokens=120,
+            temperature=0.1,
+        )
+        raw = (resp.choices[0].message.content or "").strip()
+        lo, hi = raw.find("["), raw.rfind("]")
+        if lo == -1 or hi <= lo:
+            return None
+        arr = json.loads(raw[lo : hi + 1])
+        idxs = sorted(
+            {int(x) for x in arr if isinstance(x, (int, float)) and 0 <= int(x) < len(shots)}
+        )
+        if 0 not in idxs:
+            idxs = [0, *idxs]
+        return idxs or None
+    except Exception as exc:  # noqa: BLE001
+        log.warning("topic_changes:semantic split failed: %s -- using visual fallback", exc)
+        return None
+
+
 def segment(video_id: UUID, definition: SegmentDefinition) -> list[dict[str, Any]]:
     shots = read_shots(video_id, with_vectors=True)
     if not shots:
@@ -151,29 +261,20 @@ def segment(video_id: UUID, definition: SegmentDefinition) -> list[dict[str, Any
     want_summary = "topic_summary" in field_names
     want_topic = "topic" in field_names
 
-    # Group shots into contiguous topic runs. Boundary lands between i and
-    # i+1 when adjacent cosine similarity falls below the threshold.
-    groups: list[list[dict[str, Any]]] = [[shots[0]]]
-    for prev, curr in zip(shots, shots[1:]):
-        sim = _cosine(prev.get("vector") or [], curr.get("vector") or [])
-        if sim < TOPIC_SIM_THRESHOLD:
-            groups.append([curr])
-        else:
-            groups[-1].append(curr)
-
-    # Optional: merge runs shorter than MIN_SHOTS_PER_TOPIC into the previous
-    # group so we don't emit jittery single-shot topics on montage footage.
-    if MIN_SHOTS_PER_TOPIC > 1:
-        merged: list[list[dict[str, Any]]] = []
-        for g in groups:
-            if merged and len(g) < MIN_SHOTS_PER_TOPIC:
-                merged[-1].extend(g)
-            else:
-                merged.append(g)
-        groups = merged
-
     s = get_settings()
     api_key = (s.openrouter_api_key or "").strip()
+
+    # PRIMARY: semantic boundaries from captions/ASR — splits procedural /
+    # fixed-camera videos by STEP even when the visuals barely change (a cooking
+    # demo, a lecture, a how-to). Falls back to visual-similarity grouping when
+    # there's no API key, no text, a single shot, or the LLM call fails.
+    groups: list[list[dict[str, Any]]] | None = None
+    if api_key and len(shots) > 1:
+        bounds = _semantic_boundaries(shots, api_key)
+        if bounds:
+            groups = _groups_from_boundaries(shots, bounds)
+    if not groups:
+        groups = _visual_groups(shots)
     needs_llm = (want_summary or want_topic) and api_key
     if not needs_llm or len(groups) == 0:
         return [_segment_from_shots(g, want_summary, want_topic, api_key) for g in groups]

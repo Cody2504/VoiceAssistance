@@ -11,6 +11,7 @@ export const ROUTES = {
   VIDEO: (id: string) => `/videos/${id}`,
   VIDEO_STREAM: (id: string) => `/videos/${id}/stream`,
   VIDEO_THUMB: (id: string, idx: number) => `/videos/${id}/thumb/${idx}`,
+  VIDEO_POSTER: (id: string) => `/videos/${id}/poster`,
   VIDEO_GROUND: (id: string) => `/videos/${id}/ground`,
   VIDEO_SEARCH: (id: string) => `/videos/${id}/search`,
   VIDEO_QA: (id: string) => `/videos/${id}/qa`,

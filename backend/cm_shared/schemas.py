@@ -49,6 +49,7 @@ class VideoOut(BaseModel):
     user_id: UUID
     original_filename: str
     duration_s: float | None = None
+    size_bytes: int | None = None
     status: VideoStatus
     shot_count: int | None = None
     error: str | None = None

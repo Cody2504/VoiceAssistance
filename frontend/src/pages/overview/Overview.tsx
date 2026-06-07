@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router";
 import {
   Upload,
@@ -10,7 +11,9 @@ import {
 } from "lucide-react";
 import { PillButton } from "@/components/ui/PillButton";
 import { SearchIcon, AnalyzeIcon, EmbedIcon } from "@/components/brand/FeatureIcon";
-import { listVideos, uploadVideo, type VideoSummary } from "@/apis/videos.api";
+import { uploadVideo } from "@/apis/videos.api";
+import { useVideosQuery, qk } from "@/apis/queries";
+import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
 interface FeaturePanelData {
@@ -150,17 +153,13 @@ function fmtDuration(totalSec: number): string {
 
 export default function Overview() {
   const navigate = useNavigate();
-  const [videos, setVideos] = useState<VideoSummary[]>([]);
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const { data: videos = [] } = useVideosQuery();
   const [bannerVisible, setBannerVisible] = useState(true);
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  useEffect(() => {
-    listVideos()
-      .then(setVideos)
-      .catch(() => setVideos([]));
-  }, []);
 
   const totalDuration = videos.reduce((sum, v) => sum + (v.duration_s ?? 0), 0);
 
@@ -171,8 +170,7 @@ export default function Overview() {
       for (const f of Array.from(files)) {
         await uploadVideo(f);
       }
-      const next = await listVideos();
-      setVideos(next);
+      await qc.invalidateQueries({ queryKey: qk.videos(user?.id) });
     } catch (e) {
       console.error("upload failed", e);
     } finally {

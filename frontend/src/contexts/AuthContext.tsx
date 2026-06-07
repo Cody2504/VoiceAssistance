@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import axios from "axios";
 
 import { ROUTES, TOKEN_KEYS } from "@/constants/routes";
+import { QUERY_PERSIST_KEY } from "@/lib/queryClient";
 
 export interface User {
   id: string;
@@ -73,6 +74,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEYS.ACCESS);
     localStorage.removeItem(TOKEN_KEYS.REFRESH);
+    // Drop the persisted query cache so the next user on this browser can't see
+    // the previous session's cached lists (the hard reload clears in-memory).
+    localStorage.removeItem(QUERY_PERSIST_KEY);
     setUser(null);
     window.location.href = "/login";
   }, []);

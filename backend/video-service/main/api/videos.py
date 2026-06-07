@@ -46,19 +46,48 @@ async def upload_video(
     # Keep the original extension so downstream ffprobe / decoders pick the
     # right container — using `.mp4` for an `.mp3` upload would confuse them.
     key = f"{user_id}/{video_id}{ext}"
+    is_video = ext in _VIDEO_EXTS
 
-    s3().upload_fileobj(file.file, s.minio_bucket_videos, key,
-                        ExtraArgs={"ContentType": file.content_type or "application/octet-stream"})
+    # STEP 1 (upload): buffer to a temp file so we can capture size + duration and
+    # grab a poster frame *now* — the Assets row is fully populated the instant
+    # this returns, independent of the (async) indexing pass which only drives
+    # `status`. Mirrors the /chunked path's local-buffer approach.
+    workdir = tempfile.mkdtemp(prefix="upload_")
+    local = os.path.join(workdir, f"src{ext}")
+    try:
+        with open(local, "wb") as fh:
+            shutil.copyfileobj(file.file, fh, length=8 * 1024 * 1024)
+        size_bytes = os.path.getsize(local)
+        duration = _ffprobe_duration(local)
+
+        if is_video and _make_poster(local, os.path.join(workdir, "poster.jpg"), duration):
+            with open(os.path.join(workdir, "poster.jpg"), "rb") as ph:
+                s3().upload_fileobj(
+                    ph, s.minio_bucket_thumbs, f"{video_id}/poster.jpg",
+                    ExtraArgs={"ContentType": "image/jpeg"},
+                )
+
+        with open(local, "rb") as fh:
+            s3().upload_fileobj(
+                fh, s.minio_bucket_videos, key,
+                ExtraArgs={"ContentType": file.content_type or "application/octet-stream"},
+            )
+    finally:
+        shutil.rmtree(workdir, ignore_errors=True)
 
     video = Video(
         id=video_id, user_id=user_id,
         original_filename=file.filename or f"upload{ext}",
         minio_key=key, status="queued",
+        duration_s=round(duration, 3) or None,
+        size_bytes=size_bytes,
     )
     session.add(video)
     await session.commit()
     await session.refresh(video)
 
+    # STEP 2 (indexing): the worker runs the full IV2/TransNet/SG-DETR pipeline
+    # and updates only `status` (plus shot_count/modality/summary it derives).
     get_queue(VIDEO_INDEX_QUEUE).enqueue(
         "main.workers.queue_worker.index_video",
         str(video_id),
@@ -79,6 +108,24 @@ def _ffprobe_duration(path: str) -> float:
         return float(out)
     except Exception:  # noqa: BLE001
         return 0.0
+
+
+def _make_poster(src: str, dst: str, duration: float) -> bool:
+    """Grab one representative frame as a poster thumbnail (480px wide JPEG).
+
+    Seeks ~1s in (or mid-clip for very short videos) to avoid a black first
+    frame. Best-effort: returns False if ffmpeg is missing or fails.
+    """
+    at = 1.0 if duration > 2 else max(0.0, duration / 2.0)
+    try:
+        subprocess.run(
+            ["ffmpeg", "-y", "-ss", f"{at:.2f}", "-i", src, "-frames:v", "1",
+             "-vf", "scale=480:-2", "-loglevel", "error", dst],
+            check=True,
+        )
+        return os.path.isfile(dst) and os.path.getsize(dst) > 0
+    except Exception:  # noqa: BLE001
+        return False
 
 
 @router.post("/chunked", status_code=status.HTTP_202_ACCEPTED)
@@ -241,6 +288,7 @@ async def list_videos(payload: TokenPayload = Depends(require_user), session: As
             "user_id": str(user_id),
             "original_filename": base,
             "duration_s": sum((k.duration_s or 0.0) for k in kids) or None,
+            "size_bytes": (sum((k.size_bytes or 0) for k in kids) or None),
             "status": agg,
             "shot_count": (sum((k.shot_count or 0) for k in kids) or None),
             "error": None,
@@ -367,3 +415,28 @@ async def thumb_url(
     s = get_settings()
     url = presigned_get(s.minio_bucket_thumbs, f"{video_id}/{shot_idx}.jpg")
     return success_response({"url": url})
+
+
+@router.get("/{video_id}/poster")
+async def poster_url(
+    video_id: UUID,
+    payload: TokenPayload = Depends(require_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Presigned URL for the asset's poster thumbnail (generated at upload).
+
+    Falls back to shot 0's thumbnail for videos ingested before posters existed,
+    so the Assets list shows something for every video regardless of status.
+    404s until a frame exists (the UI shows the play-icon placeholder until then).
+    """
+    v = await session.get(Video, video_id)
+    if not v or v.user_id != UUID(payload.sub):
+        raise HTTPException(404, "Video not found")
+    s = get_settings()
+    for k in (f"{video_id}/poster.jpg", f"{video_id}/0.jpg"):
+        try:
+            s3().head_object(Bucket=s.minio_bucket_thumbs, Key=k)
+        except Exception:
+            continue
+        return success_response({"url": presigned_get(s.minio_bucket_thumbs, k)})
+    raise HTTPException(404, "No thumbnail yet")

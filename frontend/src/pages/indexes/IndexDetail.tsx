@@ -10,7 +10,8 @@ import {
   type IndexSummary,
   type IndexVideoEntry,
 } from "@/apis/indexes.api";
-import { listVideos, uploadVideo, type VideoSummary } from "@/apis/videos.api";
+import { uploadVideo } from "@/apis/videos.api";
+import { useVideosQuery } from "@/apis/queries";
 import { cn, formatSeconds } from "@/lib/utils";
 
 export default function IndexDetail() {
@@ -262,13 +263,8 @@ function AddVideosModal({
   existingIds: Set<string>;
   onAdd: (videoId: string) => Promise<void>;
 }) {
-  const [videos, setVideos] = useState<VideoSummary[]>([]);
+  const { data: videos = [] } = useVideosQuery();
   const [busyId, setBusyId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    listVideos().then(setVideos).catch(() => setVideos([]));
-  }, [open]);
 
   const available = useMemo(
     () => videos.filter((v) => v.status === "ready" && !existingIds.has(v.id)),

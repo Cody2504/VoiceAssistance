@@ -10,10 +10,16 @@ import {
   Image as ImageIcon,
   Music2,
   Play,
+  Loader2,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
 } from "lucide-react";
 import { PillButton } from "@/components/ui/PillButton";
-import { listVideos, uploadVideo, getThumbUrl, type VideoSummary } from "@/apis/videos.api";
-import { listS3Objects, type S3Item } from "@/apis/s3.api";
+import { uploadVideo, getPosterUrl, type VideoSummary } from "@/apis/videos.api";
+import { useVideosQuery, useS3ObjectsQuery, qk } from "@/apis/queries";
+import { useAuth } from "@/contexts/AuthContext";
+import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 
 type Filter = "all" | "video" | "image" | "audio";
@@ -27,6 +33,27 @@ interface AssetRow {
   thumbUrl?: string;
   size?: string;
   modified?: string;
+  status?: VideoSummary["status"];
+}
+
+/** Indexing status pill. `queued`/`processing` = the worker is still running the
+ *  IV2/TransNet/SG-DETR pipeline; `ready` = searchable; `error` = ingest failed.
+ *  Undefined (raw S3 objects that aren't tracked videos) renders a neutral dash. */
+function StatusBadge({ status }: { status?: VideoSummary["status"] }) {
+  if (!status) return <span className="text-[var(--color-slate)]">—</span>;
+  const map = {
+    queued: { label: "Queued", cls: "bg-[var(--color-powder)] text-[var(--color-gravel)]", Icon: Clock, spin: false },
+    processing: { label: "Indexing", cls: "bg-amber-50 text-amber-700", Icon: Loader2, spin: true },
+    ready: { label: "Ready", cls: "bg-emerald-50 text-emerald-700", Icon: CheckCircle2, spin: false },
+    error: { label: "Error", cls: "bg-red-50 text-red-700", Icon: AlertCircle, spin: false },
+  } as const;
+  const { label, cls, Icon, spin } = map[status];
+  return (
+    <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium", cls)}>
+      <Icon size={12} className={cn(spin && "animate-spin")} />
+      {label}
+    </span>
+  );
 }
 
 function formatBytes(b: number): string {
@@ -58,61 +85,67 @@ function fmtSec(s: number | null | undefined): string | undefined {
 }
 
 export default function Assets() {
-  const [videos, setVideos] = useState<VideoSummary[]>([]);
-  const [s3Items, setS3Items] = useState<S3Item[]>([]);
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const { data: videos = [], isPending: videosLoading } = useVideosQuery();
+  const { data: s3Items = [] } = useS3ObjectsQuery();
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState<Filter>("all");
   const [filterOpen, setFilterOpen] = useState(false);
   const [view, setView] = useState<ViewMode>("list");
   const [query, setQuery] = useState("");
   const [dragOver, setDragOver] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  const [upload, setUpload] = useState<{
+    total: number;
+    done: number;
+    name: string;
+    pct: number;
+    failed: number;
+  } | null>(null);
+  const uploading = upload != null;
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const refresh = useCallback(async () => {
-    try {
-      const [v, s3] = await Promise.allSettled([listVideos(), listS3Objects()]);
-      if (v.status === "fulfilled") setVideos(v.value);
-      if (s3.status === "fulfilled") setS3Items(s3.value.items);
-      else setS3Items([]);
-    } catch {
-      /* swallow */
-    }
-  }, []);
+    await Promise.allSettled([
+      qc.invalidateQueries({ queryKey: qk.videos(user?.id) }),
+      qc.invalidateQueries({ queryKey: qk.s3(user?.id) }),
+    ]);
+  }, [qc, user?.id]);
 
+  // Poster thumbnail is written at upload, so fetch one for every video (not
+  // just ready ones). A 404 (no frame yet) just leaves the placeholder icon.
   useEffect(() => {
-    refresh();
-  }, [refresh]);
-
-  useEffect(() => {
-    const ready = videos.filter((v) => v.status === "ready");
-    ready.slice(0, 24).forEach(async (v) => {
+    videos.slice(0, 48).forEach(async (v) => {
       if (thumbs[v.id]) return;
       try {
-        const url = await getThumbUrl(v.id, 0);
+        const url = await getPosterUrl(v.id);
         setThumbs((t) => ({ ...t, [v.id]: url }));
       } catch {
-        /* ignore */
+        /* no frame yet */
       }
     });
   }, [videos, thumbs]);
 
   const handleFiles = useCallback(
     async (files: FileList | null) => {
-      if (!files || files.length === 0) return;
-      setUploading(true);
-      try {
-        for (const f of Array.from(files)) {
-          if (f.type.startsWith("video/")) {
-            await uploadVideo(f);
-          } else {
-            console.warn("Non-video upload not wired in this pass:", f.name);
-          }
+      if (!files) return;
+      const vids = Array.from(files).filter((f) => f.type.startsWith("video/"));
+      if (vids.length === 0) return;
+      setUpload({ total: vids.length, done: 0, name: vids[0].name, pct: 0, failed: 0 });
+      let failed = 0;
+      for (let i = 0; i < vids.length; i++) {
+        const f = vids[i];
+        setUpload((u) => (u ? { ...u, name: f.name, pct: 0 } : u));
+        try {
+          await uploadVideo(f, (pct) => setUpload((u) => (u ? { ...u, pct } : u)));
+        } catch {
+          failed += 1;
         }
-        await refresh();
-      } finally {
-        setUploading(false);
+        setUpload((u) => (u ? { ...u, done: i + 1, failed } : u));
+        await refresh(); // surface each new row (status "Queued") as it lands
       }
+      // Hold the "done" state briefly so the user sees N/N, then dismiss.
+      setTimeout(() => setUpload(null), 1800);
     },
     [refresh],
   );
@@ -124,7 +157,9 @@ export default function Assets() {
       kind: "video",
       durationLabel: fmtSec(v.duration_s),
       thumbUrl: thumbs[v.id],
+      size: v.size_bytes ? formatBytes(v.size_bytes) : undefined,
       modified: v.created_at,
+      status: v.status,
     }));
     const s3Rows: AssetRow[] = s3Items
       .map((it): AssetRow | null => {
@@ -182,7 +217,7 @@ export default function Assets() {
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
           >
-            {uploading ? "Uploading…" : "Upload Assets"}
+            {upload ? `Uploading ${upload.done}/${upload.total}…` : "Upload Assets"}
           </PillButton>
           <button className="grid h-9 w-9 place-items-center rounded-full border border-[var(--color-chalk)] bg-white text-[var(--color-gravel)] hover:bg-[var(--color-powder)]">
             <ChevronDown size={14} />
@@ -281,7 +316,11 @@ export default function Assets() {
         </span>
       </div>
 
-      {rows.length === 0 ? (
+      {videosLoading && rows.length === 0 ? (
+        <div className="flex items-center justify-center gap-2 py-24 text-sm text-[var(--color-gravel)]">
+          <Loader2 size={16} className="animate-spin" /> Loading your assets…
+        </div>
+      ) : rows.length === 0 ? (
         <div
           onDragOver={(e) => {
             e.preventDefault();
@@ -327,6 +366,7 @@ export default function Assets() {
                 <th className="w-[68px] px-4 py-3"></th>
                 <th className="px-4 py-3">Name</th>
                 <th className="w-[100px] px-4 py-3">Type</th>
+                <th className="w-[120px] px-4 py-3">Status</th>
                 <th className="w-[120px] px-4 py-3">Duration</th>
                 <th className="w-[120px] px-4 py-3">Size</th>
                 <th className="w-[140px] px-4 py-3">Modified</th>
@@ -353,6 +393,7 @@ export default function Assets() {
                   </td>
                   <td className="px-4 py-2.5 text-[var(--color-obsidian)]">{r.name}</td>
                   <td className="px-4 py-2.5 capitalize text-[var(--color-gravel)]">{r.kind}</td>
+                  <td className="px-4 py-2.5"><StatusBadge status={r.status} /></td>
                   <td className="px-4 py-2.5 text-[var(--color-gravel)]">{r.durationLabel ?? "—"}</td>
                   <td className="px-4 py-2.5 text-[var(--color-gravel)]">{r.size ?? "—"}</td>
                   <td className="px-4 py-2.5 text-[var(--color-gravel)]">
@@ -380,10 +421,52 @@ export default function Assets() {
                     {r.durationLabel}
                   </span>
                 )}
+                {r.status && r.status !== "ready" && (
+                  <span className="absolute left-2 top-2">
+                    <StatusBadge status={r.status} />
+                  </span>
+                )}
               </div>
               <p className="mt-2 truncate text-[13px] text-[var(--color-obsidian)]">{r.name}</p>
             </div>
           ))}
+        </div>
+      )}
+
+      {upload && (
+        <div className="fixed bottom-6 right-6 z-50 w-[320px] rounded-2xl border border-[var(--color-chalk)] bg-white p-4 shadow-hairline">
+          <div className="mb-2 flex items-center gap-2">
+            {upload.done >= upload.total ? (
+              <CheckCircle2 size={15} className="text-emerald-600" />
+            ) : (
+              <Loader2 size={15} className="animate-spin text-[var(--color-obsidian)]" />
+            )}
+            <span className="text-[13px] font-medium text-[var(--color-obsidian)]">
+              {upload.done >= upload.total
+                ? `Uploaded ${upload.total} ${upload.total === 1 ? "file" : "files"}`
+                : `Uploading ${upload.done + 1} of ${upload.total}`}
+            </span>
+            <span className="ml-auto text-[12px] tabular-nums text-[var(--color-gravel)]">
+              {upload.done}/{upload.total}
+            </span>
+          </div>
+          {upload.done < upload.total && (
+            <>
+              <p className="mb-2 truncate text-[12px] text-[var(--color-gravel)]">{upload.name}</p>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-powder)]">
+                <div
+                  className="h-full rounded-full bg-[var(--color-obsidian)] transition-all"
+                  style={{ width: `${upload.pct}%` }}
+                />
+              </div>
+            </>
+          )}
+          {upload.failed > 0 && (
+            <p className="mt-2 text-[11px] text-red-600">{upload.failed} failed — skipped</p>
+          )}
+          <p className="mt-2 text-[11px] text-[var(--color-slate)]">
+            Indexing continues in the background — watch the Status column.
+          </p>
         </div>
       )}
     </div>

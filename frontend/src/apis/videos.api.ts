@@ -8,6 +8,7 @@ export interface VideoSummary {
   user_id: string;
   original_filename: string;
   duration_s: number | null;
+  size_bytes: number | null;
   status: "queued" | "processing" | "ready" | "error";
   shot_count: number | null;
   error: string | null;
@@ -56,6 +57,13 @@ export async function getStreamUrl(id: string): Promise<string> {
 
 export async function getThumbUrl(id: string, shotIdx: number = 0): Promise<string> {
   const r = await axios.get(ROUTES.VIDEO_THUMB(id, shotIdx));
+  return r.data?.data?.url;
+}
+
+/** Poster thumbnail generated at upload (falls back to shot 0 server-side for
+ *  videos ingested before posters existed). 404s until a frame exists. */
+export async function getPosterUrl(id: string): Promise<string> {
+  const r = await axios.get(ROUTES.VIDEO_POSTER(id));
   return r.data?.data?.url;
 }
 

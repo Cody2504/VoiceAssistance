@@ -44,6 +44,11 @@ def run_highlights_v2(
     use_audio = (modality == "audio_only")
     q = query or s.lighthouse_highlight_query
 
+    # InternVideo2 + trained SG-DETR saliency for VISUAL highlights. Audio-only
+    # uploads stay on the CLAP/QD-DETR path below (IV2 is visual-only).
+    if s.grounding_backend == "iv2" and not use_audio:
+        return _highlights_iv2(video_id, duration_s, q, top_k, s)
+
     from main.services.lighthouse_service import get_lighthouse
     lh = get_lighthouse()
 
@@ -82,6 +87,20 @@ def run_highlights_v2(
         modality_used="audio" if use_audio else "visual",
         query_used=q,
     )
+
+
+def _highlights_iv2(video_id: str, duration_s: float, q: str, top_k: int, s) -> HighlightsResult:
+    """Visual highlights via the IV2 + SG-DETR head. The service handles ≤76-clip
+    windowing internally and returns per-clip saliency for the whole video."""
+    from main.services.iv2_grounding_service import get_iv2_grounding
+    feats = _load_npy(s.minio_bucket_videos, f"features/{video_id}/iv2/visual.npy")
+    if feats.size == 0:
+        log.warning("highlights_v2:no cached IV2 features for video=%s", video_id)
+        return HighlightsResult(video_id, duration_s, [], "visual", q)
+    per_clip = get_iv2_grounding().predict_saliency(feats, query=q)
+    saliency = np.asarray([score for _, _, score in per_clip], dtype=np.float32)
+    moments = _peaks_to_moments(saliency, s.iv2_clip_length_sec, top_k=top_k)
+    return HighlightsResult(video_id, duration_s, moments, "visual", q)
 
 
 def _saliency_audio(lh, query: str, slice_: np.ndarray, offset: float):

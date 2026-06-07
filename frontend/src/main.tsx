@@ -2,6 +2,9 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router";
 import { Toaster } from "sonner";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+
+import { queryClient, queryPersister, MAX_CACHE_AGE } from "@/lib/queryClient";
 
 import "@fontsource/inter/400.css";
 import "@fontsource/inter/500.css";
@@ -22,10 +25,15 @@ import "@/index.css";
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>
-      <AuthProvider>
-        <App />
-        <Toaster position="top-right" richColors />
-      </AuthProvider>
+      <PersistQueryClientProvider
+        client={queryClient}
+        persistOptions={{ persister: queryPersister, maxAge: MAX_CACHE_AGE }}
+      >
+        <AuthProvider>
+          <App />
+          <Toaster position="top-right" richColors />
+        </AuthProvider>
+      </PersistQueryClientProvider>
     </BrowserRouter>
   </React.StrictMode>,
 );

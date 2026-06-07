@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, ForeignKey, Integer, String, Text, text
+from sqlalchemy import BigInteger, Boolean, ForeignKey, Integer, String, Text, text
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -15,7 +15,13 @@ class Video(Base):
     user_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False, index=True)
     original_filename: Mapped[str] = mapped_column(String(512), nullable=False)
     minio_key: Mapped[str] = mapped_column(String(1024), nullable=False)
+    # duration_s + size_bytes are captured at UPLOAD (ffprobe + byte count), not
+    # at ingest, so the Assets row is informative the instant the upload returns.
+    # `status` is the only field the indexing worker drives (queued -> processing
+    # -> ready/error). A poster thumbnail is written to thumbs/{id}/poster.jpg at
+    # upload too (served by GET /videos/{id}/poster).
     duration_s: Mapped[float | None] = mapped_column(nullable=True)
+    size_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     status: Mapped[str] = mapped_column(String(32), nullable=False, server_default="queued", index=True)
     shot_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)

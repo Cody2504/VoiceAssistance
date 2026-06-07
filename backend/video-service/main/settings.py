@@ -50,7 +50,17 @@ class Settings(BaseServiceSettings):
     iv2_device: str = "cpu"
     iv2_video_ckpt: str = "/models/iv2/video_encoder.pt"    # SG-DETR FE traced InternVideo2-1b
     iv2_text_ckpt: str = "/models/iv2/text_encoder.pt"      # InternVideo2 text tower (bert-large)
+    # Trained SG-DETR head (MRDETR) — a pre-stripped PURE state-dict (no training-time
+    # pickled modules), so it loads with weights_only=True and needs no sg-detr repo.
+    # Produced once from sgdetr_qvhighlights_pt.ckpt: keep `model.`-prefixed tensors.
+    iv2_sgdetr_head_ckpt: str = "/models/iv2/sgdetr_head_state_dict.pt"
     iv2_clip_length_sec: float = 2.0
+
+    # Shot detection backend (ingest segment grid). "scenedetect" (PySceneDetect,
+    # default) | "transnet" (TransNetV2 PyTorch). TransNetV2 gives cleaner cuts on
+    # high-motion footage; falls back to PySceneDetect if weights/deps are missing.
+    shot_detector: str = "scenedetect"
+    transnet_weights: str = "/models/transnetv2/transnetv2-pytorch-weights.pth"
 
     # Hierarchical summary (Analyze tile long-context Q&A)
     summary_window_size_sec: float = 120.0                  # 2-min rolling windows
