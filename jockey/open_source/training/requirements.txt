@@ -1,0 +1,11 @@
+# Thesis-side feature extraction (offline; NOT installed in the agent runtime).
+# Pin against your 3090 CUDA build of torch separately — torch is intentionally
+# not listed so this file never fights the runtime's torch version.
+gdown>=5.1.0           # SG-DETR Google Drive asset downloads
+decord>=0.6.0          # fast video frame decoding
+opencv-python>=4.8.0   # resize / center-crop
+numpy>=1.24
+# The InternVideo2-1b encoder itself comes from EITHER:
+#   - the cloned SG-DETR repo (backend=sgdetr, recommended), or
+#   - OpenGVLab InternVideo2 package + checkpoint (backend=hf).
+# Neither is pip-pinned here; see README "Encoder backends".
