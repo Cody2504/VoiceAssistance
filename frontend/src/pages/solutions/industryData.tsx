@@ -7,227 +7,246 @@ import { Clapperboard, Megaphone, ShieldCheck, Car, type LucideIcon } from "luci
  *   hero · numbered feature tiles · use cases · value pillars · pricing · CTA.
  * Value pillars and pricing tiers are shared across industries (see
  * SolutionPage); only the industry-specific copy lives here. Guest-facing.
+ *
+ * All user-visible string fields are i18n keys — resolve with t() at the
+ * consuming component (SolutionPage.tsx).
  */
 
 export interface UseCaseGroup {
-  title: string;
-  items: string[];
+  titleKey: string;
+  itemsKey: string;
 }
 
 export interface Feature {
   n: string;
-  title: string;
-  body: string;
+  titleKey: string;
+  bodyKey: string;
   /** rounded image tile shown above the title */
   image: string;
-  /** frosted caption chip overlaid on the image */
-  caption: string;
+  /** i18n key for frosted caption chip; empty string = no chip */
+  captionKey: string;
 }
 
 export interface IndustryData {
   slug: string;
   icon: LucideIcon;
-  eyebrow: string;
-  heroTitle: string;
-  heroSub: string;
+  eyebrowKey: string;
+  heroTitleKey: string;
+  heroSubKey: string;
   /** background media for the framed hero visual */
   media: { type: "video"; src: string; poster: string } | { type: "image"; src: string };
   /** pastel tint + ink colour used for accents / image-tile fallback */
   tone: string;
   ink: string;
   features: Feature[];
-  useCasesHeading: string;
+  useCasesHeadingKey: string;
   useCaseGroups: UseCaseGroup[];
-  ctaTitle: string;
+  ctaTitleKey: string;
 }
 
 export const SOLUTIONS: Record<string, IndustryData> = {
   "media-and-entertainment": {
     slug: "media-and-entertainment",
     icon: Clapperboard,
-    eyebrow: "Media & Entertainment",
-    heroTitle: "Less work.\nMore flow.",
-    heroSub:
-      "AI that indexes every scene, dialogue line and visual detail – so you can find, isolate and build stories in seconds.",
+    eyebrowKey: "marketing.solution_page.industries.media_eyebrow",
+    heroTitleKey: "marketing.solution_page.industries.media_hero_title",
+    heroSubKey: "marketing.solution_page.industries.media_hero_sub",
     media: { type: "image", src: "/twelvelabs/me-hero.png" },
     tone: "bg-[#fbdfff]",
     ink: "text-[#5e3b66]",
     features: [
       {
         n: "01",
-        title: "Archive Segmentation",
-        body: "Turn decades of footage into scene-level, searchable intelligence – pinpointing exact moments across your archive.",
+        titleKey: "marketing.solution_page.industries.media_f1_title",
+        bodyKey: "marketing.solution_page.industries.media_f1_body",
         image: "/twelvelabs/me-01-archive.png",
-        caption: "", // caption is baked into the source image
-
+        captionKey: "",
       },
       {
         n: "02",
-        title: "Production Acceleration",
-        body: "From raw footage to rough cut, automatically organize clips into searchable bins, highlights and chapters.",
+        titleKey: "marketing.solution_page.industries.media_f2_title",
+        bodyKey: "marketing.solution_page.industries.media_f2_body",
         image: "/twelvelabs/me-02-production.png",
-        caption: "", // caption is baked into the source image
-
+        captionKey: "",
       },
       {
         n: "03",
-        title: "Content Repackaging",
-        body: "Turn a single source video into trailers, social clips and regional edits, using natural language search.",
+        titleKey: "marketing.solution_page.industries.media_f3_title",
+        bodyKey: "marketing.solution_page.industries.media_f3_body",
         image: "/twelvelabs/me-03-repackage.png",
-        caption: "", // caption is baked into the source image
-
+        captionKey: "",
       },
     ],
-    useCasesHeading: "AI for media that makes the cut.",
+    useCasesHeadingKey: "marketing.solution_page.industries.media_usecases_heading",
     useCaseGroups: [
       {
-        title: "Shorter production workflows",
-        items: ["Instant content summarization", "Automated ‘dailies’ editing", "Instant highlight reels and trailers"],
+        titleKey: "marketing.solution_page.industries.media_uc1_title",
+        itemsKey: "marketing.solution_page.industries.media_uc1_items",
       },
       {
-        title: "Tag-free content management",
-        items: ["Duplicate content detection", "Metadata generation", "Deep semantic search", "Archive and rights management"],
+        titleKey: "marketing.solution_page.industries.media_uc2_title",
+        itemsKey: "marketing.solution_page.industries.media_uc2_items",
       },
       {
-        title: "More personalized user experiences",
-        items: ["Contextualized content understanding", "Customer content recommendations", "Enhanced customer discovery", "Ad matching"],
+        titleKey: "marketing.solution_page.industries.media_uc3_title",
+        itemsKey: "marketing.solution_page.industries.media_uc3_items",
       },
     ],
-    ctaTitle: "Give your stories a new beginning.",
+    ctaTitleKey: "marketing.solution_page.industries.media_cta_title",
   },
 
   advertising: {
     slug: "advertising",
     icon: Megaphone,
-    eyebrow: "Advertising",
-    heroTitle: "Understands context.\nDrives performance.",
-    heroSub:
-      "AI that analyzes video context and message – then connects it to the audiences most likely to engage and convert.",
+    eyebrowKey: "marketing.solution_page.industries.ad_eyebrow",
+    heroTitleKey: "marketing.solution_page.industries.ad_hero_title",
+    heroSubKey: "marketing.solution_page.industries.ad_hero_sub",
     media: { type: "image", src: "/twelvelabs/ad-hero.png" },
     tone: "bg-[#fde3a2]",
     ink: "text-[#7d5d0c]",
     features: [
       {
         n: "01",
-        title: "Contextual placement",
-        body: "Match ads to content moments by theme, tone and emotion. Now every placement feels intentional.",
+        titleKey: "marketing.solution_page.industries.ad_f1_title",
+        bodyKey: "marketing.solution_page.industries.ad_f1_body",
         image: "/twelvelabs/ad-01-context.png",
-        caption: "", // caption is baked into the source image
+        captionKey: "",
       },
       {
         n: "02",
-        title: "Brand safety",
-        body: "Automatically detect and filter unsafe or conflicting content in real time – protecting your brand at speed and scale.",
+        titleKey: "marketing.solution_page.industries.ad_f2_title",
+        bodyKey: "marketing.solution_page.industries.ad_f2_body",
         image: "/twelvelabs/ad-02-safety.png",
-        caption: "", // caption is baked into the source image
+        captionKey: "",
       },
       {
         n: "03",
-        title: "Creative intelligence",
-        body: "Pinpoint the creative messaging and moments that drive audience response – then double down on what’s working.",
+        titleKey: "marketing.solution_page.industries.ad_f3_title",
+        bodyKey: "marketing.solution_page.industries.ad_f3_body",
         image: "/twelvelabs/ad-03-creative.png",
-        caption: "", // caption is baked into the source image
+        captionKey: "",
       },
     ],
-    useCasesHeading: "This is advertising now.",
+    useCasesHeadingKey: "marketing.solution_page.industries.ad_usecases_heading",
     useCaseGroups: [
-      { title: "Bolster production efficiencies", items: ["Instant rough cut creation", "Lightning-fast video workflows", "Quick ideation and creative development"] },
-      { title: "Advanced ad management", items: ["Semantic search for deep discovery", "Tag-free inventory management", "Swift and easy metadata generation", "Analyze content safety & suitability"] },
-      { title: "More personalized user experiences", items: ["Hyper contextual content alignment", "Elevated organic brand presence", "AI-driven search and discovery"] },
+      {
+        titleKey: "marketing.solution_page.industries.ad_uc1_title",
+        itemsKey: "marketing.solution_page.industries.ad_uc1_items",
+      },
+      {
+        titleKey: "marketing.solution_page.industries.ad_uc2_title",
+        itemsKey: "marketing.solution_page.industries.ad_uc2_items",
+      },
+      {
+        titleKey: "marketing.solution_page.industries.ad_uc3_title",
+        itemsKey: "marketing.solution_page.industries.ad_uc3_items",
+      },
     ],
-    ctaTitle: "See your video in a whole new way.",
+    ctaTitleKey: "marketing.solution_page.industries.ad_cta_title",
   },
 
   "government-and-security": {
     slug: "government-and-security",
     icon: ShieldCheck,
-    eyebrow: "Government & Security",
-    heroTitle: "Turn fragmented footage\ninto unified intelligence.",
-    heroSub:
-      "Securely connect signals and activity across vast networks of cameras and sources – to build a complete operational picture.",
+    eyebrowKey: "marketing.solution_page.industries.gov_eyebrow",
+    heroTitleKey: "marketing.solution_page.industries.gov_hero_title",
+    heroSubKey: "marketing.solution_page.industries.gov_hero_sub",
     media: { type: "image", src: "/twelvelabs/gov-hero.png" },
     tone: "bg-[#c4eefe]",
     ink: "text-[#26586d]",
     features: [
       {
         n: "01",
-        title: "Cross-Source Fusion",
-        body: "Unify CCTV, drone and satellite video into a single searchable intelligence system.",
+        titleKey: "marketing.solution_page.industries.gov_f1_title",
+        bodyKey: "marketing.solution_page.industries.gov_f1_body",
         image: "/twelvelabs/gov-01-fusion.png",
-        caption: "", // caption is baked into the source image
+        captionKey: "",
       },
       {
         n: "02",
-        title: "Incident response",
-        body: "Analyze critical footage and generate actionable summaries in minutes.",
+        titleKey: "marketing.solution_page.industries.gov_f2_title",
+        bodyKey: "marketing.solution_page.industries.gov_f2_body",
         image: "/twelvelabs/gov-02-incident.png",
-        caption: "", // caption is baked into the source image
+        captionKey: "",
       },
       {
         n: "03",
-        title: "Evidence discovery",
-        body: "Identify recurring patterns, linked events and anomalies across vast evidence archives.",
+        titleKey: "marketing.solution_page.industries.gov_f3_title",
+        bodyKey: "marketing.solution_page.industries.gov_f3_body",
         image: "/twelvelabs/gov-03-evidence.png",
-        caption: "", // caption is baked into the source image
+        captionKey: "",
       },
     ],
-    useCasesHeading: "Security has never been so simple.",
+    useCasesHeadingKey: "marketing.solution_page.industries.gov_usecases_heading",
     useCaseGroups: [
-      { title: "Search across millions of video hours", items: ["Tag-free semantic exploration", "Natural language prompts and tailored search", "Time-stamped and confidence-scored results"] },
-      { title: "Make sense of vast video footage", items: ["Automated surveillance footage analysis", "Metadata generation", "Pattern and anomaly detection"] },
-      { title: "Understand your security posture", items: ["Detailed AI-driven reports", "Contextualized content analysis", "Automated incident documentation"] },
+      {
+        titleKey: "marketing.solution_page.industries.gov_uc1_title",
+        itemsKey: "marketing.solution_page.industries.gov_uc1_items",
+      },
+      {
+        titleKey: "marketing.solution_page.industries.gov_uc2_title",
+        itemsKey: "marketing.solution_page.industries.gov_uc2_items",
+      },
+      {
+        titleKey: "marketing.solution_page.industries.gov_uc3_title",
+        itemsKey: "marketing.solution_page.industries.gov_uc3_items",
+      },
     ],
-    ctaTitle: "Your video has more to show you.",
+    ctaTitleKey: "marketing.solution_page.industries.gov_cta_title",
   },
 
   automotive: {
     slug: "automotive",
     icon: Car,
-    eyebrow: "Automotive",
-    heroTitle: "Video AI for automotive\nintelligence.",
-    heroSub:
-      "From driver hazards to pedestrian intent – Jockey understands events on video like a human does, with the potential to transform safety and efficiency.",
+    eyebrowKey: "marketing.solution_page.industries.auto_eyebrow",
+    heroTitleKey: "marketing.solution_page.industries.auto_hero_title",
+    heroSubKey: "marketing.solution_page.industries.auto_hero_sub",
     media: { type: "image", src: "/twelvelabs/auto-hero.png" },
     tone: "bg-[#d9f5dd]",
     ink: "text-[#2f6b3a]",
     features: [
       {
         n: "01",
-        title: "Find anything and everything in your archive.",
-        body: "Any scene, any sound, any object, any moment - ‘search’ has a whole new meaning.",
+        titleKey: "marketing.solution_page.industries.auto_f1_title",
+        bodyKey: "marketing.solution_page.industries.auto_f1_body",
         image: "/twelvelabs/auto-01-find.png",
-        caption: "",
+        captionKey: "",
       },
       {
         n: "02",
-        title: "Turn vast video data into meaningful content.",
-        body: "Draw out the highlights from your archives or make instant reels from millions of clips.",
+        titleKey: "marketing.solution_page.industries.auto_f2_title",
+        bodyKey: "marketing.solution_page.industries.auto_f2_body",
         image: "/twelvelabs/auto-02-content.png",
-        caption: "",
+        captionKey: "",
       },
       {
         n: "03",
-        title: "Turn vast video data into actionable intelligence.",
-        body: "Detailed AI-driven documentation and contextual analysis can help you understand what happened.",
+        titleKey: "marketing.solution_page.industries.auto_f3_title",
+        bodyKey: "marketing.solution_page.industries.auto_f3_body",
         image: "/twelvelabs/auto-03-intel.png",
-        caption: "",
+        captionKey: "",
       },
     ],
-    useCasesHeading: "The future of automotive is automation.",
+    useCasesHeadingKey: "marketing.solution_page.industries.auto_usecases_heading",
     useCaseGroups: [
-      { title: "Search millions of video hours", items: ["Tag-free exploration in natural language", "Find any scene, object, or moment", "Time-stamped incident results"] },
-      { title: "Make sense of video footage", items: ["Detailed AI-driven analysis", "Pattern and anomaly detection", "Metadata generation", "Archive and data management"] },
-      { title: "Understand your data and systems", items: ["Contextualized content analysis", "Confidence-scored reports", "Detailed incident documentation", "Insights for improving safety and efficiency"] },
+      {
+        titleKey: "marketing.solution_page.industries.auto_uc1_title",
+        itemsKey: "marketing.solution_page.industries.auto_uc1_items",
+      },
+      {
+        titleKey: "marketing.solution_page.industries.auto_uc2_title",
+        itemsKey: "marketing.solution_page.industries.auto_uc2_items",
+      },
+      {
+        titleKey: "marketing.solution_page.industries.auto_uc3_title",
+        itemsKey: "marketing.solution_page.industries.auto_uc3_items",
+      },
     ],
-    ctaTitle: "See your video in a whole new way.",
+    ctaTitleKey: "marketing.solution_page.industries.auto_cta_title",
   },
 };
 
 /* shared across all industry pages */
-
-export const VALUE_HEADING = "State-of-the-art, straight out of the box.";
-export const VALUE_SUB =
-  "Use on any cloud, fine-tune with your own data, and deploy your custom model. We give you the keys to state-of-the-art AI that adapts to your specific needs.";
 
 /* Inner glyphs for the value pillars — drawn to mirror the twelvelabs.io
  * "Our Value" icons. Stroked with currentColor so the renderer's box border
@@ -280,68 +299,64 @@ function DeployGlyph({ className }: GlyphProps) {
   );
 }
 
-export const VALUE_PILLARS: { icon: ComponentType<GlyphProps>; title: string; body: string }[] = [
-  { icon: AccuracyGlyph, title: "World-class accuracy.", body: "Our video-native AI beats benchmarks from cloud majors and open-source models." },
-  { icon: ScaleGlyph, title: "At a monumental scale.", body: "Our powerful infrastructure handles the largest video libraries – even petabytes of data." },
-  { icon: CustomizeGlyph, title: "With total customization.", body: "Our models can be easily trained on your data to become experts in your domain." },
-  { icon: DeployGlyph, title: "And deployable anywhere.", body: "On cloud, private cloud, or on-premise – deploy safely and easily, wherever you need us." },
+export const VALUE_PILLARS: { icon: ComponentType<GlyphProps>; titleKey: string; bodyKey: string }[] = [
+  { icon: AccuracyGlyph, titleKey: "marketing.solution_page.pillars.accuracy_title", bodyKey: "marketing.solution_page.pillars.accuracy_body" },
+  { icon: ScaleGlyph,    titleKey: "marketing.solution_page.pillars.scale_title",    bodyKey: "marketing.solution_page.pillars.scale_body" },
+  { icon: CustomizeGlyph, titleKey: "marketing.solution_page.pillars.customize_title", bodyKey: "marketing.solution_page.pillars.customize_body" },
+  { icon: DeployGlyph,   titleKey: "marketing.solution_page.pillars.deploy_title",   bodyKey: "marketing.solution_page.pillars.deploy_body" },
 ];
 
-export const PRICING_TITLE = "Play for free. Pay as you go.";
-export const PRICING_SUB =
-  "Our tiered pricing lets you play and build, then launch and grow. Start with one of our foundational models and pay only for what you use.";
-
 export interface PriceRow {
-  label: string;
+  labelKey: string;
   /** when present the row is "included": shown with a check + value */
-  value?: string;
+  valueKey?: string;
 }
 export interface PricingTier {
-  name: string;
-  description: string;
-  cta: string;
+  nameKey: string;
+  descriptionKey: string;
+  ctaKey: string;
   to: string;
   rows: PriceRow[];
 }
 
 export const PRICING_TIERS: PricingTier[] = [
   {
-    name: "Free",
-    description: "For testing and building",
-    cta: "Get started",
+    nameKey: "marketing.solution_page.tiers.free_name",
+    descriptionKey: "marketing.solution_page.tiers.free_desc",
+    ctaKey: "marketing.solution_page.tiers.free_cta",
     to: "/signup",
     rows: [
-      { label: "Indexing limit", value: "<10 hours" },
-      { label: "Environment", value: "Shared" },
-      { label: "Org account" },
-      { label: "SSO / SAML" },
-      { label: "Finetune" },
+      { labelKey: "marketing.solution_page.tiers.row_indexing", valueKey: "marketing.solution_page.tiers.val_10h" },
+      { labelKey: "marketing.solution_page.tiers.row_environment", valueKey: "marketing.solution_page.tiers.val_shared" },
+      { labelKey: "marketing.solution_page.tiers.row_org" },
+      { labelKey: "marketing.solution_page.tiers.row_sso" },
+      { labelKey: "marketing.solution_page.tiers.row_finetune" },
     ],
   },
   {
-    name: "Developer",
-    description: "For launching and growing",
-    cta: "Upgrade",
+    nameKey: "marketing.solution_page.tiers.developer_name",
+    descriptionKey: "marketing.solution_page.tiers.developer_desc",
+    ctaKey: "marketing.solution_page.tiers.developer_cta",
     to: "/pricing",
     rows: [
-      { label: "Indexing limit", value: "<10k hours" },
-      { label: "Environment", value: "Shared" },
-      { label: "Org account" },
-      { label: "SSO / SAML" },
-      { label: "Finetune" },
+      { labelKey: "marketing.solution_page.tiers.row_indexing", valueKey: "marketing.solution_page.tiers.val_10k" },
+      { labelKey: "marketing.solution_page.tiers.row_environment", valueKey: "marketing.solution_page.tiers.val_shared" },
+      { labelKey: "marketing.solution_page.tiers.row_org" },
+      { labelKey: "marketing.solution_page.tiers.row_sso" },
+      { labelKey: "marketing.solution_page.tiers.row_finetune" },
     ],
   },
   {
-    name: "Enterprise",
-    description: "For scaling and services",
-    cta: "Learn more",
+    nameKey: "marketing.solution_page.tiers.enterprise_name",
+    descriptionKey: "marketing.solution_page.tiers.enterprise_desc",
+    ctaKey: "marketing.solution_page.tiers.enterprise_cta",
     to: "/#cta",
     rows: [
-      { label: "Indexing limit", value: "Unlimited" },
-      { label: "Environment", value: "Dedicated" },
-      { label: "Org account", value: "Included" },
-      { label: "SSO / SAML", value: "Included" },
-      { label: "Finetune", value: "Included" },
+      { labelKey: "marketing.solution_page.tiers.row_indexing", valueKey: "marketing.solution_page.tiers.val_unlimited" },
+      { labelKey: "marketing.solution_page.tiers.row_environment", valueKey: "marketing.solution_page.tiers.val_dedicated" },
+      { labelKey: "marketing.solution_page.tiers.row_org", valueKey: "marketing.solution_page.tiers.val_included" },
+      { labelKey: "marketing.solution_page.tiers.row_sso", valueKey: "marketing.solution_page.tiers.val_included" },
+      { labelKey: "marketing.solution_page.tiers.row_finetune", valueKey: "marketing.solution_page.tiers.val_included" },
     ],
   },
 ];

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ChevronDown } from "lucide-react";
 
 import { VideoThumb } from "@/components/video/VideoThumb";
@@ -36,6 +37,7 @@ interface Props {
  * results render with the shot window and play from t_start.
  */
 export function VideoSearchResults({ clips, visible = 3, onPreview }: Props) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   if (clips.length === 0) return null;
 
@@ -82,7 +84,7 @@ export function VideoSearchResults({ clips, visible = 3, onPreview }: Props) {
           onClick={() => setExpanded(true)}
           className="inline-flex items-center gap-1 text-sm font-medium text-emerald-600 hover:text-emerald-700"
         >
-          See {extra} more {extra === 1 ? "result" : "results"}
+          {t(extra === 1 ? "chat.search_results.see_more_one" : "chat.search_results.see_more_other", { count: extra })}
           <ChevronDown size={14} />
         </button>
       )}

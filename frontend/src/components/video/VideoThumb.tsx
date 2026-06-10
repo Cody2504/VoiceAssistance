@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { cn, formatSeconds } from "@/lib/utils";
 import { getThumbUrl } from "@/apis/videos.api";
 
@@ -25,6 +26,7 @@ interface Props {
 export function VideoThumb({
   videoId, shotIdx, duration, fallback, onClick, className, draggable, onDragStart,
 }: Props) {
+  const { t } = useTranslation();
   const effectiveIdx = shotIdx ?? 0;
   const [src, setSrc] = useState<string | null>(null);
   const [errored, setErrored] = useState(false);
@@ -62,7 +64,7 @@ export function VideoThumb({
       )}
       {(!src || errored) && (
         <div className="grid h-full w-full place-items-center text-xs text-neutral-500">
-          {fallback ?? "video"}
+          {fallback ?? t("console.thumb.fallback")}
         </div>
       )}
       {duration !== undefined && (

@@ -15,6 +15,7 @@ import {
   Clock,
   AlertCircle,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { PillButton } from "@/components/ui/PillButton";
 import { uploadVideo, getPosterUrl, type VideoSummary } from "@/apis/videos.api";
 import { useVideosQuery, useS3ObjectsQuery, qk } from "@/apis/queries";
@@ -40,18 +41,19 @@ interface AssetRow {
  *  IV2/TransNet/SG-DETR pipeline; `ready` = searchable; `error` = ingest failed.
  *  Undefined (raw S3 objects that aren't tracked videos) renders a neutral dash. */
 function StatusBadge({ status }: { status?: VideoSummary["status"] }) {
+  const { t } = useTranslation();
   if (!status) return <span className="text-[var(--color-slate)]">—</span>;
   const map = {
-    queued: { label: "Queued", cls: "bg-[var(--color-powder)] text-[var(--color-gravel)]", Icon: Clock, spin: false },
-    processing: { label: "Indexing", cls: "bg-amber-50 text-amber-700", Icon: Loader2, spin: true },
-    ready: { label: "Ready", cls: "bg-emerald-50 text-emerald-700", Icon: CheckCircle2, spin: false },
-    error: { label: "Error", cls: "bg-red-50 text-red-700", Icon: AlertCircle, spin: false },
+    queued: { labelKey: "console.assets.status_queued", cls: "bg-[var(--color-powder)] text-[var(--color-gravel)]", Icon: Clock, spin: false },
+    processing: { labelKey: "console.assets.status_indexing", cls: "bg-amber-50 text-amber-700", Icon: Loader2, spin: true },
+    ready: { labelKey: "console.assets.status_ready", cls: "bg-emerald-50 text-emerald-700", Icon: CheckCircle2, spin: false },
+    error: { labelKey: "console.assets.status_error", cls: "bg-red-50 text-red-700", Icon: AlertCircle, spin: false },
   } as const;
-  const { label, cls, Icon, spin } = map[status];
+  const { labelKey, cls, Icon, spin } = map[status];
   return (
     <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium", cls)}>
       <Icon size={12} className={cn(spin && "animate-spin")} />
-      {label}
+      {t(labelKey)}
     </span>
   );
 }
@@ -85,6 +87,7 @@ function fmtSec(s: number | null | undefined): string | undefined {
 }
 
 export default function Assets() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const qc = useQueryClient();
   const { data: videos = [], isPending: videosLoading } = useVideosQuery();
@@ -192,12 +195,19 @@ export default function Assets() {
     return { v, im, a };
   }, [videos, s3Items]);
 
+  const filterLabels: Record<Filter, string> = {
+    all: t("console.assets.filter_all"),
+    video: t("console.assets.filter_video"),
+    image: t("console.assets.filter_image"),
+    audio: t("console.assets.filter_audio"),
+  };
+
   return (
     <div className="mx-auto max-w-[1180px] px-8 py-6">
       <div className="mb-2 flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
           <h1 className="text-[32px] font-light tracking-[-0.64px] text-[var(--color-obsidian)]">
-            Assets
+            {t("console.assets.title")}
           </h1>
           <Info size={14} className="text-[var(--color-slate)]" />
         </div>
@@ -217,7 +227,9 @@ export default function Assets() {
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
           >
-            {upload ? `Uploading ${upload.done}/${upload.total}…` : "Upload Assets"}
+            {upload
+              ? t("console.assets.uploading", { done: upload.done, total: upload.total })
+              : t("console.assets.upload_btn")}
           </PillButton>
           <button className="grid h-9 w-9 place-items-center rounded-full border border-[var(--color-chalk)] bg-white text-[var(--color-gravel)] hover:bg-[var(--color-powder)]">
             <ChevronDown size={14} />
@@ -226,11 +238,7 @@ export default function Assets() {
       </div>
 
       <p className="mb-5 max-w-[680px] text-[12px] text-[var(--color-gravel)]">
-        Every video here is indexed and searchable on its own. Group related videos into an{" "}
-        <a href="/indexes" className="text-[var(--color-obsidian)] underline">
-          Index
-        </a>{" "}
-        to enable cross-video questions like comparisons and concept tracing across a course.
+        {t("console.assets.desc")}
       </p>
 
       <div className="mb-3 flex items-center gap-3">
@@ -243,7 +251,7 @@ export default function Assets() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Filter by filename or asset ID"
+            placeholder={t("console.assets.filter_placeholder")}
             className="h-9 w-full rounded-full border border-[var(--color-chalk)] bg-white pl-9 pr-3 text-[13px] text-[var(--color-obsidian)] placeholder:text-[var(--color-slate)] focus:outline-none focus:ring-2 focus:ring-[var(--color-obsidian)]/10"
           />
         </div>
@@ -253,9 +261,9 @@ export default function Assets() {
             onClick={() => setFilterOpen((o) => !o)}
             className="inline-flex h-9 items-center gap-2 rounded-full border border-transparent px-3 text-[13px] text-[var(--color-gravel)] hover:bg-[var(--color-powder)]"
           >
-            <span className="text-[var(--color-slate)]">Filter by</span>
-            <span className="capitalize text-[var(--color-obsidian)]">
-              {filter === "all" ? "File type" : filter}
+            <span className="text-[var(--color-slate)]">{t("console.assets.filter_by")}</span>
+            <span className="text-[var(--color-obsidian)]">
+              {filter === "all" ? t("console.assets.filter_file_type") : filterLabels[filter]}
             </span>
             <ChevronDown size={13} />
           </button>
@@ -269,11 +277,11 @@ export default function Assets() {
                     setFilterOpen(false);
                   }}
                   className={cn(
-                    "block w-full rounded-md px-3 py-1.5 text-left text-[13px] capitalize text-[var(--color-obsidian)] hover:bg-[var(--color-powder)]",
+                    "block w-full rounded-md px-3 py-1.5 text-left text-[13px] text-[var(--color-obsidian)] hover:bg-[var(--color-powder)]",
                     filter === k && "bg-[var(--color-powder)] font-medium",
                   )}
                 >
-                  {k === "all" ? "All" : k}
+                  {filterLabels[k]}
                 </button>
               ))}
             </div>
@@ -304,21 +312,21 @@ export default function Assets() {
 
       <div className="mb-5 flex items-center gap-5 text-[13px] text-[var(--color-gravel)]">
         <span className="inline-flex items-center gap-1.5">
-          <Film size={13} /> {counts.v} videos
+          <Film size={13} /> {t("console.assets.count_videos", { count: counts.v })}
         </span>
         <span className="text-[var(--color-chalk)]">·</span>
         <span className="inline-flex items-center gap-1.5">
-          <ImageIcon size={13} /> {counts.im} images
+          <ImageIcon size={13} /> {t("console.assets.count_images", { count: counts.im })}
         </span>
         <span className="text-[var(--color-chalk)]">·</span>
         <span className="inline-flex items-center gap-1.5">
-          <Music2 size={13} /> {counts.a} audios
+          <Music2 size={13} /> {t("console.assets.count_audios", { count: counts.a })}
         </span>
       </div>
 
       {videosLoading && rows.length === 0 ? (
         <div className="flex items-center justify-center gap-2 py-24 text-sm text-[var(--color-gravel)]">
-          <Loader2 size={16} className="animate-spin" /> Loading your assets…
+          <Loader2 size={16} className="animate-spin" /> {t("console.assets.loading")}
         </div>
       ) : rows.length === 0 ? (
         <div
@@ -344,17 +352,17 @@ export default function Assets() {
             <Upload size={18} />
           </button>
           <p className="mt-4 text-[16px] font-medium text-[var(--color-obsidian)]">
-            Drop video, image &amp; audio files or browse
+            {t("console.assets.drop_label")}
           </p>
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-[11px] text-[var(--color-gravel)]">
             <span className="rounded-md border border-[var(--color-chalk)] bg-white/60 px-2 py-0.5">
-              Audio file size ≤200MB
+              {t("console.assets.limit_audio")}
             </span>
             <span className="rounded-md border border-[var(--color-chalk)] bg-white/60 px-2 py-0.5">
-              Video file size ≤4GB
+              {t("console.assets.limit_video")}
             </span>
             <span className="rounded-md border border-[var(--color-chalk)] bg-white/60 px-2 py-0.5">
-              Image file size ≤5MB
+              {t("console.assets.limit_image")}
             </span>
           </div>
         </div>
@@ -364,12 +372,12 @@ export default function Assets() {
             <thead className="bg-[var(--color-powder)] text-left text-[11px] uppercase tracking-[0.1em] text-[var(--color-gravel)]">
               <tr>
                 <th className="w-[68px] px-4 py-3"></th>
-                <th className="px-4 py-3">Name</th>
-                <th className="w-[100px] px-4 py-3">Type</th>
-                <th className="w-[120px] px-4 py-3">Status</th>
-                <th className="w-[120px] px-4 py-3">Duration</th>
-                <th className="w-[120px] px-4 py-3">Size</th>
-                <th className="w-[140px] px-4 py-3">Modified</th>
+                <th className="px-4 py-3">{t("console.assets.col_name")}</th>
+                <th className="w-[100px] px-4 py-3">{t("console.assets.col_type")}</th>
+                <th className="w-[120px] px-4 py-3">{t("console.assets.col_status")}</th>
+                <th className="w-[120px] px-4 py-3">{t("console.assets.col_duration")}</th>
+                <th className="w-[120px] px-4 py-3">{t("console.assets.col_size")}</th>
+                <th className="w-[140px] px-4 py-3">{t("console.assets.col_modified")}</th>
               </tr>
             </thead>
             <tbody>
@@ -443,8 +451,10 @@ export default function Assets() {
             )}
             <span className="text-[13px] font-medium text-[var(--color-obsidian)]">
               {upload.done >= upload.total
-                ? `Uploaded ${upload.total} ${upload.total === 1 ? "file" : "files"}`
-                : `Uploading ${upload.done + 1} of ${upload.total}`}
+                ? (upload.total === 1
+                    ? t("console.assets.upload_done_one", { total: upload.total })
+                    : t("console.assets.upload_done_other", { total: upload.total }))
+                : t("console.assets.upload_progress", { current: upload.done + 1, total: upload.total })}
             </span>
             <span className="ml-auto text-[12px] tabular-nums text-[var(--color-gravel)]">
               {upload.done}/{upload.total}
@@ -462,10 +472,12 @@ export default function Assets() {
             </>
           )}
           {upload.failed > 0 && (
-            <p className="mt-2 text-[11px] text-red-600">{upload.failed} failed — skipped</p>
+            <p className="mt-2 text-[11px] text-red-600">
+              {t("console.assets.upload_failed", { count: upload.failed })}
+            </p>
           )}
           <p className="mt-2 text-[11px] text-[var(--color-slate)]">
-            Indexing continues in the background — watch the Status column.
+            {t("console.assets.upload_background")}
           </p>
         </div>
       )}

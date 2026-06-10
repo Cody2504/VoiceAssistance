@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { ChevronDown, RotateCcw } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 /**
  * Collapsible "Advanced Settings" group inside a FormPanel. Mirrors the
@@ -12,6 +13,7 @@ export function AdvancedSettings({
   children: ReactNode;
   onReset?: () => void;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
 
   return (
@@ -22,7 +24,7 @@ export function AdvancedSettings({
           onClick={() => setOpen((v) => !v)}
           className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-800 hover:text-neutral-950"
         >
-          Advanced Settings
+          {t("pgkit.advanced.title")}
           <ChevronDown
             className={`h-3.5 w-3.5 text-neutral-500 transition ${open ? "rotate-180" : ""}`}
           />
@@ -33,7 +35,7 @@ export function AdvancedSettings({
             onClick={onReset}
             className="inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-neutral-800"
           >
-            <RotateCcw className="h-3 w-3" /> Reset
+            <RotateCcw className="h-3 w-3" /> {t("pgkit.advanced.reset")}
           </button>
         )}
       </div>

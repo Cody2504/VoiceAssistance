@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
+import { useTranslation } from "react-i18next";
 import { Search, MessageSquare, Layers, ArrowUpRight, CornerDownLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -7,7 +8,8 @@ import {
   DEMO_FRAMES,
   DEMO_SEGMENTS,
   DEMO_QA,
-  EXAMPLE_QUERIES,
+  EXAMPLE_QUERY_KEYS,
+  EXAMPLE_QUERIES_EN,
   fmtTime,
   searchMoments,
   tileForTime,
@@ -15,12 +17,6 @@ import {
 } from "../demoFixture";
 
 type Tab = "search" | "chat" | "segment";
-
-const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
-  { id: "search", label: "Search", icon: <Search size={15} /> },
-  { id: "chat", label: "Chat / QA", icon: <MessageSquare size={15} /> },
-  { id: "segment", label: "Segment", icon: <Layers size={15} /> },
-];
 
 /** Synthetic filmstrip tiles, hue-coded by the segment they fall in. */
 const TILES = Array.from({ length: DEMO_FRAMES }, (_, i) => {
@@ -42,7 +38,14 @@ function tileBg(hue: number, dim = false) {
  * 100% client-side (see ../demoFixture) — no backend, no API key, no GPU.
  */
 export function HeroDemo() {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>("search");
+
+  const TABS: { id: Tab; labelKey: string; icon: React.ReactNode }[] = [
+    { id: "search",  labelKey: "landing.hero_demo.tab_search",  icon: <Search size={15} /> },
+    { id: "chat",    labelKey: "landing.hero_demo.tab_chat",    icon: <MessageSquare size={15} /> },
+    { id: "segment", labelKey: "landing.hero_demo.tab_segment", icon: <Layers size={15} /> },
+  ];
 
   // --- search state ---
   const [query, setQuery] = useState("");
@@ -68,7 +71,8 @@ export function HeroDemo() {
       DEMO_QA.map((qa) => ({
         qa,
         score: terms.reduce(
-          (n, t) => n + ((qa.q + " " + qa.a).toLowerCase().includes(t) ? 1 : 0),
+          (n, term) =>
+            n + ((t(qa.qKey) + " " + t(qa.aKey)).toLowerCase().includes(term) ? 1 : 0),
           0
         ),
       })).sort((a, b) => b.score - a.score)[0];
@@ -90,24 +94,24 @@ export function HeroDemo() {
           </span>
           <div
             role="tablist"
-            aria-label="Demo capability"
+            aria-label={t("landing.hero_demo.aria_tabs")}
             className="ml-auto flex items-center gap-1 rounded-full bg-[var(--color-powder)] p-1"
           >
-            {TABS.map((t) => (
+            {TABS.map((tabItem) => (
               <button
-                key={t.id}
+                key={tabItem.id}
                 role="tab"
-                aria-selected={tab === t.id}
-                onClick={() => setTab(t.id)}
+                aria-selected={tab === tabItem.id}
+                onClick={() => setTab(tabItem.id)}
                 className={cn(
                   "inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium transition",
-                  tab === t.id
+                  tab === tabItem.id
                     ? "bg-[var(--color-obsidian)] text-white"
                     : "text-[var(--color-gravel)] hover:text-[var(--color-obsidian)]"
                 )}
               >
-                {t.icon}
-                <span className="hidden sm:inline">{t.label}</span>
+                {tabItem.icon}
+                <span className="hidden sm:inline">{t(tabItem.labelKey)}</span>
               </button>
             ))}
           </div>
@@ -126,32 +130,32 @@ export function HeroDemo() {
               >
                 <Search size={18} className="shrink-0 text-[var(--color-slate)]" />
                 <label htmlFor="demo-q" className="sr-only">
-                  Search the sample video
+                  {t("landing.hero_demo.search_label")}
                 </label>
                 <input
                   id="demo-q"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search this video in natural language…"
+                  placeholder={t("landing.hero_demo.search_placeholder")}
                   className="w-full bg-transparent text-[15px] text-[var(--color-obsidian)] outline-none placeholder:text-[var(--color-slate)]"
                 />
                 <button
                   type="submit"
                   className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-full bg-[var(--color-accent-blue)] px-4 py-1.5 text-[13px] font-medium text-white transition hover:opacity-90"
                 >
-                  Search
+                  {t("landing.hero_demo.search_button")}
                 </button>
               </form>
 
               <div className="mt-3 flex flex-wrap gap-2">
-                <span className="text-[12px] text-[var(--color-slate)]">Try:</span>
-                {EXAMPLE_QUERIES.map((q) => (
+                <span className="text-[12px] text-[var(--color-slate)]">{t("landing.hero_demo.search_try")}</span>
+                {EXAMPLE_QUERY_KEYS.map((qKey, idx) => (
                   <button
-                    key={q}
-                    onClick={() => runSearch(q)}
+                    key={qKey}
+                    onClick={() => runSearch(EXAMPLE_QUERIES_EN[idx])}
                     className="cursor-pointer rounded-full border border-[var(--color-chalk)] px-2.5 py-0.5 text-[12px] text-[var(--color-gravel)] transition hover:border-[var(--color-accent-blue)] hover:text-[var(--color-accent-blue)]"
                   >
-                    {q}
+                    {t(qKey)}
                   </button>
                 ))}
               </div>
@@ -161,14 +165,12 @@ export function HeroDemo() {
               <div className="mt-4 min-h-[60px]">
                 {results === null && (
                   <p className="text-[13px] text-[var(--color-slate)]">
-                    Type a query or tap an example — matching moments light up on the
-                    timeline above.
+                    {t("landing.hero_demo.search_empty")}
                   </p>
                 )}
                 {results !== null && results.length === 0 && (
                   <p className="text-[13px] text-[var(--color-gravel)]">
-                    No moments matched “{query}”. Try <em>goal</em>, <em>celebration</em>,
-                    or <em>trophy</em>.
+                    {t("landing.hero_demo.search_no_results", { query })}
                   </p>
                 )}
                 {results !== null && results.length > 0 && (
@@ -182,7 +184,7 @@ export function HeroDemo() {
                           {fmtTime(m.t)}
                         </span>
                         <span className="text-[14px] text-[var(--color-obsidian)]">
-                          {m.label}
+                          {t(m.labelKey)}
                         </span>
                       </li>
                     ))}
@@ -198,11 +200,11 @@ export function HeroDemo() {
               <div className="mb-3 flex flex-wrap gap-2">
                 {DEMO_QA.map((qa) => (
                   <button
-                    key={qa.q}
-                    onClick={() => ask(qa.q)}
+                    key={qa.qKey}
+                    onClick={() => ask(t(qa.qKey))}
                     className="cursor-pointer rounded-full border border-[var(--color-chalk)] px-3 py-1 text-[12px] text-[var(--color-gravel)] transition hover:border-[var(--color-accent-blue)] hover:text-[var(--color-accent-blue)]"
                   >
-                    {qa.q}
+                    {t(qa.qKey)}
                   </button>
                 ))}
               </div>
@@ -210,19 +212,19 @@ export function HeroDemo() {
               <div className="min-h-[150px] space-y-3 rounded-xl border border-[var(--color-chalk)] bg-[var(--color-eggshell)] p-3">
                 {!answer && (
                   <p className="text-[13px] text-[var(--color-slate)]">
-                    Ask a question about the sample clip — pick one above or type your own.
+                    {t("landing.hero_demo.chat_empty")}
                   </p>
                 )}
                 {answer && (
                   <>
                     <div className="flex justify-end">
                       <p className="max-w-[80%] rounded-2xl rounded-br-sm bg-[var(--color-obsidian)] px-3 py-2 text-[14px] text-white">
-                        {answer.q}
+                        {t(answer.qKey)}
                       </p>
                     </div>
                     <div className="flex justify-start">
                       <div className="max-w-[85%] rounded-2xl rounded-bl-sm border border-[var(--color-chalk)] bg-white px-3 py-2">
-                        <p className="text-[14px] text-[var(--color-obsidian)]">{answer.a}</p>
+                        <p className="text-[14px] text-[var(--color-obsidian)]">{t(answer.aKey)}</p>
                         <div className="mt-2 flex flex-wrap gap-1.5">
                           {answer.cites.map((c) => (
                             <span
@@ -247,18 +249,18 @@ export function HeroDemo() {
                 className="mt-3 flex items-center gap-2 rounded-full border border-[var(--color-chalk)] bg-white px-4 py-2.5 focus-within:border-[var(--color-accent-blue)]"
               >
                 <label htmlFor="demo-chat" className="sr-only">
-                  Ask about the sample video
+                  {t("landing.hero_demo.chat_label")}
                 </label>
                 <input
                   id="demo-chat"
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
-                  placeholder="Ask about the sample video…"
+                  placeholder={t("landing.hero_demo.chat_placeholder")}
                   className="w-full bg-transparent text-[15px] text-[var(--color-obsidian)] outline-none placeholder:text-[var(--color-slate)]"
                 />
                 <button
                   type="submit"
-                  aria-label="Send"
+                  aria-label={t("landing.hero_demo.chat_send")}
                   className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-full bg-[var(--color-accent-blue)] px-3 py-1.5 text-[13px] font-medium text-white transition hover:opacity-90"
                 >
                   <CornerDownLeft size={15} />
@@ -281,9 +283,9 @@ export function HeroDemo() {
                       width: `${((s.end - s.start) / DEMO_DURATION) * 100}%`,
                       background: tileBg(s.hue),
                     }}
-                    title={`${s.label} · ${fmtTime(s.start)}–${fmtTime(s.end)}`}
+                    title={`${t(s.labelKey)} · ${fmtTime(s.start)}–${fmtTime(s.end)}`}
                   >
-                    <span className="truncate px-1">{s.label}</span>
+                    <span className="truncate px-1">{t(s.labelKey)}</span>
                   </div>
                 ))}
               </div>
@@ -300,12 +302,12 @@ export function HeroDemo() {
                     <span className="inline-flex min-w-[84px] justify-center rounded-md bg-[var(--color-obsidian)] px-2 py-0.5 text-[12px] font-medium tabular-nums text-white">
                       {fmtTime(s.start)}–{fmtTime(s.end)}
                     </span>
-                    <span className="text-[14px] text-[var(--color-obsidian)]">{s.label}</span>
+                    <span className="text-[14px] text-[var(--color-obsidian)]">{t(s.labelKey)}</span>
                   </li>
                 ))}
               </ul>
               <p className="mt-3 text-[12px] text-[var(--color-slate)]">
-                Auto-detected with shot detection, ASR & topic-change segmentation.
+                {t("landing.hero_demo.segment_footer")}
               </p>
             </div>
           )}
@@ -313,13 +315,13 @@ export function HeroDemo() {
           {/* footer CTA — consistent across tabs */}
           <div className="mt-5 flex items-center justify-between border-t border-[var(--color-chalk)] pt-4">
             <p className="text-[12px] text-[var(--color-slate)]">
-              Sample video · runs entirely in your browser
+              {t("landing.hero_demo.footer_sample")}
             </p>
             <Link
               to="/signup"
               className="inline-flex cursor-pointer items-center gap-1 text-[13px] font-medium text-[var(--color-accent-blue)] transition hover:gap-1.5"
             >
-              Upload your own video <ArrowUpRight size={15} />
+              {t("landing.hero_demo.footer_upload")} <ArrowUpRight size={15} />
             </Link>
           </div>
         </div>

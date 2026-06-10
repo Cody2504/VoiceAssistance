@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 import { Input } from "@/components/ui/input";
 import { VideoPlayer, type VideoPlayerHandle } from "@/components/video/VideoPlayer";
@@ -26,6 +27,7 @@ interface FormState extends AnalyzePreset {
 const DEFAULT_FORM: FormState = { prompt: "", use_range: false };
 
 export default function Analyze() {
+  const { t } = useTranslation();
   const [video, setVideo] = useState<VideoSummary | null>(null);
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
   const [running, setRunning] = useState(false);
@@ -43,7 +45,7 @@ export default function Analyze() {
     return () => { alive = false; };
   }, [video?.id]);
 
-  const seek = (t: number) => player.current?.seekTo(t);
+  const seek = (time: number) => player.current?.seekTo(time);
 
   const run = async () => {
     if (!video || !form.prompt.trim()) return;
@@ -59,7 +61,7 @@ export default function Analyze() {
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        "Analyze failed";
+        t("playground.analyze.error");
       toast.error(msg);
     } finally {
       setRunning(false);
@@ -70,10 +72,10 @@ export default function Analyze() {
 
   return (
     <PlaygroundShell
-      title="Analyze"
-      subtitle="Generate summaries, chapters, highlights, and more insights."
+      title={t("playground.analyze.title")}
+      subtitle={t("playground.analyze.subtitle")}
       formPanel={
-        <FormPanel runLabel="Analyze" onRun={run} running={running} canRun={canRun}>
+        <FormPanel runLabel={t("playground.analyze.title")} onRun={run} running={running} canRun={canRun}>
           <Field label="video" required>
             <VideoPicker selectedId={video?.id} onSelect={setVideo} />
           </Field>
@@ -82,7 +84,7 @@ export default function Analyze() {
             <textarea
               value={form.prompt}
               onChange={(e) => setForm({ ...form, prompt: e.target.value.slice(0, 2048) })}
-              placeholder="Type in a prompt or select a suggested prompt. e.g., Summarize the video and provide timecodes"
+              placeholder={t("playground.analyze.placeholder")}
               className="min-h-[140px] w-full resize-none rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm focus:border-neutral-400 focus:outline-none"
             />
           </Field>
@@ -97,12 +99,12 @@ export default function Analyze() {
                 onChange={(e) => setForm({ ...form, use_range: e.target.checked })}
                 className="h-3.5 w-3.5"
               />
-              Restrict to a specific time range
+              {t("playground.analyze.restrict_range")}
             </label>
 
             {form.use_range && (
               <div className="grid grid-cols-2 gap-3">
-                <Field label="t_start" hint="seconds">
+                <Field label="t_start" hint={t("playground.analyze.hint_seconds")}>
                   <Input
                     type="number"
                     min={0}
@@ -111,7 +113,7 @@ export default function Analyze() {
                     onChange={(e) => setForm({ ...form, t_start: Number(e.target.value) })}
                   />
                 </Field>
-                <Field label="t_end" hint="seconds">
+                <Field label="t_end" hint={t("playground.analyze.hint_seconds")}>
                   <Input
                     type="number"
                     min={0}
@@ -136,13 +138,12 @@ export default function Analyze() {
         <>
           {video && !supported && (
             <div className="mb-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-              This video has no usable visual or audio content for the Analyze tile
-              (modality: <code>{video.modality}</code>).
+              {t("playground.analyze.unsupported", { modality: video.modality })}
             </div>
           )}
           {result && (
             <ResultsPanel
-              title="Answer"
+              title={t("playground.analyze.result_title")}
               counter={`prompt: "${truncate(result.question, 80)}" · used ${result.used_windows} windows, ${result.used_segments} segments`}
             >
               <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
@@ -155,10 +156,10 @@ export default function Analyze() {
 
                 <div className="space-y-1.5">
                   <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-500">
-                    Citations
+                    {t("playground.analyze.citations")}
                   </h3>
                   {result.citations.length === 0 ? (
-                    <p className="text-xs text-neutral-500">No timestamps cited.</p>
+                    <p className="text-xs text-neutral-500">{t("playground.analyze.no_citations")}</p>
                   ) : (
                     <ul className="max-h-[360px] space-y-1 overflow-y-auto pr-2">
                       {result.citations.map((c, i) => (

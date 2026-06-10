@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RefreshCw, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { listS3Objects, presignS3, type S3Item } from "@/apis/s3.api";
 import { cn, formatSeconds } from "@/lib/utils";
@@ -56,6 +57,7 @@ interface PreviewProps {
 }
 
 function S3PreviewModal({ item, onClose }: PreviewProps) {
+  const { t } = useTranslation();
   const [url, setUrl] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -89,7 +91,7 @@ function S3PreviewModal({ item, onClose }: PreviewProps) {
           <video src={url} controls autoPlay className="aspect-video w-full" />
         ) : (
           <div className="aspect-video w-full grid place-items-center text-neutral-400">
-            {err ?? "Loading…"}
+            {err ?? t("console.preview.loading")}
           </div>
         )}
         <div className="bg-neutral-900 px-4 py-2 text-xs text-neutral-300">
@@ -108,6 +110,7 @@ function S3PreviewModal({ item, onClose }: PreviewProps) {
 }
 
 export default function S3TestPage() {
+  const { t } = useTranslation();
   const [items, setItems] = useState<S3Item[] | null>(null);
   const [bucket, setBucket] = useState<string>("jockeyassistant");
   const [loading, setLoading] = useState(false);
@@ -145,16 +148,24 @@ export default function S3TestPage() {
     <div className="mx-auto flex h-screen w-full max-w-6xl flex-col px-6 py-6">
       <header className="mb-5 flex items-end justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold text-neutral-900">S3 test &mdash; {bucket}</h1>
+          <h1 className="text-lg font-semibold text-neutral-900">
+            {t("console.s3test.title", { bucket })}
+          </h1>
           <p className="text-xs text-neutral-500">
-            Standalone view of the <code className="rounded bg-neutral-100 px-1">videos/</code> prefix.
-            Thumbnails come from <code className="rounded bg-neutral-100 px-1">thumbs/</code>; click to preview via presigned URL.
+            {t("console.s3test.desc_prefix")}{" "}
+            <code className="rounded bg-neutral-100 px-1">videos/</code>{" "}
+            {t("console.s3test.desc_prefix2")}{" "}
+            <code className="rounded bg-neutral-100 px-1">thumbs/</code>
+            {t("console.s3test.desc_suffix")}
           </p>
         </div>
         <div className="flex items-center gap-3 text-xs text-neutral-500">
           {items && (
             <span>
-              {items.length} {items.length === 1 ? "object" : "objects"} &middot; {humanBytes(totalBytes)}
+              {items.length === 1
+                ? t("console.s3test.object_count_one", { count: items.length })
+                : t("console.s3test.object_count_other", { count: items.length })}{" "}
+              &middot; {humanBytes(totalBytes)}
             </span>
           )}
           <button
@@ -163,17 +174,17 @@ export default function S3TestPage() {
             className="inline-flex items-center gap-1.5 rounded-md border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-medium text-neutral-700 hover:border-neutral-400 disabled:opacity-50"
           >
             <RefreshCw size={12} className={cn(loading && "animate-spin")} />
-            Refresh
+            {t("console.s3test.refresh")}
           </button>
         </div>
       </header>
 
       {error && (
         <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-          <p className="font-medium">Couldn&rsquo;t load bucket</p>
+          <p className="font-medium">{t("console.s3test.error_title")}</p>
           <p className="mt-0.5 break-all">{error}</p>
           <p className="mt-1 text-red-600/70">
-            Is <code>scripts/s3_browser.py</code> running on :8765 and are AWS creds in <code>.env</code>?
+            {t("console.s3test.error_hint")}
           </p>
         </div>
       )}
@@ -181,13 +192,12 @@ export default function S3TestPage() {
       <div className="grid flex-1 grid-cols-2 gap-4 overflow-auto pr-1 sm:grid-cols-3 lg:grid-cols-4">
         {items === null && (
           <div className="col-span-full grid place-items-center py-10 text-xs text-neutral-400">
-            Loading bucket&hellip;
+            {t("console.s3test.loading_bucket")}
           </div>
         )}
         {items?.length === 0 && !error && (
           <div className="col-span-full grid place-items-center py-10 text-xs text-neutral-400">
-            Bucket is empty under <code>videos/</code>.
-            Run <code>python scripts/s3_ingest.py --all</code> to populate.
+            {t("console.s3test.empty_bucket")}
           </div>
         )}
         {items?.map((it) => (
@@ -200,7 +210,7 @@ export default function S3TestPage() {
                 {it.duration_s !== null && it.duration_s !== undefined && (
                   <> &middot; {formatSeconds(it.duration_s)}</>
                 )}
-                {" "}&middot; Video
+                {" "}&middot; {t("console.s3test.label_video")}
               </p>
             </div>
           </article>

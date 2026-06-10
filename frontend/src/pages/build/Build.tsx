@@ -14,6 +14,7 @@ import {
   Copy,
   Check,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Footer } from "@/pages/landing/sections/Footer";
 
 /**
@@ -21,13 +22,6 @@ import { Footer } from "@/pages/landing/sections/Footer";
  * hero · quick links · "Try our API" · SDKs · Sample Apps ·
  * browse by product · models · support. Light theme, no backend.
  */
-
-const QUICK_LINKS = [
-  { icon: BookOpen, label: "API Reference", desc: "Every endpoint, documented", to: "/build#api" },
-  { icon: TerminalSquare, label: "SDKs", desc: "Python & Node", to: "/build#sdks" },
-  { icon: Blocks, label: "Sample Apps", desc: "Clone & run", to: "/build#samples" },
-  { icon: Users, label: "Community", desc: "Built with the community", to: "/build#support" },
-];
 
 const CODE = `from jockey import Jockey
 
@@ -42,28 +36,6 @@ task.wait_for_done()
 result = client.search.query(index.id, "the winning goal")
 print(result)`;
 
-const PRODUCTS = [
-  { icon: Search, title: "Search", body: "Find any scene in natural language.", to: "/playground/search" },
-  { icon: Sparkles, title: "Analyze", body: "Summaries, chapters, Q&A.", to: "/playground/analyze" },
-  { icon: Layers, title: "Segment", body: "Labeled, time-stamped chapters.", to: "/playground/segment" },
-];
-
-const SAMPLES = [
-  { lang: "PYTHON", title: "Who talked about us", body: "Find every clip a speaker mentions a brand or product." },
-  { lang: "NODE", title: "Generate social posts", body: "Auto-summarize a video into platform-ready captions." },
-  { lang: "PYTHON", title: "Shade finder", body: "Detect every color swatch across an unboxing reel." },
-];
-
-const MODELS = [
-  { name: "ViCLIP / Marengo-mode", kind: "EMBEDDING BACKBONE", body: "Frozen video-text encoder powering corpus retrieval and zero-shot classification." },
-  { name: "Qwen3-VL", kind: "VIDEO LANGUAGE MODEL", body: "Generates captions, answers and analysis grounded in the full video." },
-];
-
-const SUPPORT = [
-  { icon: LifeBuoy, title: "Contact", body: "Talk to our team about your integration.", cta: "Talk to sales", to: "/#cta" },
-  { icon: MessagesSquare, title: "Community", body: "Ask questions and share what you build.", cta: "Join Discord", to: "/build#support" },
-];
-
 function Section({ id, children, className = "" }: { id?: string; children: React.ReactNode; className?: string }) {
   return (
     <section id={id} className={`mx-auto max-w-[1200px] px-6 ${className}`}>
@@ -73,6 +45,7 @@ function Section({ id, children, className = "" }: { id?: string; children: Reac
 }
 
 export default function Build() {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   function copy() {
     void navigator.clipboard?.writeText(CODE).then(() => {
@@ -81,24 +54,52 @@ export default function Build() {
     });
   }
 
+  const QUICK_LINKS = [
+    { icon: BookOpen, label: t("marketing.build.quick_links.api_ref_label"), desc: t("marketing.build.quick_links.api_ref_desc"), to: "/build#api" },
+    { icon: TerminalSquare, label: t("marketing.build.quick_links.sdks_label"), desc: t("marketing.build.quick_links.sdks_desc"), to: "/build#sdks" },
+    { icon: Blocks, label: t("marketing.build.quick_links.samples_label"), desc: t("marketing.build.quick_links.samples_desc"), to: "/build#samples" },
+    { icon: Users, label: t("marketing.build.quick_links.community_label"), desc: t("marketing.build.quick_links.community_desc"), to: "/build#support" },
+  ];
+
+  const PRODUCTS = [
+    { icon: Search, title: t("marketing.build.products.search_title"), body: t("marketing.build.products.search_body"), to: "/playground/search" },
+    { icon: Sparkles, title: t("marketing.build.products.analyze_title"), body: t("marketing.build.products.analyze_body"), to: "/playground/analyze" },
+    { icon: Layers, title: t("marketing.build.products.segment_title"), body: t("marketing.build.products.segment_body"), to: "/playground/segment" },
+  ];
+
+  const SAMPLES = [
+    { lang: "PYTHON", title: t("marketing.build.samples.viral_title"), body: t("marketing.build.samples.viral_body") },
+    { lang: "NODE", title: t("marketing.build.samples.social_title"), body: t("marketing.build.samples.social_body") },
+    { lang: "PYTHON", title: t("marketing.build.samples.shade_title"), body: t("marketing.build.samples.shade_body") },
+  ];
+
+  const MODELS = [
+    { name: "CLIP-L + InternVideo2", kind: t("marketing.build.models.viclip_kind"), body: t("marketing.build.models.viclip_body") },
+    { name: "Qwen3-VL", kind: t("marketing.build.models.qwen_kind"), body: t("marketing.build.models.qwen_body") },
+  ];
+
+  const SUPPORT = [
+    { icon: LifeBuoy, title: t("marketing.build.support.contact_title"), body: t("marketing.build.support.contact_body"), cta: t("marketing.build.support.contact_cta"), to: "/#cta" },
+    { icon: MessagesSquare, title: t("marketing.build.support.community_title"), body: t("marketing.build.support.community_body"), cta: t("marketing.build.support.community_cta"), to: "/build#support" },
+  ];
+
   return (
     <main className="bg-[var(--color-eggshell)] text-[var(--color-obsidian)]">
       {/* hero */}
       <Section className="pt-20 pb-12 text-center md:pt-24">
-        <p className="mb-5 text-[13px] uppercase tracking-[0.18em] text-[var(--color-gravel)]">Developer Hub</p>
+        <p className="mb-5 text-[13px] uppercase tracking-[0.18em] text-[var(--color-gravel)]">{t("marketing.build.hero_eyebrow")}</p>
         <h1 className="mx-auto max-w-[860px] text-[44px] font-light leading-[1.05] tracking-[-1.2px] md:text-[60px]">
-          Build anything with video understanding.
+          {t("marketing.build.hero_heading")}
         </h1>
         <p className="mx-auto mt-6 max-w-[620px] text-[16px] leading-[1.55] text-[var(--color-gravel)] md:text-[17px]">
-          Explore our guides and examples to integrate Jockey — search, analyze and segment video
-          from a few lines of code.
+          {t("marketing.build.hero_sub")}
         </p>
         <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
           <Link to="/signup" className="inline-flex h-11 cursor-pointer items-center rounded-full bg-[var(--color-obsidian)] px-6 text-[14px] font-medium text-white transition duration-150 ease-out hover:bg-neutral-800 active:scale-[0.97]">
-            Go to Playground ↗
+            {t("marketing.build.go_to_playground")}
           </Link>
           <a href="#api" className="inline-flex h-11 cursor-pointer items-center rounded-full border border-[var(--color-chalk)] bg-white px-6 text-[14px] font-medium text-[var(--color-obsidian)] transition duration-150 ease-out hover:bg-[var(--color-powder)] active:scale-[0.97]">
-            Read the docs
+            {t("actions.read_docs")}
           </a>
         </div>
       </Section>
@@ -127,13 +128,12 @@ export default function Build() {
       <Section id="api" className="py-12">
         <div className="grid items-center gap-8 lg:grid-cols-2">
           <div>
-            <h2 className="text-[30px] font-light tracking-[-0.6px] md:text-[38px]">Try our API.</h2>
+            <h2 className="text-[30px] font-light tracking-[-0.6px] md:text-[38px]">{t("marketing.build.try_api_heading")}</h2>
             <p className="mt-3 max-w-[460px] text-[15px] leading-relaxed text-[var(--color-gravel)]">
-              Create an index, upload a video, and search it in natural language. The Python and Node
-              SDKs wrap every endpoint so you can ship a feature this afternoon.
+              {t("marketing.build.try_api_body")}
             </p>
             <a href="#sdks" className="mt-5 inline-flex items-center gap-1 text-[14px] font-medium text-[var(--color-accent-blue)] hover:gap-1.5">
-              Get the SDK →
+              {t("marketing.build.get_sdk")}
             </a>
           </div>
           <div className="overflow-hidden rounded-2xl border border-[var(--color-chalk)] bg-[#0f1115] shadow-[0_30px_70px_-40px_rgba(0,0,0,0.6)]">
@@ -141,7 +141,7 @@ export default function Build() {
               <span className="text-[12px] text-white/50">example.py</span>
               <button onClick={copy} className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[12px] text-white/70 transition hover:bg-white/10 hover:text-white">
                 {copied ? <Check size={13} /> : <Copy size={13} />}
-                {copied ? "Copied" : "Copy"}
+                {copied ? t("actions.copied") : t("actions.copy")}
               </button>
             </div>
             <pre className="overflow-x-auto px-4 py-4 text-[12.5px] leading-relaxed text-[#e6e6e6]"><code>{CODE}</code></pre>
@@ -151,7 +151,7 @@ export default function Build() {
 
       {/* SDKs */}
       <Section id="sdks" className="py-12">
-        <h2 className="text-[30px] font-light tracking-[-0.6px] md:text-[38px]">SDKs</h2>
+        <h2 className="text-[30px] font-light tracking-[-0.6px] md:text-[38px]">{t("marketing.build.sdks_heading")}</h2>
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           {["Python", "Node"].map((sdk) => (
             <div key={sdk} className="flex items-center justify-between rounded-2xl border border-[var(--color-chalk)] bg-white px-6 py-5">
@@ -161,7 +161,7 @@ export default function Build() {
                 </span>
                 <div>
                   <p className="text-[15px] font-semibold">{sdk} SDK</p>
-                  <p className="text-[12px] text-[var(--color-gravel)]">Official client library</p>
+                  <p className="text-[12px] text-[var(--color-gravel)]">{t("marketing.build.sdk_official")}</p>
                 </div>
               </div>
               <span className="rounded-md bg-[var(--color-powder)] px-2.5 py-1 font-mono text-[12px] text-[var(--color-gravel)]">
@@ -174,7 +174,7 @@ export default function Build() {
 
       {/* sample apps */}
       <Section id="samples" className="py-12">
-        <h2 className="text-[30px] font-light tracking-[-0.6px] md:text-[38px]">Jump right in with a sample app</h2>
+        <h2 className="text-[30px] font-light tracking-[-0.6px] md:text-[38px]">{t("marketing.build.samples_heading")}</h2>
         <div className="mt-6 grid gap-4 md:grid-cols-3">
           {SAMPLES.map((s) => (
             <div key={s.title} className="rounded-[20px] border border-[var(--color-chalk)] bg-white p-6">
@@ -182,8 +182,8 @@ export default function Build() {
               <h3 className="mt-2 text-[17px] font-semibold">{s.title}</h3>
               <p className="mt-1.5 text-[14px] leading-relaxed text-[var(--color-gravel)]">{s.body}</p>
               <div className="mt-4 flex gap-3 text-[13px] font-medium">
-                <span className="text-[var(--color-accent-blue)]">Tutorial →</span>
-                <span className="text-[var(--color-gravel)]">Code</span>
+                <span className="text-[var(--color-accent-blue)]">{t("marketing.build.sample_tutorial")}</span>
+                <span className="text-[var(--color-gravel)]">{t("marketing.build.sample_code")}</span>
               </div>
             </div>
           ))}
@@ -192,7 +192,7 @@ export default function Build() {
 
       {/* browse by product */}
       <Section className="py-12">
-        <h2 className="text-[30px] font-light tracking-[-0.6px] md:text-[38px]">Browse by product</h2>
+        <h2 className="text-[30px] font-light tracking-[-0.6px] md:text-[38px]">{t("marketing.build.products_heading")}</h2>
         <div className="mt-6 grid gap-4 md:grid-cols-3">
           {PRODUCTS.map((p) => {
             const Icon = p.icon;
@@ -214,7 +214,7 @@ export default function Build() {
         <div className="rounded-[24px] bg-[var(--color-powder)] p-10">
           <div className="flex items-center gap-2">
             <Boxes size={20} />
-            <h2 className="text-[26px] font-light tracking-[-0.5px] md:text-[32px]">Our stable of models</h2>
+            <h2 className="text-[26px] font-light tracking-[-0.5px] md:text-[32px]">{t("marketing.build.models_heading")}</h2>
           </div>
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             {MODELS.map((m) => (
@@ -230,7 +230,7 @@ export default function Build() {
 
       {/* support */}
       <Section id="support" className="py-12 pb-20">
-        <h2 className="text-[30px] font-light tracking-[-0.6px] md:text-[38px]">Support & guidance</h2>
+        <h2 className="text-[30px] font-light tracking-[-0.6px] md:text-[38px]">{t("marketing.build.support_heading")}</h2>
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           {SUPPORT.map((s) => {
             const Icon = s.icon;

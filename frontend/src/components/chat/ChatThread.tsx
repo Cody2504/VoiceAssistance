@@ -1,10 +1,15 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router";
+import { useTranslation } from "react-i18next";
+import { useQueryClient } from "@tanstack/react-query";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { User } from "lucide-react";
 
-import type { VideoSummary } from "@/apis/videos.api";
-import { streamChat, type ChatEvent } from "@/apis/chat.api";
+import { getVideo, type VideoSummary } from "@/apis/videos.api";
+import { getConversation, streamChat, type ChatEvent, type PersistedMessage } from "@/apis/chat.api";
+import { qk } from "@/apis/queries";
+import { useAuth } from "@/contexts/AuthContext";
 import type { ChatScopeValue } from "@/pages/chat/components/ChatScopeBar";
 import { AgentsThinking, type ThinkingStep } from "./AgentsThinking";
 import { ChatComposer } from "./ChatComposer";
@@ -28,16 +33,69 @@ interface Turn {
 interface Props {
   initialAttached?: VideoSummary[];
   scope?: ChatScopeValue;
+  /** When set (from /chat/:conversationId), load + resume this conversation. */
+  conversationId?: string;
 }
 
-export function ChatThread({ initialAttached = [], scope }: Props) {
+export function ChatThread({ initialAttached = [], scope, conversationId }: Props) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [turns, setTurns] = useState<Turn[]>([]);
   const [attached, setAttached] = useState<VideoSummary[]>(initialAttached);
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<{ videoId: string; t?: number } | null>(null);
+  // The conversation this thread is bound to. A ref (not state): streamChat
+  // reads it per send, and updating it must not re-render mid-stream.
+  const convIdRef = useRef<string | undefined>(undefined);
+  const [historyState, setHistoryState] = useState<"idle" | "loading" | "error">("idle");
   const bottom = useRef<HTMLDivElement>(null);
 
   useEffect(() => { bottom.current?.scrollIntoView({ behavior: "smooth" }); }, [turns]);
+
+  // Load persisted history when the URL points at a conversation we don't
+  // already hold (thread switch / deep link). The navigate-after-first-reply
+  // case is a no-op because convIdRef already matches. conversationId →
+  // undefined means "New chat": reset to a fresh thread.
+  useEffect(() => {
+    if (!conversationId) {
+      if (convIdRef.current) {
+        convIdRef.current = undefined;
+        setTurns([]);
+        setAttached([]);
+        setHistoryState("idle");
+      }
+      return;
+    }
+    if (conversationId === convIdRef.current) return;
+    convIdRef.current = conversationId;
+    let cancelled = false;
+    setHistoryState("loading");
+    setTurns([]);
+    setAttached([]);
+    (async () => {
+      try {
+        const convo = await getConversation(conversationId);
+        if (cancelled) return;
+        setTurns(turnsFromMessages(convo.messages, convo.video_id ?? undefined));
+        setHistoryState("idle");
+        if (convo.video_id) {
+          try {
+            const v = await getVideo(convo.video_id);
+            if (!cancelled) setAttached([v]);
+          } catch {
+            /* the video may have been deleted since — resume without it */
+          }
+        }
+      } catch {
+        if (!cancelled) setHistoryState("error");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [conversationId]);
 
   const send = async (message: string, videoIds: string[], image?: string) => {
     setBusy(true);
@@ -51,29 +109,29 @@ export function ChatThread({ initialAttached = [], scope }: Props) {
       resultClips: [],
       summaries: [],
     };
-    setTurns((t) => [...t, newTurn]);
+    setTurns((prev) => [...prev, newTurn]);
 
-    const updateLast = (patch: (t: Turn) => Turn) =>
-      setTurns((t) => t.map((x, i) => (i === t.length - 1 ? patch(x) : x)));
+    const updateLast = (patch: (turn: Turn) => Turn) =>
+      setTurns((prev) => prev.map((x, i) => (i === prev.length - 1 ? patch(x) : x)));
 
     const onEvent = (ev: ChatEvent) => {
       switch (ev.type) {
         case "thought":
-          updateLast((t) => {
-            const last = t.steps[t.steps.length - 1];
+          updateLast((turn) => {
+            const last = turn.steps[turn.steps.length - 1];
             if (last && last.type === "thought" && last.agent === ev.agent) {
               const merged = { ...last, text: (last.text ?? "") + ev.delta };
-              return { ...t, steps: [...t.steps.slice(0, -1), merged] };
+              return { ...turn, steps: [...turn.steps.slice(0, -1), merged] };
             }
-            return { ...t, steps: [...t.steps, { type: "thought", agent: ev.agent, text: ev.delta }] };
+            return { ...turn, steps: [...turn.steps, { type: "thought", agent: ev.agent, text: ev.delta }] };
           });
           break;
         case "tool_call":
-          updateLast((t) => ({ ...t, steps: [...t.steps, { type: "tool_call", tool: ev.tool, args: ev.args }] }));
+          updateLast((turn) => ({ ...turn, steps: [...turn.steps, { type: "tool_call", tool: ev.tool, args: ev.args }] }));
           break;
         case "tool_result":
-          updateLast((t) => {
-            const next: Turn = { ...t, steps: [...t.steps, { type: "tool_result", tool: ev.tool, result: ev.result }] };
+          updateLast((turn) => {
+            const next: Turn = { ...turn, steps: [...turn.steps, { type: "tool_result", tool: ev.tool, result: ev.result }] };
             const clips = extractClips(ev.tool, ev.result);
             if (clips.length) next.resultClips = [...next.resultClips, ...clips];
             const summary = extractSummary(ev.tool, ev.result, videoIds);
@@ -82,9 +140,17 @@ export function ChatThread({ initialAttached = [], scope }: Props) {
           });
           break;
         case "message":
-          updateLast((t) => ({ ...t, assistant: t.assistant + ev.delta }));
+          updateLast((turn) => ({ ...turn, assistant: turn.assistant + ev.delta }));
           break;
         case "end":
+          if (!convIdRef.current && ev.conversation_id) {
+            // First reply of a brand-new thread: bind it and reflect in the URL
+            // so refresh/share resumes it. replace (not push) — "back" should
+            // not step through /workspace → /chat/:id.
+            convIdRef.current = ev.conversation_id;
+            navigate(`/chat/${ev.conversation_id}`, { replace: true });
+          }
+          void queryClient.invalidateQueries({ queryKey: qk.conversations(user?.id) });
           break;
       }
     };
@@ -107,6 +173,7 @@ export function ChatThread({ initialAttached = [], scope }: Props) {
 
     try {
       await streamChat({
+        conversation_id: convIdRef.current,
         message,
         video_ids: finalVideoIds,
         index_id: finalIndexId,
@@ -126,13 +193,23 @@ export function ChatThread({ initialAttached = [], scope }: Props) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex-1 space-y-8 overflow-auto px-1 py-4">
-        {turns.length === 0 && (
+        {historyState === "loading" && (
           <div className="grid h-full place-items-center text-sm text-neutral-400">
-            Ask Jockey anything about your videos.
+            {t("chat.thread.history_loading")}
+          </div>
+        )}
+        {historyState === "error" && (
+          <div className="grid h-full place-items-center text-sm text-neutral-400">
+            {t("chat.thread.history_load_failed")}
+          </div>
+        )}
+        {historyState === "idle" && turns.length === 0 && (
+          <div className="grid h-full place-items-center text-sm text-neutral-400">
+            {t("chat.thread.empty_state")}
           </div>
         )}
 
-        {turns.map((t, i) => {
+        {turns.map((turn, i) => {
           const isLastTurn = i === turns.length - 1;
           const turnComplete = !isLastTurn || !busy;
           return (
@@ -142,19 +219,19 @@ export function ChatThread({ initialAttached = [], scope }: Props) {
                 <span className="grid h-5 w-5 place-items-center rounded-full bg-neutral-200 text-neutral-600">
                   <User size={12} />
                 </span>
-                You
+                {t("chat.thread.you")}
               </div>
-              {t.image && (
+              {turn.image && (
                 <img
-                  src={t.image}
+                  src={turn.image}
                   alt="attached"
                   className="mb-2 h-28 w-28 rounded-xl border border-neutral-200 object-cover"
                 />
               )}
-              <p className="text-neutral-900">{t.user}</p>
-              {t.attachments.length > 0 && (
+              <p className="text-neutral-900">{turn.user}</p>
+              {turn.attachments.length > 0 && (
                 <p className="mt-1 text-xs text-neutral-500">
-                  Attached: {t.attachments.map((a) => a.name).join(", ")}
+                  {t("chat.thread.attached_label", { names: turn.attachments.map((a) => a.name).join(", ") })}
                 </p>
               )}
             </div>
@@ -162,13 +239,13 @@ export function ChatThread({ initialAttached = [], scope }: Props) {
             <div className="space-y-3">
               <div className="inline-flex items-center gap-2 text-xs font-medium text-neutral-700">
                 <BrandAvatar size={20} />
-                Jockey
+                {t("chat.thread.title")}
               </div>
 
-              {t.steps.length > 0 && (
+              {turn.steps.length > 0 && (
                 <AgentsThinking
-                  steps={t.steps}
-                  assistantHasContent={t.assistant.length > 0}
+                  steps={turn.steps}
+                  assistantHasContent={turn.assistant.length > 0}
                   complete={turnComplete}
                 />
               )}
@@ -176,16 +253,16 @@ export function ChatThread({ initialAttached = [], scope }: Props) {
               {/* Final output (clips / summary cards) only after the agent
                   finishes thinking — otherwise tool_result events render the
                   answer mid-stream, before the later thinking steps appear. */}
-              {turnComplete && t.resultClips.length > 0 && (
+              {turnComplete && turn.resultClips.length > 0 && (
                 <VideoSearchResults
-                  clips={t.resultClips}
+                  clips={turn.resultClips}
                   onPreview={(videoId, time) => setPreview({ videoId, t: time })}
                 />
               )}
 
-              {turnComplete && t.summaries.length > 0 && (
+              {turnComplete && turn.summaries.length > 0 && (
                 <div className="divide-y divide-neutral-100">
-                  {t.summaries.map((s, j) => (
+                  {turn.summaries.map((s, j) => (
                     <VideoSummaryCard
                       key={j}
                       videoId={s.videoId}
@@ -196,9 +273,9 @@ export function ChatThread({ initialAttached = [], scope }: Props) {
                 </div>
               )}
 
-              {t.assistant && t.resultClips.length === 0 && t.summaries.length === 0 && (
+              {turn.assistant && turn.resultClips.length === 0 && turn.summaries.length === 0 && (
                 <div className="text-sm leading-relaxed text-neutral-900 [&_p]:my-2 [&_code]:rounded [&_code]:bg-neutral-100 [&_code]:px-1 [&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:bg-neutral-100 [&_pre]:p-3 [&_pre]:text-xs">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{t.assistant}</ReactMarkdown>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{turn.assistant}</ReactMarkdown>
                 </div>
               )}
             </div>
@@ -287,6 +364,62 @@ function extractClips(tool: string, result: unknown): ClipResult[] {
   }
 
   return clips;
+}
+
+/**
+ * Rebuild Turn[] from persisted messages. Messages are stored as strict
+ * (user, assistant) pairs ordered by created_at asc. Thoughts are persisted
+ * as per-chunk deltas → merge consecutive same-agent entries into one step.
+ * tool_calls entries carry `result` (post 2026-06-10 backend) → replay them
+ * through extractClips/extractSummary so old turns render the same cards as
+ * live ones; result-less entries (older rows) render as bare tool_call steps.
+ */
+export function turnsFromMessages(messages: PersistedMessage[], fallbackVideoId?: string): Turn[] {
+  const turns: Turn[] = [];
+  const blank = (): Turn => ({ user: "", attachments: [], assistant: "", steps: [], resultClips: [], summaries: [] });
+
+  for (const m of messages) {
+    if (m.role === "user") {
+      turns.push({ ...blank(), user: m.content });
+      continue;
+    }
+    if (m.role !== "assistant") continue;
+    let turn = turns[turns.length - 1];
+    if (!turn || turn.assistant || turn.steps.length) {
+      turn = blank();
+      turns.push(turn);
+    }
+
+    const steps: ThinkingStep[] = [];
+    for (const th of m.thoughts ?? []) {
+      const agent = th.agent ?? "agent";
+      const last = steps[steps.length - 1];
+      if (last && last.type === "thought" && last.agent === agent) {
+        last.text = (last.text ?? "") + (th.delta ?? "");
+      } else {
+        steps.push({ type: "thought", agent, text: th.delta ?? "" });
+      }
+    }
+
+    const clips: ClipResult[] = [];
+    const summaries: { videoId: string; text: string }[] = [];
+    for (const tc of m.tool_calls ?? []) {
+      const tool = tc.tool ?? "";
+      steps.push({ type: "tool_call", tool, args: tc.args });
+      if (tc.result !== undefined && tc.result !== null) {
+        steps.push({ type: "tool_result", tool, result: tc.result });
+        clips.push(...extractClips(tool, tc.result));
+        const s = extractSummary(tool, tc.result, fallbackVideoId ? [fallbackVideoId] : []);
+        if (s) summaries.push(s);
+      }
+    }
+
+    turn.assistant = m.content;
+    turn.steps = steps;
+    turn.resultClips = clips;
+    turn.summaries = summaries;
+  }
+  return turns;
 }
 
 function extractSummary(tool: string, result: unknown, fallbackIds: string[]): { videoId: string; text: string } | null {

@@ -1,63 +1,139 @@
 {
-  "app": { "name": "Jockey" },
-  "lang": { "en": "English", "vi": "Tiếng Việt" },
+  "app": {
+    "name": "Jockey"
+  },
+  "lang": {
+    "en": "English",
+    "vi": "Tiếng Việt"
+  },
+  "actions": {
+    "save": "Lưu",
+    "cancel": "Hủy",
+    "delete": "Xóa",
+    "edit": "Sửa",
+    "remove": "Gỡ bỏ",
+    "copy": "Sao chép",
+    "copied": "Đã sao chép",
+    "close": "Đóng",
+    "submit": "Gửi",
+    "confirm": "Xác nhận",
+    "upload": "Tải lên",
+    "invite": "Mời",
+    "retry": "Thử lại",
+    "clear": "Xóa trắng",
+    "back": "Quay lại",
+    "next": "Tiếp theo",
+    "loading": "Đang tải…",
+    "search": "Tìm kiếm",
+    "search_placeholder": "Tìm kiếm…",
+    "learn_more": "Tìm hiểu thêm",
+    "get_started": "Bắt đầu",
+    "watch_demo": "Xem demo",
+    "read_docs": "Đọc tài liệu",
+    "view_all": "Xem tất cả",
+    "open": "Mở",
+    "run": "Chạy",
+    "select": "Chọn"
+  },
+  "nav": {
+    "platform": "Nền tảng",
+    "pricing": "Bảng giá",
+    "solutions": "Giải pháp",
+    "about": "Về chúng tôi",
+    "open_app": "Mở ứng dụng",
+    "playground_cta": "Playground",
+    "talk_to_sales": "Liên hệ kinh doanh",
+    "select_language": "Chọn ngôn ngữ",
+    "menu": {
+      "platform_heading": "Nền tảng",
+      "capabilities_heading": "Khả năng",
+      "solutions_heading": "Giải pháp",
+      "platform_overview": "Tổng quan nền tảng",
+      "platform_overview_desc": "Tìm kiếm, phân tích & phân đoạn video",
+      "models": "Mô hình",
+      "models_desc": "Encoder + VLM của chúng tôi, đã đánh giá",
+      "search": "Tìm kiếm",
+      "search_desc": "Tìm mọi cảnh bằng ngôn ngữ tự nhiên",
+      "analyze": "Phân tích",
+      "analyze_desc": "Tóm tắt, chương, hỏi đáp",
+      "segment": "Phân đoạn",
+      "segment_desc": "Các chương được gán nhãn, có mốc thời gian",
+      "compare_plans": "So sánh gói",
+      "pricing_calculator": "Công cụ tính giá",
+      "enterprise_overview": "Tổng quan doanh nghiệp",
+      "media_entertainment": "Truyền thông & Giải trí",
+      "advertising": "Quảng cáo",
+      "government_security": "Chính phủ & An ninh",
+      "automotive": "Ô tô"
+    }
+  },
+  "footer": {
+    "tagline": "AI thuần video cho tìm kiếm, phân tích và phân đoạn — xây dựng trên các mô hình mở CLIP, InternVideo2 và SG-DETR.",
+    "copyright": "© {{year}} Jockey. Xây dựng trên các mô hình mở.",
+    "col": {
+      "platform": "Nền tảng",
+      "solutions": "Giải pháp",
+      "developers": "Nhà phát triển",
+      "company": "Công ty"
+    },
+    "links": {
+      "platform_overview": "Tổng quan nền tảng",
+      "models": "Mô hình",
+      "pricing": "Bảng giá",
+      "examples": "Ví dụ",
+      "media_entertainment": "Truyền thông & Giải trí",
+      "advertising": "Quảng cáo",
+      "government_security": "Chính phủ & An ninh",
+      "automotive": "Ô tô",
+      "developer_hub": "Trung tâm nhà phát triển",
+      "api_docs": "Tài liệu API",
+      "sdks": "SDK",
+      "sample_apps": "Ứng dụng mẫu",
+      "about": "Giới thiệu",
+      "contact": "Liên hệ"
+    }
+  },
+  "layout": {
+    "sidebar": {
+      "workspace": "Không gian làm việc",
+      "overview": "Tổng quan",
+      "indexes": "Chỉ mục",
+      "assets": "Tài nguyên",
+      "entities": "Thực thể",
+      "search": "Tìm kiếm",
+      "analyze": "Phân tích",
+      "segment": "Phân đoạn",
+      "examples": "Ví dụ",
+      "api_keys": "Khóa API",
+      "settings": "Cài đặt",
+      "api_docs": "Tài liệu API",
+      "help": "Trợ giúp",
+      "collapse": "Thu gọn",
+      "collapse_tooltip": "Thu gọn thanh bên",
+      "expand_tooltip": "Mở rộng thanh bên"
+    },
+    "topbar": {
+      "used": "Đã dùng",
+      "book_demo": "Đặt lịch demo",
+      "invite": "Mời"
+    },
+    "usermenu": {
+      "user_fallback": "Người dùng",
+      "free_plan": "Gói miễn phí",
+      "used": "Đã dùng",
+      "indexing": "Lập chỉ mục",
+      "analyze_segment": "Phân tích & Phân đoạn",
+      "max_duration": "Thời lượng tối đa mỗi chỉ mục",
+      "max_videos": "Số video tối đa mỗi chỉ mục",
+      "upgrade": "Nâng cấp",
+      "pricing": "Bảng giá",
+      "sign_out": "Đăng xuất"
+    }
+  },
   "library": {
     "title": "Video của bạn",
     "upload": "Tải video",
     "empty": "Chưa có video nào. Hãy tải lên một video để bắt đầu."
-  },
-  "landing": {
-    "nav": {
-      "product": "Sản phẩm",
-      "docs": "Tài liệu",
-      "pricing": "Bảng giá",
-      "open_app": "Mở ứng dụng",
-      "get_started": "Bắt đầu"
-    },
-    "hero": {
-      "eyebrow": "TRÍ TUỆ VIDEO",
-      "h1_a": "Trò chuyện với",
-      "h1_em": "video của bạn.",
-      "sub": "Tìm kiếm, tóm tắt và định vị bất kỳ khoảnh khắc nào. Jockey biến thư viện video thành một đồng đội đã xem hết mọi thứ.",
-      "cta_primary": "Bắt đầu",
-      "cta_secondary": "Xem demo",
-      "chip_query": "thủ môn cản phạt đền lúc nào?",
-      "chip_caption": "3 kết quả trong 12:04"
-    },
-    "features": {
-      "title": "Ba cách dùng Jockey",
-      "search": {
-        "title": "Tìm kiếm",
-        "body": "Kéo video vào chat và hỏi bất cứ điều gì. Câu trả lời gắn với mốc thời gian."
-      },
-      "summarize": {
-        "title": "Tóm tắt",
-        "body": "Một đoạn văn hoặc theo từng chương cho bất kỳ video nào trong thư viện."
-      },
-      "find": {
-        "title": "Tìm khoảnh khắc",
-        "body": "Tìm bằng ngôn ngữ tự nhiên trên toàn bộ thư viện. Jockey nhảy thẳng đến giây cần xem."
-      }
-    },
-    "how": {
-      "title": "Cách hoạt động",
-      "step1": { "title": "Tải video lên", "body": "Thả file MP4 hoặc dán liên kết. Jockey lập chỉ mục hình ảnh, âm thanh và lời thoại." },
-      "step2": { "title": "Hỏi bằng ngôn ngữ thường", "body": "Gõ câu hỏi hoặc dán đoạn lời thoại. Không cần bộ lọc, không cần SQL." },
-      "step3": { "title": "Đến đúng khoảnh khắc", "body": "Bấm vào kết quả để tua đến đúng giây. Kiểm chứng chỉ trong một cú nhấp." }
-    },
-    "footer": {
-      "product": "Sản phẩm",
-      "company": "Công ty",
-      "legal": "Pháp lý",
-      "features": "Tính năng",
-      "pricing": "Bảng giá",
-      "docs": "Tài liệu",
-      "about": "Giới thiệu",
-      "contact": "Liên hệ",
-      "privacy": "Quyền riêng tư",
-      "terms": "Điều khoản",
-      "copyright": "© {{year}} Jockey. Bảo lưu mọi quyền."
-    }
   },
   "auth": {
     "email": "Email",

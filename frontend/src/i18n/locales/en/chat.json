@@ -1,0 +1,73 @@
+{
+  "chat": {
+    "sidebar": {
+      "new_chat": "New chat",
+      "chats_heading": "Chats",
+      "delete": "Delete",
+      "delete_confirm": "Delete this conversation? This cannot be undone.",
+      "untitled": "New chat",
+      "load_failed": "Couldn't load conversations"
+    },
+    "thread": {
+      "title": "Jockey",
+      "subtitle": "your video assistant",
+      "empty_state": "Ask Jockey anything about your videos.",
+      "you": "You",
+      "attached_label": "Attached: {{names}}",
+      "history_loading": "Loading conversation…",
+      "history_load_failed": "Couldn't load this conversation."
+    },
+    "composer": {
+      "placeholder": "Chat with your videos",
+      "attach_video_title": "Attach (drag a video from the library here)",
+      "attach_image_title": "Attach an image — ask Jockey to find the matching scene",
+      "attach_image_aria": "Attach image",
+      "remove_image_aria": "Remove image",
+      "chat_mode": "Chat Mode",
+      "send_aria": "Send"
+    },
+    "scope": {
+      "label": "Scope",
+      "mode_single_label": "Single video",
+      "mode_single_hint": "Ask about one video — uses drag-attached video(s) below.",
+      "mode_subset_label": "Selected videos",
+      "mode_subset_hint": "Pick an Index, then choose which of its videos to include.",
+      "mode_whole_label": "Whole index",
+      "mode_whole_hint": "Search every video in an Index — best for cross-video questions."
+    },
+    "index_picker": {
+      "untitled": "Untitled Index",
+      "placeholder": "Pick an index",
+      "select_hint": "select",
+      "video_count_one": "{{count}} video",
+      "video_count_other": "{{count}} videos",
+      "empty": "No indexes yet.",
+      "empty_create": "Create one"
+    },
+    "thinking": {
+      "header": "Agents Thinking",
+      "header_active": "Agents Thinking…",
+      "step_count_one": "{{count}} step",
+      "step_count_other": "{{count}} steps",
+      "phase_planner": "Understanding your request",
+      "phase_supervisor": "Choosing a worker",
+      "phase_default": "Thinking",
+      "phase_composing": "Composing reply",
+      "tool_search_corpus": "Searching the corpus",
+      "tool_search_video": "Searching one video",
+      "tool_transcript_range": "Reading transcript {{start}}–{{end}}",
+      "tool_summarize": "Summarizing the video",
+      "tool_read_transcript": "Reading transcript",
+      "tool_default": "Tool call",
+      "args_label": "args",
+      "result_label": "result"
+    },
+    "search_results": {
+      "see_more_one": "See {{count}} more result",
+      "see_more_other": "See {{count}} more results"
+    },
+    "attached": {
+      "remove_aria": "Remove"
+    }
+  }
+}

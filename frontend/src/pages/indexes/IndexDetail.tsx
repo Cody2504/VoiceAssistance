@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { ArrowLeft, Plus, Trash2, Upload, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import {
   addVideoToIndex,
@@ -15,6 +16,7 @@ import { useVideosQuery } from "@/apis/queries";
 import { cn, formatSeconds } from "@/lib/utils";
 
 export default function IndexDetail() {
+  const { t } = useTranslation();
   const { indexId } = useParams<{ indexId: string }>();
   const navigate = useNavigate();
   const [summary, setSummary] = useState<IndexSummary | null>(null);
@@ -39,11 +41,11 @@ export default function IndexDetail() {
       setSummary(s);
       setItems(v);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load index");
+      setError(e instanceof Error ? e.message : t("console.index_detail.error_load"));
     } finally {
       setLoading(false);
     }
-  }, [indexId]);
+  }, [indexId, t]);
 
   useEffect(() => {
     reload();
@@ -59,12 +61,12 @@ export default function IndexDetail() {
 
   const handleRemove = async (videoId: string) => {
     if (!indexId) return;
-    if (!confirm("Remove this video from the index?")) return;
+    if (!confirm(t("console.index_detail.remove_confirm"))) return;
     try {
       await removeVideoFromIndex(indexId, videoId);
       reload();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to remove video");
+      setError(e instanceof Error ? e.message : t("console.index_detail.error_remove"));
     }
   };
 
@@ -75,7 +77,7 @@ export default function IndexDetail() {
         (f) => f.type.startsWith("video/") || /\.(mp4|mov|webm|mkv)$/i.test(f.name),
       );
       if (list.length === 0) {
-        setError("Only video files are accepted.");
+        setError(t("console.index_detail.error_video_only"));
         return;
       }
       setError(null);
@@ -93,8 +95,8 @@ export default function IndexDetail() {
         } catch (e) {
           setError(
             e instanceof Error
-              ? `Upload failed for ${f.name}: ${e.message}`
-              : `Upload failed for ${f.name}`,
+              ? t("console.index_detail.upload_failed", { name: f.name, message: e.message })
+              : t("console.index_detail.upload_failed_short", { name: f.name }),
           );
         } finally {
           setUploadingNames((prev) => prev.filter((n) => n !== f.name));
@@ -103,7 +105,7 @@ export default function IndexDetail() {
       await Promise.all(list.map(uploadOne));
       reload();
     },
-    [indexId, reload],
+    [indexId, reload, t],
   );
 
   if (!indexId) return null;
@@ -116,14 +118,14 @@ export default function IndexDetail() {
           className="inline-flex items-center gap-1 text-[12px] text-[var(--color-gravel)] hover:text-[var(--color-obsidian)]"
         >
           <ArrowLeft size={12} />
-          All indexes
+          {t("console.index_detail.all_indexes")}
         </button>
       </div>
 
       <header className="mb-6 flex items-start justify-between">
         <div>
           <h1 className="text-[28px] font-light tracking-[-0.5px] text-[var(--color-obsidian)]">
-            {summary?.title || (loading ? "Loading…" : "Untitled Index")}
+            {summary?.title || (loading ? t("actions.loading") : t("console.index_detail.untitled"))}
           </h1>
           {summary?.description && (
             <p className="mt-1 max-w-[640px] text-[13px] text-[var(--color-gravel)]">
@@ -132,9 +134,14 @@ export default function IndexDetail() {
           )}
           {summary && (
             <p className="mt-2 text-[12px] text-[var(--color-gravel)]">
-              {summary.video_count} video{summary.video_count === 1 ? "" : "s"} ·{" "}
+              {summary.video_count === 1
+                ? t("console.index_detail.video_count", { count: summary.video_count })
+                : t("console.index_detail.video_count_plural", { count: summary.video_count })}{" "}
+              ·{" "}
               {summary.total_duration_s ? formatSeconds(summary.total_duration_s) : "0s"} ·{" "}
-              Created {new Date(summary.created_at).toLocaleDateString()}
+              {t("console.index_detail.created", {
+                date: new Date(summary.created_at).toLocaleDateString(),
+              })}
             </p>
           )}
         </div>
@@ -155,14 +162,14 @@ export default function IndexDetail() {
             className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-chalk)] bg-white px-4 py-1.5 text-[13px] text-[var(--color-obsidian)] hover:bg-[var(--color-powder)]"
           >
             <Upload size={13} />
-            Upload to this index
+            {t("console.index_detail.upload_btn")}
           </button>
           <button
             onClick={() => setAddOpen(true)}
             className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-obsidian)] px-4 py-1.5 text-[13px] text-white transition duration-150 ease-out hover:bg-neutral-800 active:scale-[0.97]"
           >
             <Plus size={13} />
-            Add from library
+            {t("console.index_detail.add_from_library")}
           </button>
         </div>
       </header>
@@ -194,8 +201,7 @@ export default function IndexDetail() {
       >
         {items.length === 0 && uploadingNames.length === 0 ? (
           <div className="p-10 text-center text-[13px] text-[var(--color-gravel)]">
-            No videos in this index yet. <strong>Upload to this index</strong>, <strong>Add from library</strong>,
-            or drop a video file anywhere on this card.
+            {t("console.index_detail.empty_hint")}
           </div>
         ) : (
           <ul className="divide-y divide-[var(--color-chalk)]">
@@ -219,7 +225,7 @@ export default function IndexDetail() {
                 <button
                   onClick={() => handleRemove(v.video_id)}
                   className="rounded p-1 text-[var(--color-gravel)] hover:bg-rose-50 hover:text-rose-600"
-                  title="Remove from index"
+                  title={t("console.index_detail.remove_title")}
                 >
                   <Trash2 size={14} />
                 </button>
@@ -230,7 +236,9 @@ export default function IndexDetail() {
                 <span className="w-8 font-mono text-[12px] text-[var(--color-gravel)]">···</span>
                 <div className="min-w-0 flex-1">
                   <span className="block truncate text-[14px] text-[var(--color-obsidian)]">{name}</span>
-                  <span className="font-mono text-[11px] text-amber-600">uploading…</span>
+                  <span className="font-mono text-[11px] text-amber-600">
+                    {t("console.index_detail.uploading")}
+                  </span>
                 </div>
               </li>
             ))}
@@ -263,6 +271,7 @@ function AddVideosModal({
   existingIds: Set<string>;
   onAdd: (videoId: string) => Promise<void>;
 }) {
+  const { t } = useTranslation();
   const { data: videos = [] } = useVideosQuery();
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -280,7 +289,9 @@ function AddVideosModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-neutral-200 px-6 py-4">
-          <h2 className="text-[15px] font-semibold text-neutral-900">Add videos to this index</h2>
+          <h2 className="text-[15px] font-semibold text-neutral-900">
+            {t("console.add_videos_modal.title")}
+          </h2>
           <button onClick={onClose} className="rounded p-1 text-[var(--color-gravel)] hover:bg-neutral-100">
             <X size={16} />
           </button>
@@ -288,7 +299,7 @@ function AddVideosModal({
         <div className="flex-1 overflow-y-auto p-2">
           {available.length === 0 && (
             <div className="m-4 rounded-[14px] border border-dashed border-neutral-300 bg-neutral-50 p-6 text-center text-[13px] text-neutral-600">
-              No ready videos to add. Upload some on the Assets page first.
+              {t("console.add_videos_modal.empty")}
             </div>
           )}
           {available.map((v) => (

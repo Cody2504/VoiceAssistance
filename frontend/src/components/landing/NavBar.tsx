@@ -27,20 +27,22 @@ import { cn } from "@/lib/utils";
  *   - Pricing   → "list": plain text list (Compare Plans / Pricing Calculator)
  *   - Solutions → "split": framer-style overlay, enterprise | industries split
  *   - About Us  → plain link, no panel
+ *
+ * All copy is keyed into the `nav.*` i18n namespace and resolved at render.
  */
 
 interface MenuItem {
-  label: string;
-  desc?: string;
+  labelKey: string;
+  descKey?: string;
   to: string;
   icon?: LucideIcon;
 }
 interface MenuGroup {
-  heading?: string;
+  headingKey?: string;
   items: MenuItem[];
 }
 interface NavEntry {
-  label: string;
+  labelKey: string;
   to?: string;
   groups?: MenuGroup[];
   /** mega = wide icon grid · list = narrow text list · split = two-pane overlay */
@@ -49,59 +51,59 @@ interface NavEntry {
 
 const NAV: NavEntry[] = [
   {
-    label: "Platform",
+    labelKey: "nav.platform",
     variant: "mega",
     groups: [
       {
-        heading: "Platform",
+        headingKey: "nav.menu.platform_heading",
         items: [
-          { label: "Platform Overview", desc: "Search, analyze & segment video", to: "/product/product-overview", icon: Boxes },
-          { label: "Models", desc: "Our encoder + VLM, benchmarked", to: "/product/product-overview#models", icon: Sparkles },
+          { labelKey: "nav.menu.platform_overview", descKey: "nav.menu.platform_overview_desc", to: "/product/product-overview", icon: Boxes },
+          { labelKey: "nav.menu.models", descKey: "nav.menu.models_desc", to: "/product/product-overview#models", icon: Sparkles },
         ],
       },
       {
-        heading: "Capabilities",
+        headingKey: "nav.menu.capabilities_heading",
         items: [
-          { label: "Search", desc: "Find any scene in natural language", to: "/product/product-overview#search", icon: Search },
-          { label: "Analyze", desc: "Summaries, chapters, Q&A", to: "/product/product-overview#analyze", icon: Sparkles },
-          { label: "Segment", desc: "Labeled, time-stamped chapters", to: "/product/product-overview#segment", icon: Layers },
+          { labelKey: "nav.menu.search", descKey: "nav.menu.search_desc", to: "/product/product-overview#search", icon: Search },
+          { labelKey: "nav.menu.analyze", descKey: "nav.menu.analyze_desc", to: "/product/product-overview#analyze", icon: Sparkles },
+          { labelKey: "nav.menu.segment", descKey: "nav.menu.segment_desc", to: "/product/product-overview#segment", icon: Layers },
         ],
       },
     ],
   },
   {
-    label: "Pricing",
+    labelKey: "nav.pricing",
     variant: "list",
     groups: [
       {
         items: [
-          { label: "Compare Plans", to: "/pricing#compare" },
-          { label: "Pricing Calculator", to: "/pricing-calculator" },
+          { labelKey: "nav.menu.compare_plans", to: "/pricing#compare" },
+          { labelKey: "nav.menu.pricing_calculator", to: "/pricing-calculator" },
         ],
       },
     ],
   },
   {
-    label: "Solutions",
+    labelKey: "nav.solutions",
     variant: "split",
     groups: [
       // left pane — enterprise
       {
-        items: [{ label: "Enterprise Overview", to: "/solutions" }],
+        items: [{ labelKey: "nav.menu.enterprise_overview", to: "/solutions" }],
       },
       // right pane — by industry
       {
-        heading: "Solutions",
+        headingKey: "nav.menu.solutions_heading",
         items: [
-          { label: "Media & Entertainment", to: "/solutions/media-and-entertainment" },
-          { label: "Advertising", to: "/solutions/advertising" },
-          { label: "Government & Security", to: "/solutions/government-and-security" },
-          { label: "Automotive", to: "/solutions/automotive" },
+          { labelKey: "nav.menu.media_entertainment", to: "/solutions/media-and-entertainment" },
+          { labelKey: "nav.menu.advertising", to: "/solutions/advertising" },
+          { labelKey: "nav.menu.government_security", to: "/solutions/government-and-security" },
+          { labelKey: "nav.menu.automotive", to: "/solutions/automotive" },
         ],
       },
     ],
   },
-  { label: "About Us", to: "/" },
+  { labelKey: "nav.about", to: "/" },
 ];
 
 const LANGS = [
@@ -111,7 +113,7 @@ const LANGS = [
 
 export function NavBar() {
   const { user } = useAuth();
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
   const [open, setOpen] = useState<string | null>(null);
   const [langOpen, setLangOpen] = useState(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -175,40 +177,40 @@ export function NavBar() {
           {NAV.map((entry) =>
             entry.groups ? (
               <div
-                key={entry.label}
+                key={entry.labelKey}
                 className="relative"
-                onMouseEnter={() => openMenu(entry.label)}
+                onMouseEnter={() => openMenu(entry.labelKey)}
               >
                 <button
                   type="button"
-                  aria-expanded={open === entry.label}
+                  aria-expanded={open === entry.labelKey}
                   aria-haspopup="true"
-                  onFocus={() => openMenu(entry.label)}
-                  onClick={() => setOpen(open === entry.label ? null : entry.label)}
+                  onFocus={() => openMenu(entry.labelKey)}
+                  onClick={() => setOpen(open === entry.labelKey ? null : entry.labelKey)}
                   className={cn(
                     "inline-flex cursor-pointer items-center gap-1 rounded-lg px-3 py-2 text-[14px] transition",
                     isDarkHome
-                      ? open === entry.label
+                      ? open === entry.labelKey
                         ? "text-white"
                         : "text-white/72 hover:text-white"
-                      : open === entry.label
+                      : open === entry.labelKey
                         ? "text-[var(--color-obsidian)]"
                         : "text-[var(--color-obsidian)]/80 hover:text-[var(--color-obsidian)]"
                   )}
                 >
-                  {entry.label}
+                  {t(entry.labelKey)}
                   <ChevronDown
                     size={14}
-                    className={cn("transition-transform duration-200", open === entry.label && "rotate-180")}
+                    className={cn("transition-transform duration-200", open === entry.labelKey && "rotate-180")}
                   />
                 </button>
 
                 {/* always mounted so it can animate both in and out */}
                 <div
-                  aria-hidden={open !== entry.label}
+                  aria-hidden={open !== entry.labelKey}
                   className={cn(
                     "absolute left-0 top-full z-50 origin-top pt-2 transition duration-200 ease-out",
-                    open === entry.label
+                    open === entry.labelKey
                       ? "translate-y-0 scale-100 opacity-100"
                       : "pointer-events-none -translate-y-1 scale-[0.98] opacity-0"
                   )}
@@ -218,7 +220,7 @@ export function NavBar() {
               </div>
             ) : (
               <Link
-                key={entry.label}
+                key={entry.labelKey}
                 to={entry.to!}
                 className={cn(
                   "rounded-lg px-3 py-2 text-[14px] transition",
@@ -227,7 +229,7 @@ export function NavBar() {
                     : "text-[var(--color-obsidian)]/80 hover:text-[var(--color-obsidian)]"
                 )}
               >
-                {entry.label}
+                {t(entry.labelKey)}
               </Link>
             )
           )}
@@ -243,7 +245,7 @@ export function NavBar() {
           >
             <button
               type="button"
-              aria-label="Select language"
+              aria-label={t("nav.select_language")}
               aria-expanded={langOpen}
               onClick={() => setLangOpen((v) => !v)}
               className={cn(
@@ -291,7 +293,7 @@ export function NavBar() {
                   : "bg-[var(--color-obsidian)] text-white hover:bg-neutral-800"
               )}
             >
-              Open app ↗
+              {t("nav.open_app")} ↗
             </Link>
           ) : (
             <>
@@ -304,7 +306,7 @@ export function NavBar() {
                     : "bg-[var(--color-obsidian)] text-white hover:bg-neutral-800"
                 )}
               >
-                Playground ↗
+                {t("nav.playground_cta")} ↗
               </Link>
               <a
                 href="/#cta"
@@ -315,7 +317,7 @@ export function NavBar() {
                     : "border-[var(--color-chalk)] bg-white text-[var(--color-obsidian)] hover:bg-[var(--color-powder)]"
                 )}
               >
-                Talk to sales ↗
+                {t("nav.talk_to_sales")} ↗
               </a>
             </>
           )}
@@ -331,6 +333,7 @@ const EYEBROW =
   "px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-slate)]";
 
 function MenuPanel({ entry, onNavigate }: { entry: NavEntry; onNavigate: () => void }) {
+  const { t } = useTranslation();
   if (entry.variant === "split") return <SplitPanel entry={entry} onNavigate={onNavigate} />;
 
   const isMega = entry.variant === "mega";
@@ -339,12 +342,12 @@ function MenuPanel({ entry, onNavigate }: { entry: NavEntry; onNavigate: () => v
       <div className={cn("grid gap-x-3", isMega ? "grid-cols-2 gap-y-1" : "grid-cols-1")}>
         {entry.groups!.map((group, gi) => (
           <div key={gi}>
-            {group.heading && <p className={EYEBROW}>{group.heading}</p>}
+            {group.headingKey && <p className={EYEBROW}>{t(group.headingKey)}</p>}
             {group.items.map((item) =>
               isMega ? (
-                <RichItem key={item.label + item.to} item={item} onNavigate={onNavigate} />
+                <RichItem key={item.labelKey + item.to} item={item} onNavigate={onNavigate} />
               ) : (
-                <TextItem key={item.label + item.to} item={item} onNavigate={onNavigate} />
+                <TextItem key={item.labelKey + item.to} item={item} onNavigate={onNavigate} />
               )
             )}
           </div>
@@ -356,21 +359,22 @@ function MenuPanel({ entry, onNavigate }: { entry: NavEntry; onNavigate: () => v
 
 /** Framer-style "SOLUTIONS-OVERLAY": enterprise pane | divider | industries pane. */
 function SplitPanel({ entry, onNavigate }: { entry: NavEntry; onNavigate: () => void }) {
+  const { t } = useTranslation();
   const [left, right] = entry.groups!;
   return (
     <div className={cn(CARD, "w-[600px]")}>
       <div className="flex items-stretch">
         <div className="w-[214px] shrink-0 pr-2">
-          {left.heading && <p className={EYEBROW}>{left.heading}</p>}
+          {left.headingKey && <p className={EYEBROW}>{t(left.headingKey)}</p>}
           {left.items.map((item) => (
-            <TextItem key={item.label + item.to} item={item} onNavigate={onNavigate} />
+            <TextItem key={item.labelKey + item.to} item={item} onNavigate={onNavigate} />
           ))}
         </div>
         <div aria-hidden className="mx-1 w-px self-stretch bg-[var(--color-chalk)]" />
         <div className="flex-1 pl-2">
-          {right.heading && <p className={EYEBROW}>{right.heading}</p>}
+          {right.headingKey && <p className={EYEBROW}>{t(right.headingKey)}</p>}
           {right.items.map((item) => (
-            <TextItem key={item.label + item.to} item={item} onNavigate={onNavigate} />
+            <TextItem key={item.labelKey + item.to} item={item} onNavigate={onNavigate} />
           ))}
         </div>
       </div>
@@ -380,6 +384,7 @@ function SplitPanel({ entry, onNavigate }: { entry: NavEntry; onNavigate: () => 
 
 /** Icon + title + description row (Platform mega menu). */
 function RichItem({ item, onNavigate }: { item: MenuItem; onNavigate: () => void }) {
+  const { t } = useTranslation();
   const Icon = item.icon;
   return (
     <Link
@@ -393,9 +398,9 @@ function RichItem({ item, onNavigate }: { item: MenuItem; onNavigate: () => void
         </span>
       )}
       <span>
-        <span className="block text-[14px] font-medium text-[var(--color-obsidian)]">{item.label}</span>
-        {item.desc && (
-          <span className="block text-[12px] leading-snug text-[var(--color-gravel)]">{item.desc}</span>
+        <span className="block text-[14px] font-medium text-[var(--color-obsidian)]">{t(item.labelKey)}</span>
+        {item.descKey && (
+          <span className="block text-[12px] leading-snug text-[var(--color-gravel)]">{t(item.descKey)}</span>
         )}
       </span>
     </Link>
@@ -404,13 +409,14 @@ function RichItem({ item, onNavigate }: { item: MenuItem; onNavigate: () => void
 
 /** Plain text row (Pricing list + Solutions split). */
 function TextItem({ item, onNavigate }: { item: MenuItem; onNavigate: () => void }) {
+  const { t } = useTranslation();
   return (
     <Link
       to={item.to}
       onClick={onNavigate}
       className="block rounded-xl px-3 py-2.5 text-[14px] font-medium text-[var(--color-obsidian)]/85 transition hover:bg-[var(--color-powder)] hover:text-[var(--color-obsidian)]"
     >
-      {item.label}
+      {t(item.labelKey)}
     </Link>
   );
 }

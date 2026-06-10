@@ -1,0 +1,137 @@
+{
+  "pgkit": {
+    "advanced": {
+      "title": "Cài đặt nâng cao",
+      "reset": "Đặt lại"
+    },
+    "shell": {
+      "learn": "Tìm hiểu",
+      "start_with_example": "Bắt đầu với một ví dụ"
+    },
+    "form": {
+      "running": "Đang chạy…"
+    },
+    "results": {
+      "title": "Kết quả"
+    },
+    "history": {
+      "title": "Lịch sử",
+      "close": "Đóng lịch sử",
+      "filter_placeholder": "Lọc theo ID hoặc URL tài nguyên",
+      "clear": "Xóa lịch sử",
+      "task_count_one": "{{count}} tác vụ",
+      "task_count_other": "{{count}} tác vụ",
+      "empty_no_runs": "Chưa có lần chạy nào. Nhấn Phân đoạn ở bên trái để bắt đầu.",
+      "empty_no_match": "Không có kết quả khớp với bộ lọc.",
+      "status_ready": "sẵn sàng",
+      "track_seg": "{{tracks}} track · {{segs}} phân đoạn",
+      "tracks_seg": "{{tracks}} track · {{segs}} phân đoạn"
+    },
+    "index_picker": {
+      "select_label": "Chọn một chỉ mục",
+      "modal_title": "Chọn chỉ mục để Tìm kiếm",
+      "filter_placeholder": "Lọc theo tên chỉ mục",
+      "sort_label": "Sắp xếp theo",
+      "sort_recent": "Tải lên gần đây",
+      "untitled": "Chỉ mục không có tiêu đề",
+      "change": "Đổi chỉ mục",
+      "no_indexes": "Chưa có chỉ mục nào.",
+      "create_one": "Tạo một →"
+    },
+    "video_picker": {
+      "select_label": "Chọn một video",
+      "change": "Đổi video",
+      "modal_title": "Chọn một video",
+      "empty_title": "Chưa có video nào sẵn sàng",
+      "empty_desc": "Tải lên một clip trên trang Tài nguyên. Sau khi lập chỉ mục xong, nó sẽ tự động xuất hiện ở đây.",
+      "open_assets": "Mở Tài nguyên",
+      "manage_assets": "Quản lý trong Tài nguyên",
+      "refresh": "Làm mới",
+      "refresh_list": "Làm mới danh sách video",
+      "change_compact": "đổi",
+      "ready_count": "{{count}} sẵn sàng"
+    },
+    "video_multi_picker": {
+      "default_label": "Chọn video trong chỉ mục này",
+      "modal_title": "Chọn video trong chỉ mục này",
+      "selected_of": "Đã chọn {{selected}} / {{total}}",
+      "select_all": "Chọn tất cả",
+      "done": "Xong",
+      "no_videos": "Chưa có video nào trong chỉ mục này. Thêm từ trang chi tiết Chỉ mục."
+    },
+    "segment_builder": {
+      "title": "Trình xây dựng định nghĩa phân đoạn",
+      "builder_col": "Trình xây dựng",
+      "editor_col": "Trình soạn thảo",
+      "def_id_placeholder": "definition_id (vd: speakers)",
+      "def_id_label": "ID định nghĩa",
+      "remove_def": "Xóa định nghĩa",
+      "field_count_one": "({{count}} trường)",
+      "field_count_other": "({{count}} trường)",
+      "description_label": "Mô tả",
+      "description_char_count": "{{count}}/2000",
+      "description_placeholder": "Khi nào nên tạo một phân đoạn?",
+      "description_aria": "Mô tả định nghĩa",
+      "fields_label": "Các trường",
+      "fields_count": "{{count}}/20",
+      "field_name_placeholder": "tên_trường",
+      "field_name_aria": "Tên trường",
+      "field_type_aria": "Loại trường",
+      "field_type_string": "Chuỗi",
+      "field_type_number": "Số",
+      "field_type_boolean": "Boolean",
+      "field_enum_placeholder": "enum (phân cách bằng dấu phẩy, tùy chọn)",
+      "field_enum_aria": "Giá trị enum của trường",
+      "remove_field": "Xóa trường",
+      "add_field": "Thêm trường",
+      "time_ranges_label": "Khoảng thời gian",
+      "time_ranges_placeholder": "Vd: 0-10, 30-45",
+      "time_ranges_hint": "Dùng dấu phẩy để phân cách nhiều khoảng.",
+      "time_ranges_aria": "Khoảng thời gian",
+      "add_def": "Thêm định nghĩa phân đoạn",
+      "def_count": "{{count}}/10",
+      "json_preview_aria": "Xem trước JSON của các định nghĩa phân đoạn",
+      "apply": "Áp dụng",
+      "close": "Đóng"
+    },
+    "dropdown": {
+      "placeholder": "Chọn…"
+    },
+    "metadata": {
+      "title": "Siêu dữ liệu",
+      "not_implemented": "Bộ phân đoạn chưa được triển khai — track trống.",
+      "no_active_segment": "Không có phân đoạn nào đang hoạt động tại thời điểm hiện tại",
+      "no_fields": "(không có trường nào)"
+    },
+    "timeline": {
+      "waiting": "Đang chờ kết quả…"
+    },
+    "examples": {
+      "search_s1_title": "Tìm một bước nấu ăn",
+      "search_s2_title": "Định vị một khoảnh khắc nổi bật trong thể thao",
+      "search_s3_title": "Nhóm kết quả theo video",
+      "ground_g1_title": "Khoảnh khắc hành động",
+      "ground_g2_title": "Cử chỉ cụ thể",
+      "analyze_a1_title": "Tóm tắt video",
+      "analyze_a2_title": "Trích xuất các chương"
+    },
+    "presets": {
+      "shot_detection_label": "Phát hiện cảnh quay",
+      "shot_detection_desc": "Phát hiện ranh giới cảnh quay với phân loại góc máy và loại cảnh.",
+      "speaker_diarization_label": "Phân loại người nói",
+      "speaker_diarization_desc": "Xác định sự thay đổi người nói và phân đoạn theo người đang phát biểu.",
+      "topic_changes_label": "Thay đổi chủ đề",
+      "topic_changes_desc": "Phát hiện khi chủ đề hoặc nội dung thay đổi trong video.",
+      "sports_highlights_label": "Điểm nổi bật thể thao",
+      "sports_highlights_desc": "Phát hiện các khoảnh khắc quan trọng trong thể thao: pha bóng, ghi điểm, phạt, mừng chiến thắng.",
+      "editorial_segment_label": "Phân đoạn biên tập",
+      "editorial_segment_desc": "Phân đoạn video thành các câu chuyện/tường thuật biên tập (tin tức, phim tài liệu).",
+      "person_of_focus_label": "Người được chú ý",
+      "person_of_focus_desc": "Theo dõi người xuất hiện nhiều nhất trên màn hình trong suốt video.",
+      "ocr_label": "Chữ & đồ họa trên màn hình",
+      "ocr_desc": "Phát hiện văn bản chồng lên, chú thích dưới, logo và các yếu tố đồ họa trên màn hình.",
+      "write_my_own_label": "Tự viết",
+      "write_my_own_desc": "Bắt đầu từ đầu với một định nghĩa phân đoạn trống."
+    }
+  }
+}

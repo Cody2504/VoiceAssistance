@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import { cn } from "@/lib/utils";
 
@@ -47,7 +48,7 @@ export function CapabilityDetail({
   title,
   body,
   ctaTo,
-  ctaLabel = "Try on Playground",
+  ctaLabel,
   backgroundImage,
   backgroundVideo,
   videoPoster,
@@ -56,6 +57,9 @@ export function CapabilityDetail({
   contentTopClass = "pt-20 md:pt-28",
   toneClass = "text-[var(--color-gravel)]",
 }: Props) {
+  const { t } = useTranslation();
+  const resolvedCtaLabel = ctaLabel ?? t("landing.capability_detail.try_playground");
+
   const videoRef = useRef<HTMLVideoElement | null>(null);
   useEffect(() => {
     const el = videoRef.current;
@@ -141,13 +145,13 @@ export function CapabilityDetail({
               to={ctaTo}
               className="inline-flex h-10 items-center gap-1.5 rounded-full bg-[var(--color-obsidian)] px-5 text-[13px] font-medium text-white transition duration-150 ease-out hover:bg-neutral-800 active:scale-[0.97]"
             >
-              Learn more ↗
+              {t("landing.capability_detail.learn_more")}
             </Link>
             <Link
               to={ctaTo}
               className="inline-flex h-10 items-center rounded-full border border-[var(--color-chalk)] bg-white/90 px-5 text-[13px] font-medium text-[var(--color-obsidian)] backdrop-blur transition hover:bg-white"
             >
-              {ctaLabel}
+              {resolvedCtaLabel}
             </Link>
           </div>
         </div>

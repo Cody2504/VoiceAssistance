@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
 import { Info, ArrowUpRight, MessageSquare, Check, Loader2, AlertCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { getSubscription, startCheckout, type Subscription } from "@/apis/billing.api";
 import { getMyUsage } from "@/apis/usage.api";
@@ -17,8 +18,8 @@ import { formatUSD } from "@/pages/pricing/pricingData";
  *   - Demo only: everything runs in Stripe TEST mode (test cards, no real money).
  */
 
-function capLabel(minutes: number | null | undefined): string {
-  if (minutes == null) return "Unlimited";
+function capLabel(minutes: number | null | undefined, unlimited: string): string {
+  if (minutes == null) return unlimited;
   return minutes >= 60 ? `${+(minutes / 60).toFixed(1)} hr` : `${minutes} min`;
 }
 
@@ -31,6 +32,7 @@ const STATUS_STYLE: Record<string, string> = {
 };
 
 export default function BillingPlan() {
+  const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
   const [sub, setSub] = useState<Subscription | null>(null);
   const [usageCost, setUsageCost] = useState<number>(0);
@@ -51,11 +53,11 @@ export default function BillingPlan() {
         setUsageCost(u.value.days.reduce((acc, d) => acc + (d.cost_usd || 0), 0));
       }
     } catch {
-      setError("Couldn't load your billing details. Please try again.");
+      setError(t("settings.billing.error_load"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     load();
@@ -64,11 +66,11 @@ export default function BillingPlan() {
   // Clear the ?checkout= flag from the URL after we've shown the banner once.
   useEffect(() => {
     if (!checkoutFlag) return;
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       params.delete("checkout");
       setParams(params, { replace: true });
     }, 6000);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [checkoutFlag, params, setParams]);
 
   const onUpgrade = useCallback(async () => {
@@ -76,10 +78,10 @@ export default function BillingPlan() {
     try {
       await startCheckout(); // navigates away to Stripe on success
     } catch {
-      setError("Couldn't start checkout. Make sure Stripe is configured (STRIPE_SECRET_KEY / STRIPE_PRICE_DEVELOPER).");
+      setError(t("settings.billing.error_checkout"));
       setRedirecting(false);
     }
-  }, []);
+  }, [t]);
 
   const planName = sub?.plan?.name ?? (sub?.plan_id ? sub.plan_id : "Free");
   const isFree = (sub?.plan_id ?? "free") === "free";
@@ -89,11 +91,13 @@ export default function BillingPlan() {
     ? new Date(sub.current_period_end).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
     : null;
 
+  const unlimited = t("settings.billing.unlimited");
+
   if (loading) {
     return (
       <Section>
         <div className="flex items-center gap-2 text-[var(--color-slate)]">
-          <Loader2 size={16} className="animate-spin" /> Loading billing details…
+          <Loader2 size={16} className="animate-spin" /> {t("settings.billing.loading")}
         </div>
       </Section>
     );
@@ -103,13 +107,12 @@ export default function BillingPlan() {
     <>
       {checkoutFlag === "success" && (
         <Banner tone="success" icon={<Check size={16} />}>
-          Payment confirmed — your plan will update to <b>Developer</b> as soon as Stripe notifies us (usually a
-          couple of seconds). Refresh if it still shows Free.
+          {t("settings.billing.banner_success_pre")} <b>Developer</b> {t("settings.billing.banner_success_post")}
         </Banner>
       )}
       {checkoutFlag === "cancelled" && (
         <Banner tone="neutral" icon={<Info size={16} />}>
-          Checkout cancelled — you're still on your current plan.
+          {t("settings.billing.banner_cancelled")}
         </Banner>
       )}
       {error && (
@@ -122,7 +125,9 @@ export default function BillingPlan() {
       <Section>
         <div className="flex items-center justify-between gap-12">
           <div className="flex flex-1 items-center gap-3">
-            <p className="text-[24px] font-light tracking-[-0.4px] text-[var(--color-obsidian)]">{planName} plan</p>
+            <p className="text-[24px] font-light tracking-[-0.4px] text-[var(--color-obsidian)]">
+              {t("settings.billing.plan_label", { name: planName })}
+            </p>
             {sub?.status && (
               <span
                 className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium capitalize ${
@@ -137,20 +142,20 @@ export default function BillingPlan() {
             href="mailto:hello@jockey.local"
             className="inline-flex items-center gap-1 text-[13px] font-medium text-[var(--color-obsidian)] hover:underline"
           >
-            <MessageSquare size={16} /> Talk To Sales
+            <MessageSquare size={16} /> {t("settings.billing.talk_to_sales")}
           </a>
           <a
             href="/pricing"
             className="inline-flex items-center gap-1 text-[13px] font-medium text-[var(--color-obsidian)] hover:underline"
           >
-            Pricing <ArrowUpRight size={14} />
+            {t("settings.billing.pricing")} <ArrowUpRight size={14} />
           </a>
         </div>
 
-        <Label label="Video hours usage" />
+        <Label label={t("settings.billing.video_usage")} />
         <p className="text-[24px] font-light tracking-[-0.4px] text-[var(--color-obsidian)]">
           0 min
-          <span className="text-[var(--color-slate)]"> / {capLabel(indexCap)}</span>
+          <span className="text-[var(--color-slate)]"> / {capLabel(indexCap, unlimited)}</span>
         </p>
 
         <div className="flex w-[550px] max-w-full flex-col gap-2">
@@ -162,22 +167,22 @@ export default function BillingPlan() {
           <div className="flex items-center gap-3 text-[12px] text-[var(--color-obsidian)]">
             <span className="inline-flex items-center gap-1">
               <span aria-hidden className="inline-block h-2 w-2 rounded-[2px] border border-[var(--color-slate)] bg-[#5fb364]" />
-              Indexing
+              {t("settings.billing.indexing")}
             </span>
           </div>
         </div>
 
         <div className="flex gap-10">
           <div className="flex flex-col gap-2">
-            <Label label="Max duration per index" />
+            <Label label={t("settings.billing.max_duration")} />
             <p className="text-[24px] font-light tracking-[-0.4px] text-[var(--color-obsidian)]">
-              {capLabel(indexCap)}
+              {capLabel(indexCap, unlimited)}
             </p>
           </div>
           <div className="flex flex-col gap-2">
-            <Label label="Search queries / month" />
+            <Label label={t("settings.billing.search_queries")} />
             <p className="text-[24px] font-light tracking-[-0.4px] text-[var(--color-obsidian)]">
-              {sub?.plan?.monthly_search_queries == null ? "Unlimited" : `${sub.plan.monthly_search_queries}`}
+              {sub?.plan?.monthly_search_queries == null ? unlimited : `${sub.plan.monthly_search_queries}`}
             </p>
           </div>
         </div>
@@ -185,7 +190,7 @@ export default function BillingPlan() {
         <div className="flex items-center gap-3 pt-2">
           {isPaid ? (
             <span className="inline-flex h-10 items-center gap-1.5 rounded-[12px] bg-[#e6f4ea] px-[18px] text-[14px] font-medium text-[#137333]">
-              <Check size={16} /> You're on the {planName} plan
+              <Check size={16} /> {t("settings.billing.on_plan", { name: planName })}
             </span>
           ) : (
             <button
@@ -196,26 +201,28 @@ export default function BillingPlan() {
             >
               {redirecting ? (
                 <>
-                  <Loader2 size={14} className="animate-spin" /> Redirecting…
+                  <Loader2 size={14} className="animate-spin" /> {t("settings.billing.redirecting")}
                 </>
               ) : (
                 <>
-                  Upgrade plan <ArrowUpRight size={14} />
+                  {t("settings.billing.upgrade")} <ArrowUpRight size={14} />
                 </>
               )}
             </button>
           )}
           {renewal && (
-            <span className="text-[13px] text-[var(--color-slate)]">Renews {renewal}</span>
+            <span className="text-[13px] text-[var(--color-slate)]">
+              {t("settings.billing.renews", { date: renewal })}
+            </span>
           )}
         </div>
       </Section>
 
       {/* Payment */}
       <Section>
-        <SectionTitle>Payment</SectionTitle>
+        <SectionTitle>{t("settings.billing.payment_title")}</SectionTitle>
         <p className="-mt-2 text-[13px] text-[var(--color-gravel)]">
-          Cards are collected securely on Stripe's hosted checkout — we never see or store card numbers.
+          {t("settings.billing.payment_desc")}
         </p>
         <button
           type="button"
@@ -223,43 +230,51 @@ export default function BillingPlan() {
           disabled={redirecting}
           className="inline-flex h-10 w-fit items-center gap-1 rounded-[12px] border border-[var(--color-obsidian)] bg-transparent px-[18px] text-[14px] font-medium text-[var(--color-obsidian)] transition-all duration-200 ease-out hover:rounded-[16px] hover:bg-black/5 active:scale-[0.98] disabled:opacity-60 disabled:active:scale-100"
         >
-          {isPaid ? "Update payment method" : "Register payment method"}
+          {isPaid ? t("settings.billing.update_payment") : t("settings.billing.register_payment")}
         </button>
       </Section>
 
       {/* Total amount due (grey background) */}
       <Section grey>
-        <SectionTitle>Total amount due</SectionTitle>
+        <SectionTitle>{t("settings.billing.amount_due")}</SectionTitle>
         <div className="flex gap-20">
-          <Stat label="Usage charges (30d)" value={formatUSD(usageCost)} />
-          <Stat label="Plan" value={`${planName}${isPaid ? " (recurring)" : ""}`} />
-          <Stat label={isPaid ? "Renewal date" : "Charge date"} value={renewal ?? "—"} />
+          <Stat label={t("settings.billing.usage_charges")} value={formatUSD(usageCost)} />
+          <Stat
+            label={t("settings.billing.plan_stat")}
+            value={isPaid ? t("settings.billing.recurring", { name: planName }) : planName}
+          />
+          <Stat
+            label={isPaid ? t("settings.billing.renewal_date") : t("settings.billing.charge_date")}
+            value={renewal ?? "—"}
+          />
         </div>
       </Section>
 
       {/* Billing history */}
       <Section>
-        <SectionTitle>Billing history</SectionTitle>
+        <SectionTitle>{t("settings.billing.history_title")}</SectionTitle>
         <div className="overflow-hidden rounded-xl">
           <table className="w-full text-[13px]">
             <thead>
               <tr className="border-b border-[var(--color-chalk)] text-left">
-                {[
-                  "Issued date",
-                  "Due date",
-                  "Status",
-                  "Total amount",
-                  "Paid amount",
-                  "Billing period",
-                  "Invoice",
-                  "Receipt",
-                  "Usage details",
-                ].map((h, i) => (
+                {(
+                  [
+                    "col_issued",
+                    "col_due",
+                    "col_status",
+                    "col_total",
+                    "col_paid",
+                    "col_period",
+                    "col_invoice",
+                    "col_receipt",
+                    "col_usage",
+                  ] as const
+                ).map((colKey, i) => (
                   <th
-                    key={h}
+                    key={colKey}
                     className={`whitespace-nowrap px-3 py-3 font-semibold text-[var(--color-obsidian)] ${i >= 6 ? "text-center" : "text-left"}`}
                   >
-                    {h}
+                    {t(`settings.billing.${colKey}`)}
                   </th>
                 ))}
               </tr>
@@ -267,7 +282,7 @@ export default function BillingPlan() {
             <tbody>
               <tr>
                 <td colSpan={9} className="py-10 text-center text-[var(--color-gravel)]">
-                  No Billing History Data!
+                  {t("settings.billing.no_history")}
                 </td>
               </tr>
             </tbody>

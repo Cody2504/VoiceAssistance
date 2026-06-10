@@ -1,5 +1,6 @@
 import { Link, NavLink, Outlet } from "react-router";
-import { Plus, PanelLeftOpen } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { Plus, PanelLeftOpen, ShieldCheck, Users as UsersIcon, CreditCard } from "lucide-react";
 
 import { Logo } from "@/components/brand/Logo";
 import { TopBar } from "@/components/layout/TopBar";
@@ -18,16 +19,19 @@ import {
   HelpDefault,
   CollapseDefault,
 } from "@/components/brand/SidebarIcons";
+import { SidebarChats } from "@/components/layout/SidebarChats";
 import { SidebarItem } from "@/components/layout/SidebarItem";
+import { useAuth } from "@/contexts/AuthContext";
 import { SidebarProvider, useSidebar } from "@/contexts/SidebarContext";
 import { cn } from "@/lib/utils";
 
 function WorkspaceButton() {
   const { collapsed } = useSidebar();
+  const { t } = useTranslation();
   return (
     <NavLink
       to="/workspace"
-      title={collapsed ? "Workspace" : undefined}
+      title={collapsed ? t("chat.sidebar.new_chat") : undefined}
       data-testid="workspace-menu-button"
       className={({ isActive }) =>
         cn(
@@ -45,7 +49,7 @@ function WorkspaceButton() {
         <Plus size={16} strokeWidth={2.25} />
       ) : (
         <>
-          <span>Workspace</span>
+          <span>{t("chat.sidebar.new_chat")}</span>
           <span className="absolute right-2 flex items-center justify-center">
             <Plus size={16} strokeWidth={2.25} />
           </span>
@@ -57,20 +61,21 @@ function WorkspaceButton() {
 
 function SidebarFooter() {
   const { collapsed, toggle } = useSidebar();
+  const { t } = useTranslation();
 
   return (
     <div className="flex flex-col">
       <div className="mt-auto flex flex-col gap-y-1">
-        <SidebarItem to="/settings/api-keys" icon={<APIKeysDefault />} label="API Keys" />
-        <SidebarItem to="/settings/billing" icon={<SettingsDefault />} label="Settings" />
-        <SidebarItem to="/settings/api-keys" icon={<APIDocsDefault />} label="API Docs" />
-        <SidebarItem to="/settings/profile" icon={<HelpDefault />} label="Help" />
+        <SidebarItem to="/settings/api-keys" icon={<APIKeysDefault />} label={t("layout.sidebar.api_keys")} />
+        <SidebarItem to="/settings/billing" icon={<SettingsDefault />} label={t("layout.sidebar.settings")} />
+        <SidebarItem to="/settings/api-keys" icon={<APIDocsDefault />} label={t("layout.sidebar.api_docs")} />
+        <SidebarItem to="/settings/profile" icon={<HelpDefault />} label={t("layout.sidebar.help")} />
       </div>
 
       <div className="mt-6 flex flex-col gap-y-1">
         <button
           onClick={toggle}
-          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          title={collapsed ? t("layout.sidebar.expand_tooltip") : t("layout.sidebar.collapse_tooltip")}
           data-testid="sidebar-collapse"
           className="flex items-center gap-x-1 relative w-full h-10 px-1 cursor-pointer select-none truncate group"
         >
@@ -79,7 +84,7 @@ function SidebarFooter() {
               className="px-2 py-2 text-[15px] leading-tight text-left rounded-lg flex items-center gap-x-2 group-hover:bg-[var(--color-powder)]"
               style={{ width: 128 }}
             >
-              Collapse
+              {t("layout.sidebar.collapse")}
             </span>
           )}
           <span
@@ -96,6 +101,8 @@ function SidebarFooter() {
 
 function SidebarShell() {
   const { collapsed } = useSidebar();
+  const { t } = useTranslation();
+  const { user } = useAuth();
   return (
     <nav
       className={cn(
@@ -122,19 +129,29 @@ function SidebarShell() {
           <WorkspaceButton />
         </div>
 
+        <SidebarChats />
+
         <div className="flex flex-col gap-y-1">
-          <SidebarItem to="/overview" icon={<OverviewDefault />} iconActive={<OverviewFilled />} label="Overview" />
-          <SidebarItem to="/indexes" icon={<IndexesDefault />} iconActive={<IndexesFilled />} label="Indexes" />
-          <SidebarItem to="/assets" icon={<AssetsDefault />} iconActive={<AssetsFilled />} label="Assets" />
-          <SidebarItem to="/entities" icon={<EntitiesDefault />} iconActive={<EntitiesFilled />} label="Entities" />
+          <SidebarItem to="/overview" icon={<OverviewDefault />} iconActive={<OverviewFilled />} label={t("layout.sidebar.overview")} />
+          <SidebarItem to="/indexes" icon={<IndexesDefault />} iconActive={<IndexesFilled />} label={t("layout.sidebar.indexes")} />
+          <SidebarItem to="/assets" icon={<AssetsDefault />} iconActive={<AssetsFilled />} label={t("layout.sidebar.assets")} />
+          <SidebarItem to="/entities" icon={<EntitiesDefault />} iconActive={<EntitiesFilled />} label={t("layout.sidebar.entities")} />
         </div>
 
         <div className="mt-6 flex flex-col gap-y-1">
-          <SidebarItem to="/playground/search" icon={<SearchDefault />} iconActive={<SearchFilled />} label="Search" />
-          <SidebarItem to="/playground/analyze" icon={<AnalyzeDefault />} iconActive={<AnalyzeFilled />} label="Analyze" />
-          <SidebarItem to="/playground/segment" icon={<SegmentDefault />} iconActive={<SegmentFilled />} label="Segment" />
-          <SidebarItem to="/examples" icon={<ExamplesDefault />} iconActive={<ExamplesFilled />} label="Examples" />
+          <SidebarItem to="/playground/search" icon={<SearchDefault />} iconActive={<SearchFilled />} label={t("layout.sidebar.search")} />
+          <SidebarItem to="/playground/analyze" icon={<AnalyzeDefault />} iconActive={<AnalyzeFilled />} label={t("layout.sidebar.analyze")} />
+          <SidebarItem to="/playground/segment" icon={<SegmentDefault />} iconActive={<SegmentFilled />} label={t("layout.sidebar.segment")} />
+          <SidebarItem to="/examples" icon={<ExamplesDefault />} iconActive={<ExamplesFilled />} label={t("layout.sidebar.examples")} />
         </div>
+
+        {user?.role === "admin" && (
+          <div className="mt-6 flex flex-col gap-y-1">
+            <SidebarItem to="/admin" end icon={<ShieldCheck size={22} strokeWidth={1.75} />} label={t("admin.nav.overview")} />
+            <SidebarItem to="/admin/users" icon={<UsersIcon size={22} strokeWidth={1.75} />} label={t("admin.nav.users")} />
+            <SidebarItem to="/admin/billing" icon={<CreditCard size={22} strokeWidth={1.75} />} label={t("admin.nav.billing")} />
+          </div>
+        )}
       </div>
 
       <div className="flex-1" />

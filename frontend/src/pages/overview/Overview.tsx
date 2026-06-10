@@ -9,6 +9,7 @@ import {
   Play,
   ChevronRight,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { PillButton } from "@/components/ui/PillButton";
 import { SearchIcon, AnalyzeIcon, EmbedIcon } from "@/components/brand/FeatureIcon";
 import { uploadVideo } from "@/apis/videos.api";
@@ -19,10 +20,10 @@ import { cn } from "@/lib/utils";
 interface FeaturePanelData {
   to: string;
   icon: React.ReactNode;
-  title: string;
-  body: string;
+  titleKey: string;
+  bodyKey: string;
+  imageAltKey: string;
   image: string;
-  imageAlt: string;
   panelClass: string;
   titleClass: string;
 }
@@ -31,30 +32,30 @@ const FEATURES: FeaturePanelData[] = [
   {
     to: "/playground/search",
     icon: <SearchIcon size={32} />,
-    title: "Search",
-    body: "Find specific moments within your videos by describing the scene in natural language.",
+    titleKey: "marketing.overview.features.search_title",
+    bodyKey: "marketing.overview.features.search_body",
+    imageAltKey: "marketing.overview.features.search_alt",
     image: "/twelvelabs/search.png",
-    imageAlt: "Search illustration",
     panelClass: "bg-[#fbdfff]",
     titleClass: "text-[#5e3b66]",
   },
   {
     to: "/playground/analyze",
     icon: <AnalyzeIcon size={32} />,
-    title: "Analyze",
-    body: "Generate text from videos — summary, chapters, highlights and more.",
+    titleKey: "marketing.overview.features.analyze_title",
+    bodyKey: "marketing.overview.features.analyze_body",
+    imageAltKey: "marketing.overview.features.analyze_alt",
     image: "/twelvelabs/analyze.png",
-    imageAlt: "Analyze illustration",
     panelClass: "bg-[#fde3a2]",
     titleClass: "text-[#7d5d0c]",
   },
   {
     to: "/playground/segment",
     icon: <EmbedIcon size={32} />,
-    title: "Segment",
-    body: "Partition videos into labeled, time-stamped chapters you can reuse downstream.",
+    titleKey: "marketing.overview.features.segment_title",
+    bodyKey: "marketing.overview.features.segment_body",
+    imageAltKey: "marketing.overview.features.segment_alt",
     image: "/twelvelabs/embed.png",
-    imageAlt: "Segment illustration",
     panelClass: "bg-[#c4eefe]",
     titleClass: "text-[#26586d]",
   },
@@ -72,6 +73,7 @@ index = client.indexes.create(
 print(f"Created index: id={index.id}")`;
 
 function FeaturePanel({ data }: { data: FeaturePanelData }) {
+  const { t } = useTranslation();
   return (
     <Link
       to={data.to}
@@ -80,11 +82,11 @@ function FeaturePanel({ data }: { data: FeaturePanelData }) {
       <div className="mb-3 inline-flex items-center gap-2">
         {data.icon}
         <span className={cn("text-[22px] font-medium tracking-[-0.2px]", data.titleClass)}>
-          {data.title}
+          {t(data.titleKey)}
         </span>
       </div>
       <p className="mb-5 max-w-[320px] text-[14px] leading-[1.5] text-[var(--color-gravel)]">
-        {data.body}
+        {t(data.bodyKey)}
       </p>
       <div
         className={cn(
@@ -94,7 +96,7 @@ function FeaturePanel({ data }: { data: FeaturePanelData }) {
       >
         <img
           src={data.image}
-          alt={data.imageAlt}
+          alt={t(data.imageAltKey)}
           className="h-full w-full object-contain"
           loading="lazy"
         />
@@ -116,6 +118,7 @@ function IndexPreviewCard({
   durationLabel: string;
   variant?: "empty" | "sample-mix" | "sample-ads" | "sample-edu";
 }) {
+  const { t } = useTranslation();
   const variantClass = {
     empty: "bg-gradient-warm",
     "sample-mix": "bg-gradient-to-br from-amber-100 via-orange-100 to-emerald-100",
@@ -134,7 +137,7 @@ function IndexPreviewCard({
       >
         <div className="absolute bottom-3 left-3 inline-flex items-center gap-2 rounded-md bg-black/55 px-2 py-1 text-[11px] text-white">
           <Play size={11} fill="currentColor" />
-          {videoCount} {videoCount === 1 ? "Video" : "Videos"} ({durationLabel})
+          {videoCount} {videoCount === 1 ? t("marketing.overview.video_singular") : t("marketing.overview.video_plural")} ({durationLabel})
         </div>
       </div>
       <h4 className="mt-3 text-[15px] font-medium text-[var(--color-obsidian)]">{title}</h4>
@@ -152,6 +155,7 @@ function fmtDuration(totalSec: number): string {
 }
 
 export default function Overview() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -184,11 +188,11 @@ export default function Overview() {
         <div className="mb-5 flex items-center gap-3 rounded-xl border border-[#f7e0a3] bg-[#fdf5d6] px-4 py-2.5 text-[13px] text-[#5a4500]">
           <Info size={15} className="shrink-0" />
           <span className="flex-1">
-            Welcome back. Drop your videos to start indexing —{" "}
+            {t("marketing.overview.banner_text")}{" "}
             <a href="#" className="underline underline-offset-2">
-              read the docs
+              {t("marketing.overview.banner_docs_link")}
             </a>{" "}
-            for ingest options.
+            {t("marketing.overview.banner_docs_suffix")}
           </span>
           <button
             onClick={() => setBannerVisible(false)}
@@ -201,24 +205,23 @@ export default function Overview() {
 
       <section className="mb-4 text-center">
         <h1 className="text-[42px] font-light leading-[1.05] tracking-[-1.2px] text-[var(--color-obsidian)]">
-          Human-level understanding.
+          {t("marketing.overview.hero_heading_1")}
           <br />
-          For superhuman feats.
+          {t("marketing.overview.hero_heading_2")}
         </h1>
         <p className="mx-auto mt-5 max-w-[620px] text-[15px] leading-[1.55] text-[var(--color-gravel)]">
-          Experience semantic search and video-to-text capabilities that surpass anything you've tried
-          before — video-native AI makes all the difference.
+          {t("marketing.overview.hero_sub")}
         </p>
       </section>
 
       <section className="mb-12 grid gap-6 md:grid-cols-3">
         {FEATURES.map((f) => (
-          <FeaturePanel key={f.title} data={f} />
+          <FeaturePanel key={f.titleKey} data={f} />
         ))}
       </section>
 
       <h2 className="mb-4 text-[28px] font-light tracking-[-0.56px] text-[var(--color-obsidian)]">
-        Take the next step
+        {t("marketing.overview.next_step_heading")}
       </h2>
 
       <div className="mb-10 grid grid-cols-1 gap-4 lg:grid-cols-[1.5fr_1fr]">
@@ -254,31 +257,31 @@ export default function Overview() {
             <Upload size={18} className="text-[var(--color-obsidian)]" />
           </button>
           <p className="mt-4 text-[16px] font-medium text-[var(--color-obsidian)]">
-            {uploading ? "Uploading…" : "Drop videos or browse files"}
+            {uploading ? t("marketing.overview.uploading") : t("marketing.overview.upload_cta")}
           </p>
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-[11px] text-[var(--color-gravel)]">
             <span className="rounded-md border border-[var(--color-chalk)] bg-white/60 px-2 py-0.5">
-              Duration 4sec–1hr
+              {t("marketing.overview.upload_hint_duration")}
             </span>
             <span className="rounded-md border border-[var(--color-chalk)] bg-white/60 px-2 py-0.5">
-              Resolution 360p–4k
+              {t("marketing.overview.upload_hint_resolution")}
             </span>
             <span className="rounded-md border border-[var(--color-chalk)] bg-white/60 px-2 py-0.5">
-              Ratio 1:1–1:2.4
+              {t("marketing.overview.upload_hint_ratio")}
             </span>
             <span className="rounded-md border border-[var(--color-chalk)] bg-white/60 px-2 py-0.5">
-              File size ≤2GB per video
+              {t("marketing.overview.upload_hint_size")}
             </span>
           </div>
           <p className="mt-3 text-[11px] text-[var(--color-slate)]">
-            *To upload longer videos, create an index with the corpus model.
+            {t("marketing.overview.upload_note")}
           </p>
         </div>
 
         <div className="rounded-[18px] border border-[var(--color-chalk)] bg-white p-5 shadow-hairline">
-          <h3 className="text-[18px] font-medium text-[var(--color-obsidian)]">API Quickstart</h3>
+          <h3 className="text-[18px] font-medium text-[var(--color-obsidian)]">{t("marketing.overview.quickstart_heading")}</h3>
           <p className="mt-1 text-[13px] text-[var(--color-gravel)]">
-            Make your first API request in minutes.
+            {t("marketing.overview.quickstart_sub")}
           </p>
           <pre className="mt-4 max-h-[160px] overflow-auto rounded-[10px] bg-[#0a0a0a] p-3 text-[11px] leading-[1.6] text-[#d6d3cd]">
             <code className="font-mono">{QUICKSTART_SNIPPET}</code>
@@ -290,7 +293,7 @@ export default function Overview() {
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-[28px] font-light tracking-[-0.56px] text-[var(--color-obsidian)]">
-              My indexes
+              {t("marketing.overview.indexes_heading")}
             </h2>
             <Info size={14} className="text-[var(--color-slate)]" />
           </div>
@@ -298,7 +301,7 @@ export default function Overview() {
             to="/indexes"
             className="mt-1 inline-flex items-center gap-1 text-[13px] text-[var(--color-gravel)] hover:text-[var(--color-obsidian)]"
           >
-            See full list <ChevronRight size={13} />
+            {t("marketing.overview.indexes_list")} <ChevronRight size={13} />
           </Link>
         </div>
         <PillButton
@@ -306,13 +309,13 @@ export default function Overview() {
           rightIcon={<ArrowRight size={14} />}
           onClick={() => navigate("/indexes")}
         >
-          Create Index
+          {t("marketing.overview.create_index")}
         </PillButton>
       </div>
 
       <div className="mb-4 flex items-center gap-3 rounded-xl border border-[#bce5b6] bg-[#dff5d8] px-4 py-2.5 text-[12px] text-[#1e5a23]">
         <Info size={14} className="shrink-0" />
-        You are currently on the Free Plan, which means that your index will expire 90 days after it was created.
+        {t("marketing.overview.free_plan_notice")}
         <button className="ml-auto text-[#1e5a23]/60 hover:text-[#1e5a23]">
           <X size={13} />
         </button>
@@ -321,7 +324,7 @@ export default function Overview() {
       <div className="grid grid-cols-1 gap-5 pb-12 sm:grid-cols-2 lg:grid-cols-3">
         <Link to="/indexes" className="contents">
           <IndexPreviewCard
-            title="My Index (Default)"
+            title={t("marketing.overview.index_default_title")}
             caption={`Created on ${new Date().toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" })}`}
             videoCount={videos.length}
             durationLabel={videos.length ? fmtDuration(totalDuration) : "0s"}
@@ -329,36 +332,36 @@ export default function Overview() {
           />
         </Link>
         <IndexPreviewCard
-          title="Sample Index: Mix"
-          caption="Sample · 161 Videos (8h 35m)"
+          title={t("marketing.overview.index_sample_mix_title")}
+          caption={t("marketing.overview.index_sample_mix_caption")}
           videoCount={161}
           durationLabel="8h 35m"
           variant="sample-mix"
         />
         <IndexPreviewCard
-          title="Sample Index: Ads"
-          caption="Sample · 27 Videos (47m 7s)"
+          title={t("marketing.overview.index_sample_ads_title")}
+          caption={t("marketing.overview.index_sample_ads_caption")}
           videoCount={27}
           durationLabel="47m 7s"
           variant="sample-ads"
         />
         <IndexPreviewCard
-          title="Sample Index: E Learning"
-          caption="Sample · 24 Videos (2h 41m)"
+          title={t("marketing.overview.index_sample_edu_title")}
+          caption={t("marketing.overview.index_sample_edu_caption")}
           videoCount={24}
           durationLabel="2h 41m"
           variant="sample-edu"
         />
         <IndexPreviewCard
-          title="Sample Index: Social Media"
-          caption="Sample · 15 Videos (2h 17m)"
+          title={t("marketing.overview.index_sample_social_title")}
+          caption={t("marketing.overview.index_sample_social_caption")}
           videoCount={15}
           durationLabel="2h 17m"
           variant="sample-mix"
         />
         <IndexPreviewCard
-          title="Sample Index: Sports"
-          caption="Sample · 19 Videos (2h 15m)"
+          title={t("marketing.overview.index_sample_sports_title")}
+          caption={t("marketing.overview.index_sample_sports_caption")}
           videoCount={19}
           durationLabel="2h 15m"
           variant="sample-ads"

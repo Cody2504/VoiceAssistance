@@ -1,21 +1,22 @@
 import { NavLink, Outlet } from "react-router";
 import { Building2, KeyRound, CreditCard, BarChart3, Gauge, Webhook, UserRound } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 interface NavItemDef {
   to: string;
-  label: string;
+  labelKey: string;
   icon: React.ReactNode;
 }
 
 const ITEMS: NavItemDef[] = [
-  { to: "/settings/organization", label: "Organization", icon: <Building2 size={17} strokeWidth={1.75} /> },
-  { to: "/settings/api-keys",     label: "API keys",     icon: <KeyRound size={17} strokeWidth={1.75} /> },
-  { to: "/settings/billing",      label: "Billing & plan", icon: <CreditCard size={17} strokeWidth={1.75} /> },
-  { to: "/settings/usage",        label: "Usage",        icon: <BarChart3 size={17} strokeWidth={1.75} /> },
-  { to: "/settings/rate-limits",  label: "Rate limits",  icon: <Gauge size={17} strokeWidth={1.75} /> },
-  { to: "/settings/webhooks",     label: "Webhooks",     icon: <Webhook size={17} strokeWidth={1.75} /> },
-  { to: "/settings/profile",      label: "Profile",      icon: <UserRound size={17} strokeWidth={1.75} /> },
+  { to: "/settings/organization", labelKey: "settings.nav.organization", icon: <Building2 size={17} strokeWidth={1.75} /> },
+  { to: "/settings/api-keys",     labelKey: "settings.nav.api_keys",     icon: <KeyRound size={17} strokeWidth={1.75} /> },
+  { to: "/settings/billing",      labelKey: "settings.nav.billing",      icon: <CreditCard size={17} strokeWidth={1.75} /> },
+  { to: "/settings/usage",        labelKey: "settings.nav.usage",        icon: <BarChart3 size={17} strokeWidth={1.75} /> },
+  { to: "/settings/rate-limits",  labelKey: "settings.nav.rate_limits",  icon: <Gauge size={17} strokeWidth={1.75} /> },
+  { to: "/settings/webhooks",     labelKey: "settings.nav.webhooks",     icon: <Webhook size={17} strokeWidth={1.75} /> },
+  { to: "/settings/profile",      labelKey: "settings.nav.profile",      icon: <UserRound size={17} strokeWidth={1.75} /> },
 ];
 
 /**
@@ -24,6 +25,8 @@ const ITEMS: NavItemDef[] = [
  * Sub-pages render inside <Outlet />.
  */
 export default function SettingsLayout() {
+  const { t } = useTranslation();
+
   return (
     <div className="flex w-full bg-[var(--color-eggshell)]">
       <aside
@@ -31,7 +34,7 @@ export default function SettingsLayout() {
         style={{ width: 212, minHeight: 600, height: "calc(100vh - 64px)" }}
       >
         <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-slate)]">
-          Settings
+          {t("settings.heading")}
         </p>
         <nav className="mt-2 flex flex-col gap-y-1">
           {ITEMS.map((item) => (
@@ -48,7 +51,7 @@ export default function SettingsLayout() {
                       isActive ? "bg-[var(--color-chalk)] font-medium" : "group-hover:bg-[var(--color-powder)]",
                     )}
                   >
-                    {item.label}
+                    {t(item.labelKey)}
                   </span>
                   <span className="grid h-6 w-6 shrink-0 place-items-center text-[var(--color-obsidian)]">
                     {item.icon}

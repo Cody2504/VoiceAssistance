@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { Card } from "@/components/ui/card";
 import { getMyUsage, type UsageDay } from "@/apis/usage.api";
 
 export default function Profile() {
+  const { t } = useTranslation();
   const [days, setDays] = useState<UsageDay[]>([]);
 
   useEffect(() => {
@@ -20,27 +22,27 @@ export default function Profile() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <h1 className="mb-6 text-xl font-semibold">Profile</h1>
+      <h1 className="mb-6 text-xl font-semibold">{t("settings.profile.title")}</h1>
 
       <div className="mb-6 grid grid-cols-3 gap-3">
         <Card>
-          <p className="text-xs text-slate-500">Prompt tokens (30d)</p>
+          <p className="text-xs text-slate-500">{t("settings.profile.prompt_tokens")}</p>
           <p className="text-2xl font-semibold">{total.prompt.toLocaleString()}</p>
         </Card>
         <Card>
-          <p className="text-xs text-slate-500">Completion tokens (30d)</p>
+          <p className="text-xs text-slate-500">{t("settings.profile.completion_tokens")}</p>
           <p className="text-2xl font-semibold">{total.completion.toLocaleString()}</p>
         </Card>
         <Card>
-          <p className="text-xs text-slate-500">Cost (30d)</p>
+          <p className="text-xs text-slate-500">{t("settings.profile.cost")}</p>
           <p className="text-2xl font-semibold">${total.cost.toFixed(2)}</p>
         </Card>
       </div>
 
       <Card>
-        <h2 className="mb-3 text-sm font-medium">Daily usage</h2>
+        <h2 className="mb-3 text-sm font-medium">{t("settings.profile.daily_usage")}</h2>
         <div className="space-y-1">
-          {days.length === 0 && <p className="text-xs text-slate-500">No usage yet.</p>}
+          {days.length === 0 && <p className="text-xs text-slate-500">{t("settings.profile.no_usage")}</p>}
           {days.map((d) => {
             const total = d.prompt_tokens + d.completion_tokens;
             const pct = (total / max) * 100;

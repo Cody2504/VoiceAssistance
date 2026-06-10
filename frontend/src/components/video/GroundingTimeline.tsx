@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { GroundResponse } from "@/apis/videos.api";
 
 interface Props {
@@ -7,10 +8,12 @@ interface Props {
 }
 
 export function GroundingTimeline({ duration, result, onSeek }: Props) {
+  const { t } = useTranslation();
+
   if (!result) {
     return (
       <div className="grid h-16 place-items-center rounded-md border border-neutral-200 bg-neutral-50/50 text-xs text-neutral-400">
-        Ask the agent or run grounding to see relevance over time
+        {t("console.grounding.empty_hint")}
       </div>
     );
   }
@@ -36,7 +39,11 @@ export function GroundingTimeline({ duration, result, onSeek }: Props) {
               <button
                 key={`${m.t_start}-${i}`}
                 onClick={() => onSeek(m.t_start)}
-                title={`${m.t_start.toFixed(1)}–${m.t_end.toFixed(1)}s · score ${m.score.toFixed(2)}`}
+                title={t("console.grounding.moment_title", {
+                  start: m.t_start.toFixed(1),
+                  end: m.t_end.toFixed(1),
+                  score: m.score.toFixed(2),
+                })}
                 className="absolute bottom-0 cursor-pointer bg-emerald-700/80 transition hover:bg-emerald-600"
                 style={{
                   left: `${left}%`,
@@ -63,7 +70,12 @@ export function GroundingTimeline({ duration, result, onSeek }: Props) {
             <button
               key={s.idx}
               onClick={() => onSeek(s.t_start)}
-              title={`shot ${s.idx} · ${s.t_start.toFixed(1)}–${s.t_end.toFixed(1)}s · ${(s.relevance ?? 0).toFixed(2)}`}
+              title={t("console.grounding.shot_title", {
+                idx: s.idx,
+                start: s.t_start.toFixed(1),
+                end: s.t_end.toFixed(1),
+                rel: (s.relevance ?? 0).toFixed(2),
+              })}
               className="absolute bottom-0 cursor-pointer bg-neutral-900/80 transition hover:bg-neutral-700"
               style={{
                 left: `${left}%`,

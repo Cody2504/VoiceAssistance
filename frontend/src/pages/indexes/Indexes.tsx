@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { Info, ArrowRight, Search as SearchIcon, ChevronDown, X, Play, MoreVertical } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { PillButton } from "@/components/ui/PillButton";
 import { createIndex, deleteIndex, type IndexSummary } from "@/apis/indexes.api";
 import { useVideosQuery, useIndexesQuery, qk } from "@/apis/queries";
@@ -31,6 +32,7 @@ function fmtDuration(totalSec: number): string {
 }
 
 function IndexCard({ data, onDelete }: { data: IndexCardData; onDelete?: (id: string) => void }) {
+  const { t } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
   const tile = {
     default: "bg-gradient-warm",
@@ -52,7 +54,10 @@ function IndexCard({ data, onDelete }: { data: IndexCardData; onDelete?: (id: st
       >
         <div className="absolute bottom-3 left-3 inline-flex items-center gap-2 rounded-md bg-black/55 px-2 py-1 text-[11px] text-white">
           <Play size={11} fill="currentColor" />
-          {data.videos} {data.videos === 1 ? "Video" : "Videos"} ({data.durationLabel})
+          {data.videos === 1
+            ? t("console.indexes.video_count_one", { count: data.videos })
+            : t("console.indexes.video_count_other", { count: data.videos })}{" "}
+          ({data.durationLabel})
         </div>
       </div>
       <div className="mt-3 flex items-start justify-between">
@@ -83,11 +88,11 @@ function IndexCard({ data, onDelete }: { data: IndexCardData; onDelete?: (id: st
                 <button
                   onClick={() => {
                     setMenuOpen(false);
-                    if (confirm(`Delete index "${data.title}"?`)) onDelete(data.id);
+                    if (confirm(t("console.indexes.delete_confirm", { title: data.title }))) onDelete(data.id);
                   }}
                   className="block w-full rounded px-2 py-1 text-left text-[12px] text-rose-600 hover:bg-rose-50"
                 >
-                  Delete
+                  {t("console.indexes.delete_label")}
                 </button>
               </div>
             )}
@@ -113,6 +118,7 @@ function CreateIndexModal({
   onClose: () => void;
   onCreated: (summary: IndexSummary) => void;
 }) {
+  const { t } = useTranslation();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -122,7 +128,7 @@ function CreateIndexModal({
 
   const submit = async () => {
     if (!title.trim()) {
-      setError("Title is required");
+      setError(t("console.create_index_modal.error_title_required"));
       return;
     }
     setSubmitting(true);
@@ -137,7 +143,7 @@ function CreateIndexModal({
       setDescription("");
       onClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to create index");
+      setError(e instanceof Error ? e.message : t("console.create_index_modal.error_create_failed"));
     } finally {
       setSubmitting(false);
     }
@@ -150,27 +156,32 @@ function CreateIndexModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-[16px] font-semibold text-[var(--color-obsidian)]">Create an Index</h2>
+          <h2 className="text-[16px] font-semibold text-[var(--color-obsidian)]">
+            {t("console.create_index_modal.title")}
+          </h2>
           <button onClick={onClose} className="rounded p-1 text-[var(--color-gravel)] hover:bg-[var(--color-powder)]">
             <X size={16} />
           </button>
         </div>
         <p className="mb-4 text-[12px] text-[var(--color-gravel)]">
-          Group related videos (e.g. a lecture series) so cross-video queries can reason across them.
+          {t("console.create_index_modal.description")}
         </p>
         <label className="mb-3 block">
-          <span className="mb-1 block text-[12px] font-medium text-[var(--color-obsidian)]">Title</span>
+          <span className="mb-1 block text-[12px] font-medium text-[var(--color-obsidian)]">
+            {t("console.create_index_modal.label_title")}
+          </span>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g. ML Lectures Spring 2026"
+            placeholder={t("console.create_index_modal.placeholder_title")}
             className="h-9 w-full rounded-md border border-[var(--color-chalk)] bg-white px-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-[var(--color-obsidian)]/10"
             autoFocus
           />
         </label>
         <label className="mb-4 block">
           <span className="mb-1 block text-[12px] font-medium text-[var(--color-obsidian)]">
-            Description <span className="text-[var(--color-gravel)]">(optional)</span>
+            {t("console.create_index_modal.label_description")}{" "}
+            <span className="text-[var(--color-gravel)]">{t("console.create_index_modal.optional")}</span>
           </span>
           <textarea
             value={description}
@@ -185,14 +196,14 @@ function CreateIndexModal({
             onClick={onClose}
             className="rounded-full px-4 py-1.5 text-[13px] text-[var(--color-gravel)] hover:bg-[var(--color-powder)]"
           >
-            Cancel
+            {t("actions.cancel")}
           </button>
           <button
             onClick={submit}
             disabled={submitting}
             className="rounded-full bg-[var(--color-obsidian)] px-4 py-1.5 text-[13px] text-white transition duration-150 ease-out hover:bg-neutral-800 active:scale-[0.97] disabled:opacity-50 disabled:active:scale-100"
           >
-            {submitting ? "Creating…" : "Create"}
+            {submitting ? t("console.create_index_modal.btn_creating") : t("console.create_index_modal.btn_create")}
           </button>
         </div>
       </div>
@@ -205,6 +216,7 @@ const VARIANT_ROTATION: IndexCardData["variant"][] = [
 ];
 
 export default function Indexes() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const qc = useQueryClient();
   const { data: videos = [] } = useVideosQuery();
@@ -231,14 +243,22 @@ export default function Indexes() {
     [reloadIndexes],
   );
 
+  const sortLabels: Record<SortKey, string> = {
+    recent: t("console.indexes.sort_recent"),
+    name: t("console.indexes.sort_name"),
+    duration: t("console.indexes.sort_duration"),
+  };
+
   const cards: IndexCardData[] = useMemo(() => {
     const totalDuration = videos.reduce((s, v) => s + (v.duration_s ?? 0), 0);
     const defaultCard: IndexCardData = {
       id: "default",
-      title: "My Index (Default)",
+      title: t("console.indexes.default_title"),
       videos: videos.length,
       durationLabel: videos.length ? fmtDuration(totalDuration) : "0s",
-      createdAt: `Created on ${new Date().toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" })}`,
+      createdAt: t("console.indexes.created_on", {
+        date: new Date().toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }),
+      }),
       variant: "default",
       href: "/playground/library",
       sortableTime: Date.now(),
@@ -246,14 +266,16 @@ export default function Indexes() {
     };
     const realCards: IndexCardData[] = indexes.map((idx, n) => ({
       id: idx.id,
-      title: idx.title || "Untitled Index",
+      title: idx.title || t("console.indexes.untitled"),
       videos: idx.video_count,
       durationLabel: idx.total_duration_s ? fmtDuration(idx.total_duration_s) : "0s",
-      createdAt: `Created on ${new Date(idx.created_at).toLocaleDateString("en-US", {
-        month: "short",
-        day: "2-digit",
-        year: "numeric",
-      })}`,
+      createdAt: t("console.indexes.created_on", {
+        date: new Date(idx.created_at).toLocaleDateString("en-US", {
+          month: "short",
+          day: "2-digit",
+          year: "numeric",
+        }),
+      }),
       variant: VARIANT_ROTATION[n % VARIANT_ROTATION.length],
       href: `/indexes/${idx.id}`,
       sortableTime: Date.parse(idx.created_at),
@@ -271,16 +293,16 @@ export default function Indexes() {
       return b.sortableTime - a.sortableTime;
     });
     return sorted;
-  }, [videos, indexes, filter, sortKey]);
+  }, [videos, indexes, filter, sortKey, t]);
 
-  const sortLabel = { recent: "Recent upload", name: "Name (A→Z)", duration: "Video count" }[sortKey];
+  const sortLabel = sortLabels[sortKey];
 
   return (
     <div className="mx-auto max-w-[1180px] px-8 py-6">
       <div className="mb-6 flex items-start justify-between">
         <div className="flex items-center gap-2">
           <h1 className="text-[32px] font-light tracking-[-0.64px] text-[var(--color-obsidian)]">
-            My indexes
+            {t("console.indexes.title")}
           </h1>
           <Info size={14} className="text-[var(--color-slate)]" />
         </div>
@@ -289,7 +311,7 @@ export default function Indexes() {
           rightIcon={<ArrowRight size={14} />}
           onClick={() => setCreateOpen(true)}
         >
-          Create Index
+          {t("console.indexes.create_btn")}
         </PillButton>
       </div>
 
@@ -303,7 +325,7 @@ export default function Indexes() {
             type="text"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            placeholder="Filter by index name"
+            placeholder={t("console.indexes.filter_placeholder")}
             className="h-9 w-full rounded-full border border-[var(--color-chalk)] bg-white pl-9 pr-3 text-[13px] text-[var(--color-obsidian)] placeholder:text-[var(--color-slate)] focus:outline-none focus:ring-2 focus:ring-[var(--color-obsidian)]/10"
           />
         </div>
@@ -313,7 +335,7 @@ export default function Indexes() {
             onClick={() => setSortOpen((o) => !o)}
             className="inline-flex h-9 items-center gap-2 rounded-full border border-transparent px-3 text-[13px] text-[var(--color-gravel)] hover:bg-[var(--color-powder)]"
           >
-            <span className="text-[var(--color-slate)]">Sort by</span>
+            <span className="text-[var(--color-slate)]">{t("console.indexes.sort_by")}</span>
             <span className="text-[var(--color-obsidian)]">{sortLabel}</span>
             <ChevronDown size={13} />
           </button>
@@ -331,7 +353,7 @@ export default function Indexes() {
                     sortKey === k && "bg-[var(--color-powder)] font-medium",
                   )}
                 >
-                  {{ recent: "Recent upload", name: "Name (A→Z)", duration: "Video count" }[k]}
+                  {sortLabels[k]}
                 </button>
               ))}
             </div>
@@ -342,7 +364,7 @@ export default function Indexes() {
       {bannerVisible && (
         <div className="mb-6 flex items-center gap-3 rounded-xl border border-[#bce5b6] bg-[#dff5d8] px-4 py-2.5 text-[12px] text-[#1e5a23]">
           <Info size={14} className="shrink-0" />
-          You are currently on the Free Plan, which means that your index will expire 90 days after it was created.
+          {t("console.indexes.free_plan_banner")}
           <button
             onClick={() => setBannerVisible(false)}
             className="ml-auto text-[#1e5a23]/60 hover:text-[#1e5a23]"

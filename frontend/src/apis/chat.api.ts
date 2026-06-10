@@ -88,12 +88,39 @@ function parseSseFrame(raw: string): ChatEvent | null {
   return null;
 }
 
-export async function listConversations() {
+export interface ConversationSummary {
+  id: string;
+  title: string | null;
+  video_id: string | null;
+  created_at: string;
+}
+
+export interface PersistedMessage {
+  id: string;
+  role: "user" | "assistant" | string;
+  content: string;
+  thoughts: { agent?: string; delta?: string }[] | null;
+  tool_calls: { tool?: string; args?: unknown; result?: unknown }[] | null;
+  created_at: string;
+}
+
+export interface ConversationDetail {
+  id: string;
+  title: string | null;
+  video_id: string | null;
+  messages: PersistedMessage[];
+}
+
+export async function listConversations(): Promise<ConversationSummary[]> {
   const r = await axios.get(ROUTES.CONVERSATIONS);
   return r.data?.data ?? [];
 }
 
-export async function getConversation(id: string) {
+export async function getConversation(id: string): Promise<ConversationDetail> {
   const r = await axios.get(ROUTES.CONVERSATION(id));
   return r.data?.data;
+}
+
+export async function deleteConversation(id: string): Promise<void> {
+  await axios.delete(ROUTES.CONVERSATION(id));
 }

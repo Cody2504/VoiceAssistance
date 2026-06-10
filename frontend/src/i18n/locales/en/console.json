@@ -1,0 +1,152 @@
+{
+  "console": {
+    "indexes": {
+      "title": "My indexes",
+      "create_btn": "Create Index",
+      "filter_placeholder": "Filter by index name",
+      "sort_by": "Sort by",
+      "sort_recent": "Recent upload",
+      "sort_name": "Name (A→Z)",
+      "sort_duration": "Video count",
+      "free_plan_banner": "You are currently on the Free Plan, which means that your index will expire 90 days after it was created.",
+      "default_title": "My Index (Default)",
+      "untitled": "Untitled Index",
+      "created_on": "Created on {{date}}",
+      "video_count_one": "{{count}} Video",
+      "video_count_other": "{{count}} Videos",
+      "delete_confirm": "Delete index \"{{title}}\"?",
+      "delete_label": "Delete"
+    },
+    "create_index_modal": {
+      "title": "Create an Index",
+      "description": "Group related videos (e.g. a lecture series) so cross-video queries can reason across them.",
+      "label_title": "Title",
+      "label_description": "Description",
+      "optional": "(optional)",
+      "placeholder_title": "e.g. ML Lectures Spring 2026",
+      "error_title_required": "Title is required",
+      "error_create_failed": "Failed to create index",
+      "btn_creating": "Creating…",
+      "btn_create": "Create"
+    },
+    "index_detail": {
+      "all_indexes": "All indexes",
+      "untitled": "Untitled Index",
+      "video_count": "{{count}} video",
+      "video_count_plural": "{{count}} videos",
+      "created": "Created {{date}}",
+      "upload_btn": "Upload to this index",
+      "add_from_library": "Add from library",
+      "empty_hint": "No videos in this index yet. Upload to this index, Add from library, or drop a video file anywhere on this card.",
+      "remove_confirm": "Remove this video from the index?",
+      "remove_title": "Remove from index",
+      "uploading": "uploading…",
+      "error_load": "Failed to load index",
+      "error_remove": "Failed to remove video",
+      "error_video_only": "Only video files are accepted.",
+      "upload_failed": "Upload failed for {{name}}: {{message}}",
+      "upload_failed_short": "Upload failed for {{name}}"
+    },
+    "add_videos_modal": {
+      "title": "Add videos to this index",
+      "empty": "No ready videos to add. Upload some on the Assets page first."
+    },
+    "entities": {
+      "title": "Entities",
+      "empty_title": "No entities detected yet",
+      "empty_desc": "Entities (people, products, locations) extracted from your indexed videos will appear here. Run an Analyze pass on a video to populate this page."
+    },
+    "assets": {
+      "title": "Assets",
+      "desc": "Every video here is indexed and searchable on its own. Group related videos into an Index to enable cross-video questions like comparisons and concept tracing across a course.",
+      "upload_btn": "Upload Assets",
+      "uploading": "Uploading {{done}}/{{total}}…",
+      "filter_placeholder": "Filter by filename or asset ID",
+      "filter_by": "Filter by",
+      "filter_file_type": "File type",
+      "filter_all": "All",
+      "filter_video": "Video",
+      "filter_image": "Image",
+      "filter_audio": "Audio",
+      "count_videos": "{{count}} videos",
+      "count_images": "{{count}} images",
+      "count_audios": "{{count}} audios",
+      "loading": "Loading your assets…",
+      "drop_label": "Drop video, image & audio files or browse",
+      "limit_audio": "Audio file size ≤200MB",
+      "limit_video": "Video file size ≤4GB",
+      "limit_image": "Image file size ≤5MB",
+      "col_name": "Name",
+      "col_type": "Type",
+      "col_status": "Status",
+      "col_duration": "Duration",
+      "col_size": "Size",
+      "col_modified": "Modified",
+      "status_queued": "Queued",
+      "status_indexing": "Indexing",
+      "status_ready": "Ready",
+      "status_error": "Error",
+      "upload_done_one": "Uploaded {{total}} file",
+      "upload_done_other": "Uploaded {{total}} files",
+      "upload_progress": "Uploading {{current}} of {{total}}",
+      "upload_failed": "{{count}} failed — skipped",
+      "upload_background": "Indexing continues in the background — watch the Status column."
+    },
+    "video": {
+      "status_label": "Status:",
+      "tab_ground": "Ground",
+      "tab_search": "Search",
+      "tab_qa": "Q&A",
+      "ground_label": "Run trained grounding head",
+      "search_label": "Qdrant similarity search",
+      "qa_label": "Ask a question about the video",
+      "run_btn": "Run",
+      "hits": "{{count}} hits",
+      "failed": "Request failed",
+      "load_failed": "Failed to load video"
+    },
+    "workspace": {
+      "library_title": "Your library",
+      "library_hint": "Drag a video into the chat to ask about it."
+    },
+    "s3test": {
+      "title": "S3 test — {{bucket}}",
+      "desc_prefix": "Standalone view of the",
+      "desc_prefix2": "prefix. Thumbnails come from",
+      "desc_suffix": "; click to preview via presigned URL.",
+      "refresh": "Refresh",
+      "error_title": "Couldn't load bucket",
+      "error_hint": "Is scripts/s3_browser.py running on :8765 and are AWS creds in .env?",
+      "loading_bucket": "Loading bucket…",
+      "empty_bucket": "Bucket is empty under videos/. Run python scripts/s3_ingest.py --all to populate.",
+      "object_count_one": "{{count}} object",
+      "object_count_other": "{{count}} objects",
+      "label_video": "Video"
+    },
+    "library": {
+      "drop_active": "Drop to upload",
+      "drop_hint": "Drag a video here, or use the button →",
+      "upload_btn": "Upload",
+      "upload_queued": "Upload queued for indexing",
+      "upload_failed": "Upload failed",
+      "delete_failed": "Delete failed",
+      "deleted": "Video deleted",
+      "delete_confirm": "Delete \"{{name}}\"? This removes the file, its index, and any derived artifacts.",
+      "delete_aria": "Delete video",
+      "empty": "No videos yet."
+    },
+    "video_player": {
+    },
+    "grounding": {
+      "empty_hint": "Ask the agent or run grounding to see relevance over time",
+      "moment_title": "{{start}}–{{end}}s · score {{score}}",
+      "shot_title": "shot {{idx}} · {{start}}–{{end}}s · {{rel}}"
+    },
+    "preview": {
+      "loading": "Loading…"
+    },
+    "thumb": {
+      "fallback": "video"
+    }
+  }
+}

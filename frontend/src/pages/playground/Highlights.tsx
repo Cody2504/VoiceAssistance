@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 import { GroundingTimeline } from "@/components/video/GroundingTimeline";
 import { VideoPlayer, type VideoPlayerHandle } from "@/components/video/VideoPlayer";
@@ -17,12 +18,14 @@ import { ExamplesPanel, type ExampleTile } from "./components/ExamplesPanel";
 import { ResultsPanel } from "./components/ResultsPanel";
 import { VideoPicker } from "./components/VideoPicker";
 
-const EXAMPLES: ExampleTile<{ note: string }>[] = [
-  { id: "auto-reel", title: "Auto-pick top moments for a highlight reel", tags: ["Highlights", "Sports"], preset: { note: "QD-DETR saliency picks the most interesting clips with no query needed." } },
-  { id: "trailer", title: "Generate trailer-style cuts", tags: ["Highlights", "Media"], preset: { note: "Top 10 saliency peaks. Use the moment spans below to cut a reel." } },
-];
-
 export default function Highlights() {
+  const { t } = useTranslation();
+
+  const EXAMPLES: ExampleTile<{ note: string }>[] = [
+    { id: "auto-reel", title: t("playground.highlights.example_auto_reel_title"), tags: ["Highlights", "Sports"], preset: { note: t("playground.highlights.example_auto_reel_note") } },
+    { id: "trailer",   title: t("playground.highlights.example_trailer_title"),   tags: ["Highlights", "Media"],  preset: { note: t("playground.highlights.example_trailer_note") } },
+  ];
+
   const [video, setVideo] = useState<VideoSummary | null>(null);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<HighlightsResponse | null>(null);
@@ -46,26 +49,26 @@ export default function Highlights() {
       const r = await getHighlights(video.id, 10);
       setResult(r);
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? "Highlights failed";
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? t("playground.highlights.error");
       toast.error(msg);
     } finally {
       setRunning(false);
     }
   };
 
-  const seek = (t: number) => player.current?.seekTo(t);
+  const seek = (time: number) => player.current?.seekTo(time);
 
   return (
     <PlaygroundShell
-      title="Highlights"
-      subtitle="Auto-pick the top moments — no query required."
+      title={t("playground.highlights.title")}
+      subtitle={t("playground.highlights.subtitle")}
       formPanel={
         <FormPanel
-          runLabel="Find highlights"
+          runLabel={t("playground.highlights.run_label")}
           onRun={run}
           running={running}
           canRun={!!video && !running}
-          hint="Runs the QD-DETR saliency head with a generic 'key moment' prompt. Top-10 spans returned."
+          hint={t("playground.highlights.hint")}
         >
           <Field label="video" required>
             <VideoPicker selectedId={video?.id} onSelect={setVideo} />
@@ -85,7 +88,7 @@ export default function Highlights() {
       resultsPanel={
         result && (
           <ResultsPanel
-            title="Top moments"
+            title={t("playground.highlights.results_title")}
             counter={`${result.moments.length} span${result.moments.length === 1 ? "" : "s"} · ${result.shots?.length ?? 0} ranked shots`}
           >
             <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
@@ -100,10 +103,10 @@ export default function Highlights() {
 
               <div>
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-500">
-                  Moment spans (high → low)
+                  {t("playground.highlights.moment_spans")}
                 </h3>
                 {result.moments.length === 0 ? (
-                  <p className="text-xs text-neutral-500">No spans returned.</p>
+                  <p className="text-xs text-neutral-500">{t("playground.highlights.no_spans")}</p>
                 ) : (
                   <ul className="max-h-[360px] space-y-1 overflow-y-auto pr-2">
                     {result.moments.map((m, i) => (

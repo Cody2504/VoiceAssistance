@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
 import { Upload, Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import type { VideoSummary } from "@/apis/videos.api";
 import { deleteVideo, listVideos, uploadVideo } from "@/apis/videos.api";
@@ -18,6 +19,7 @@ interface Props {
  * "application/x-video" payload so drop targets (e.g. ChatComposer) can read it.
  */
 export function LibraryGrid({ onPreview }: Props) {
+  const { t } = useTranslation();
   const [videos, setVideos] = useState<VideoSummary[]>([]);
   const [uploadPct, setUploadPct] = useState<number | null>(null);
 
@@ -25,8 +27,8 @@ export function LibraryGrid({ onPreview }: Props) {
 
   useEffect(() => {
     refresh();
-    const t = window.setInterval(refresh, 5000);
-    return () => window.clearInterval(t);
+    const timer = window.setInterval(refresh, 5000);
+    return () => window.clearInterval(timer);
   }, [refresh]);
 
   const onDrop = useCallback(async (files: File[]) => {
@@ -35,15 +37,16 @@ export function LibraryGrid({ onPreview }: Props) {
     try {
       setUploadPct(0);
       await uploadVideo(file, setUploadPct);
-      toast.success("Upload queued for indexing");
+      toast.success(t("console.library.upload_queued"));
       await refresh();
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? "Upload failed";
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+        ?? t("console.library.upload_failed");
       toast.error(msg);
     } finally {
       setUploadPct(null);
     }
-  }, [refresh]);
+  }, [refresh, t]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop, accept: { "video/*": [".mp4", ".mov", ".mkv", ".webm"] }, multiple: false, noClick: true,
@@ -61,14 +64,14 @@ export function LibraryGrid({ onPreview }: Props) {
         <input {...getInputProps()} />
         <span className="flex items-center gap-2 text-neutral-600">
           <Upload size={14} />
-          {isDragActive ? "Drop to upload" : "Drag a video here, or use the button →"}
+          {isDragActive ? t("console.library.drop_active") : t("console.library.drop_hint")}
         </span>
         <button
           type="button"
           onClick={() => (document.querySelector("input[type=file]") as HTMLInputElement | null)?.click()}
           className="rounded-md bg-neutral-900 px-3 py-1 text-xs font-medium text-white transition duration-150 ease-out hover:bg-neutral-700 active:scale-95"
         >
-          Upload
+          {t("console.library.upload_btn")}
         </button>
       </div>
       {uploadPct !== null && (
@@ -80,7 +83,7 @@ export function LibraryGrid({ onPreview }: Props) {
       <div className="grid flex-1 grid-cols-2 gap-3 overflow-auto pr-1">
         {videos.length === 0 && (
           <div className="col-span-2 grid place-items-center py-10 text-xs text-neutral-400">
-            No videos yet.
+            {t("console.library.empty")}
           </div>
         )}
         {videos.map((v) => (
@@ -101,18 +104,19 @@ export function LibraryGrid({ onPreview }: Props) {
               type="button"
               onClick={async (e) => {
                 e.stopPropagation();
-                if (!window.confirm(`Delete "${v.original_filename}"? This removes the file, its index, and any derived artifacts.`)) return;
+                if (!window.confirm(t("console.library.delete_confirm", { name: v.original_filename }))) return;
                 try {
                   await deleteVideo(v.id);
-                  toast.success("Video deleted");
+                  toast.success(t("console.library.deleted"));
                   await refresh();
                 } catch (err: unknown) {
-                  const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? "Delete failed";
+                  const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+                    ?? t("console.library.delete_failed");
                   toast.error(msg);
                 }
               }}
-              aria-label="Delete video"
-              title="Delete video"
+              aria-label={t("console.library.delete_aria")}
+              title={t("console.library.delete_aria")}
               className="absolute right-1.5 top-1.5 z-10 grid h-6 w-6 place-items-center rounded-full bg-black/70 text-white opacity-0 transition group-hover:opacity-100 hover:bg-black/85"
             >
               <Trash2 size={12} />

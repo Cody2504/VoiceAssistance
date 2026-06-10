@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { FolderSearch, Search as SearchIcon, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { listIndexes, type IndexSummary } from "@/apis/indexes.api";
 import { cn } from "@/lib/utils";
 
@@ -31,12 +32,12 @@ function fmtDuration(totalSec: number): string {
   return `${m}m`;
 }
 
-function asEntry(i: IndexSummary, n: number): IndexEntry {
+function asEntry(i: IndexSummary, n: number, untitledLabel: string, videoLabel: string, videosLabel: string): IndexEntry {
   const dur = i.total_duration_s ? ` (${fmtDuration(i.total_duration_s)})` : "";
   return {
     id: i.id,
-    title: i.title || "Untitled Index",
-    meta: `${i.video_count} Video${i.video_count === 1 ? "" : "s"}${dur}`,
+    title: i.title || untitledLabel,
+    meta: `${i.video_count} ${i.video_count === 1 ? videoLabel : videosLabel}${dur}`,
     variant: VARIANT_ROTATION[n % VARIANT_ROTATION.length],
   };
 }
@@ -52,14 +53,16 @@ interface Props {
  * inner-glow and hover-zoom on the video. Opens a modal of the user's indexes.
  */
 export function IndexPicker({ selectedIndexId, onSelect }: Props) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState("");
   const [entries, setEntries] = useState<IndexEntry[]>([]);
 
   useEffect(() => {
     listIndexes()
-      .then((rows) => setEntries(rows.map((r, n) => asEntry(r, n))))
+      .then((rows) => setEntries(rows.map((r, n) => asEntry(r, n, t("pgkit.index_picker.untitled"), "Video", "Videos"))))
       .catch(() => setEntries([]));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filtered = filter
@@ -86,7 +89,7 @@ export function IndexPicker({ selectedIndexId, onSelect }: Props) {
               <span className="text-[15px] font-medium">{selected.title}</span>
               <span className="text-[12px] text-[var(--color-gravel)]">{selected.meta}</span>
               <span className="mt-2 rounded-full bg-[var(--color-obsidian)] px-3 py-1 text-[12px] text-white">
-                Change index
+                {t("pgkit.index_picker.change")}
               </span>
             </div>
           </div>
@@ -112,7 +115,7 @@ export function IndexPicker({ selectedIndexId, onSelect }: Props) {
               }}
             />
             <span className="absolute left-1/2 top-1/2 inline-flex -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 rounded-[8px] bg-[var(--color-obsidian)] px-3 py-1.5 text-[13px] font-medium text-white transition-[border-radius,background-color] duration-200 ease-out hover:rounded-[12px] hover:bg-neutral-800">
-              Select an index
+              {t("pgkit.index_picker.select_label")}
               <FolderSearch size={14} />
             </span>
           </>
@@ -130,7 +133,7 @@ export function IndexPicker({ selectedIndexId, onSelect }: Props) {
           >
             <div className="flex items-center justify-between border-b border-[var(--color-chalk)] bg-[var(--color-powder)] px-6 py-4">
               <h2 className="text-[16px] font-semibold text-[var(--color-obsidian)]">
-                Select an index to Search
+                {t("pgkit.index_picker.modal_title")}
               </h2>
               <button onClick={() => setOpen(false)} className="rounded p-1 text-[var(--color-gravel)] hover:bg-white">
                 <X size={16} />
@@ -146,12 +149,12 @@ export function IndexPicker({ selectedIndexId, onSelect }: Props) {
                   type="text"
                   value={filter}
                   onChange={(e) => setFilter(e.target.value)}
-                  placeholder="Filter by index name"
+                  placeholder={t("pgkit.index_picker.filter_placeholder")}
                   className="h-9 w-full rounded-full border border-[var(--color-chalk)] bg-white pl-9 pr-3 text-[13px] text-[var(--color-obsidian)] placeholder:text-[var(--color-slate)] focus:outline-none focus:ring-2 focus:ring-[var(--color-obsidian)]/10"
                 />
               </div>
               <span className="ml-auto text-[12px] text-[var(--color-gravel)]">
-                Sort by <span className="text-[var(--color-obsidian)]">Recent upload</span>
+                {t("pgkit.index_picker.sort_label")} <span className="text-[var(--color-obsidian)]">{t("pgkit.index_picker.sort_recent")}</span>
               </span>
             </div>
             <div className="grid max-h-[60vh] grid-cols-1 gap-5 overflow-y-auto px-6 pb-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -181,12 +184,12 @@ export function IndexPicker({ selectedIndexId, onSelect }: Props) {
               ))}
               {filtered.length === 0 && (
                 <div className="col-span-full flex flex-col items-center gap-2 py-12 text-center text-[13px] text-[var(--color-gravel)]">
-                  <p>No indexes yet.</p>
+                  <p>{t("pgkit.index_picker.no_indexes")}</p>
                   <a
                     href="/indexes"
                     className="rounded-full bg-[var(--color-obsidian)] px-4 py-1.5 text-[12px] text-white transition duration-150 ease-out hover:bg-neutral-800 active:scale-[0.97]"
                   >
-                    Create one →
+                    {t("pgkit.index_picker.create_one")}
                   </a>
                 </div>
               )}

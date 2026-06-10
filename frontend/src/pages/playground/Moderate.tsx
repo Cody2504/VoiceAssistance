@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 import { Input } from "@/components/ui/input";
 import { getModeration, type ModerateResponse, type VideoSummary } from "@/apis/videos.api";
@@ -11,13 +12,15 @@ import { ExamplesPanel, type ExampleTile } from "./components/ExamplesPanel";
 import { ResultsPanel } from "./components/ResultsPanel";
 import { VideoPicker } from "./components/VideoPicker";
 
-const EXAMPLES: ExampleTile<{ threshold: number }>[] = [
-  { id: "strict",   title: "Strict policy — flag anything ≥ 30% confidence", tags: ["Moderate", "Strict"],   preset: { threshold: 0.3 } },
-  { id: "standard", title: "Standard — flag anything ≥ 50%",                tags: ["Moderate", "Standard"], preset: { threshold: 0.5 } },
-  { id: "lenient",  title: "Lenient — only flag ≥ 80% confidence",          tags: ["Moderate", "Lenient"],  preset: { threshold: 0.8 } },
-];
-
 export default function Moderate() {
+  const { t } = useTranslation();
+
+  const EXAMPLES: ExampleTile<{ threshold: number }>[] = [
+    { id: "strict",   title: t("playground.moderate.example_strict_title"),   tags: ["Moderate", "Strict"],   preset: { threshold: 0.3 } },
+    { id: "standard", title: t("playground.moderate.example_standard_title"), tags: ["Moderate", "Standard"], preset: { threshold: 0.5 } },
+    { id: "lenient",  title: t("playground.moderate.example_lenient_title"),  tags: ["Moderate", "Lenient"],  preset: { threshold: 0.8 } },
+  ];
+
   const [video, setVideo] = useState<VideoSummary | null>(null);
   const [threshold, setThreshold] = useState(0.5);
   const [running, setRunning] = useState(false);
@@ -29,7 +32,7 @@ export default function Moderate() {
     try {
       setResult(await getModeration(video.id, threshold));
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? "Moderation failed";
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? t("playground.moderate.error");
       toast.error(msg);
     } finally {
       setRunning(false);
@@ -38,20 +41,20 @@ export default function Moderate() {
 
   return (
     <PlaygroundShell
-      title="Moderate"
-      subtitle="Specialised classifier scores per shot — NSFW (visual) + toxicity (text)."
+      title={t("playground.moderate.title")}
+      subtitle={t("playground.moderate.subtitle")}
       formPanel={
         <FormPanel
-          runLabel="Moderate"
+          runLabel={t("playground.moderate.title")}
           onRun={run}
           running={running}
           canRun={!!video && !running}
-          hint="Falconsai NSFW ViT for frames, unitary/toxic-bert for ASR. Scores in [0,1]; threshold gates the flagged list."
+          hint={t("playground.moderate.hint")}
         >
           <Field label="video" required>
             <VideoPicker selectedId={video?.id} onSelect={setVideo} />
           </Field>
-          <Field label="threshold" hint="Flag a shot when max(nsfw, toxic) ≥ threshold.">
+          <Field label="threshold" hint={t("playground.moderate.hint_threshold")}>
             <Input
               type="number"
               min={0}
@@ -73,13 +76,16 @@ export default function Moderate() {
       resultsPanel={
         result && (
           <ResultsPanel
-            title="Moderation report"
+            title={t("playground.moderate.results_title")}
             counter={`${result.flagged_shots.length} flagged · max_nsfw=${result.summary.max_nsfw.toFixed(2)} · max_toxic=${result.summary.max_toxic.toFixed(2)}`}
           >
             {result.flagged_shots.length === 0 ? (
               <p className="text-sm text-emerald-700">
-                No shots crossed the threshold ({result.threshold.toFixed(2)}).
-                Highest scores: NSFW {result.summary.max_nsfw.toFixed(3)}, Toxic {result.summary.max_toxic.toFixed(3)}.
+                {t("playground.moderate.no_flags", {
+                  threshold: result.threshold.toFixed(2),
+                  nsfw: result.summary.max_nsfw.toFixed(3),
+                  toxic: result.summary.max_toxic.toFixed(3),
+                })}
               </p>
             ) : (
               <ul className="space-y-1">

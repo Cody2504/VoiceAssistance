@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useParams } from "react-router";
+import { useTranslation } from "react-i18next";
 
 import { LibraryGrid } from "@/components/library/LibraryGrid";
 import { ChatThread } from "@/components/chat/ChatThread";
@@ -13,6 +15,8 @@ import { ChatScopeBar, type ChatScopeValue } from "@/pages/chat/components/ChatS
  * so cross-video questions can run.
  */
 export default function Workspace() {
+  const { t } = useTranslation();
+  const { conversationId } = useParams<{ conversationId: string }>();
   const [preview, setPreview] = useState<VideoSummary | null>(null);
   const [scope, setScope] = useState<ChatScopeValue>({ mode: "single", videoIds: [] });
 
@@ -20,13 +24,13 @@ export default function Workspace() {
     <div className="grid h-full grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] gap-0 divide-x divide-neutral-200">
       <section className="flex min-h-0 flex-col px-8 py-6">
         <ChatScopeBar value={scope} onChange={setScope} />
-        <ChatThread scope={scope} />
+        <ChatThread scope={scope} conversationId={conversationId} />
       </section>
 
       <aside className="flex min-h-0 flex-col bg-neutral-50/40 p-4">
         <header className="mb-3">
-          <h2 className="text-sm font-semibold">Your library</h2>
-          <p className="text-xs text-neutral-500">Drag a video into the chat to ask about it.</p>
+          <h2 className="text-sm font-semibold">{t("console.workspace.library_title")}</h2>
+          <p className="text-xs text-neutral-500">{t("console.workspace.library_hint")}</p>
         </header>
         <LibraryGrid onPreview={(v) => setPreview(v)} />
       </aside>

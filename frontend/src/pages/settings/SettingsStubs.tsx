@@ -1,4 +1,5 @@
 import { Info } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface StubProps {
   title: string;
@@ -18,20 +19,26 @@ function Stub({ title, body }: StubProps) {
 }
 
 export function Organization() {
-  return <Stub title="Organization" body="Multi-member organization controls coming soon. For now your videos sit in your personal workspace." />;
+  const { t } = useTranslation();
+  return <Stub title={t("settings.stubs.organization_title")} body={t("settings.stubs.organization_body")} />;
 }
 export function APIKeysPage() {
-  return <Stub title="API keys" body="Programmatic access tokens for the tl-jockey REST API. Issue, rotate, and revoke keys here once the IAM service exposes them." />;
+  const { t } = useTranslation();
+  return <Stub title={t("settings.stubs.api_keys_title")} body={t("settings.stubs.api_keys_body")} />;
 }
 export function Usage() {
-  return <Stub title="Usage" body="Per-month breakdown of indexing minutes vs. analyze/segment requests will render here once metering wires up to the token-usage service." />;
+  const { t } = useTranslation();
+  return <Stub title={t("settings.stubs.usage_title")} body={t("settings.stubs.usage_body")} />;
 }
 export function RateLimits() {
-  return <Stub title="Rate limits" body="Free plan ships with 60 requests / minute. View, request raises, or upgrade for higher caps." />;
+  const { t } = useTranslation();
+  return <Stub title={t("settings.stubs.rate_limits_title")} body={t("settings.stubs.rate_limits_body")} />;
 }
 export function Webhooks() {
-  return <Stub title="Webhooks" body="Subscribe an HTTPS endpoint to ingest, ground, and edit completion events. Enable when the queue worker exposes its event stream." />;
+  const { t } = useTranslation();
+  return <Stub title={t("settings.stubs.webhooks_title")} body={t("settings.stubs.webhooks_body")} />;
 }
 export function ProfilePage() {
-  return <Stub title="Profile" body="Display name, avatar, and email preferences. Edit your account details here." />;
+  const { t } = useTranslation();
+  return <Stub title={t("settings.stubs.profile_title")} body={t("settings.stubs.profile_body")} />;
 }

@@ -1,40 +1,43 @@
+import { useTranslation } from "react-i18next";
+
 interface Model {
   name: string;
-  role: string;
+  roleKey: string;
   metric: string;
   metricLabel: string;
-  blurb: string;
+  blurbKey: string;
   dotClass: string;
 }
 
 const MODELS: Model[] = [
   {
-    name: "ViCLIP-L/14",
-    role: "Visual embedding backbone",
-    metric: "42.4",
-    metricLabel: "MSR-VTT R@1",
-    blurb: "Frozen video-text encoder used for corpus retrieval and zero-shot classification.",
+    name: "CLIP-L/14",
+    roleKey: "landing.models.viclip_role",
+    metric: "768-d",
+    metricLabel: "image-text embedding",
+    blurbKey: "landing.models.viclip_blurb",
     dotClass: "bg-[#0447ff]",
   },
   {
-    name: "QD-DETR",
-    role: "Grounding head",
-    metric: "0.89",
-    metricLabel: "Charades-STA mIoU",
-    blurb: "Fine-tuned on top of ViCLIP features for span-level moment retrieval.",
+    name: "SG-DETR",
+    roleKey: "landing.models.qddetr_role",
+    metric: "58.9",
+    metricLabel: "QVHighlights mAP",
+    blurbKey: "landing.models.qddetr_blurb",
     dotClass: "bg-[#ff4704]",
   },
 ];
 
 export function Models() {
+  const { t } = useTranslation();
   return (
     <section id="models" className="mx-auto max-w-[1200px] scroll-mt-24 px-6 py-24">
       <header className="mb-12 text-center">
         <h2 className="text-[40px] font-light leading-[1.08] tracking-[-1px] text-[var(--color-obsidian)] md:text-[48px]">
-          Our stable of models.
+          {t("landing.models.h2")}
         </h2>
         <p className="mx-auto mt-5 max-w-[560px] text-[15px] leading-[1.55] text-[var(--color-gravel)]">
-          Open weights, audited benchmarks, no black boxes. Inspect, swap, or pin a version.
+          {t("landing.models.sub")}
         </p>
       </header>
 
@@ -49,9 +52,9 @@ export function Models() {
               <h3 className="text-[18px] font-medium text-[var(--color-obsidian)]">{m.name}</h3>
             </div>
             <p className="mt-1 text-[13px] uppercase tracking-[0.12em] text-[var(--color-gravel)]">
-              {m.role}
+              {t(m.roleKey)}
             </p>
-            <p className="mt-5 text-[14px] leading-[1.55] text-[var(--color-gravel)]">{m.blurb}</p>
+            <p className="mt-5 text-[14px] leading-[1.55] text-[var(--color-gravel)]">{t(m.blurbKey)}</p>
             <div className="mt-6 flex items-baseline gap-2 border-t border-[var(--color-chalk)] pt-5">
               <span className="font-mono text-[28px] tracking-[-0.4px] text-[var(--color-obsidian)]">
                 {m.metric}

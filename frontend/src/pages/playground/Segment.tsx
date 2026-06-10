@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, History as HistoryIcon, Image as ImageIcon, Link as LinkIcon, Paperclip, RotateCcw, Save, Trash2, Video as VideoIcon, X } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 import { VideoPlayer, type VideoPlayerHandle } from "@/components/video/VideoPlayer";
 import {
@@ -57,20 +58,23 @@ function tryParseDefinitions(text: string): { ok: true; defs: SegmentDefinition[
 const BUILTIN_ITEMS: DropdownItem[] = SEGMENT_PRESETS.map((p) => ({
   value: p.id,
   label: p.label,
+  labelKey: p.labelKey,
   description: p.description,
+  descriptionKey: p.descriptionKey,
   badge: p.needsRemote ? "GPU" : p.implemented ? undefined : "stub",
 }));
 
-function savedToDropdownItems(saved: SavedPreset[]): DropdownItem[] {
+function savedToDropdownItems(saved: SavedPreset[], savedDescription: string): DropdownItem[] {
   return saved.map((p) => ({
     value: `__saved__${p.id}`,
     label: p.label,
-    description: p.description || "Saved custom preset",
+    description: p.description || savedDescription,
     badge: "saved",
   }));
 }
 
 export default function Segment() {
+  const { t } = useTranslation();
   const [video, setVideo] = useState<VideoSummary | null>(null);
   const [streamUrl, setStreamUrl] = useState<string>("");
   const [selectedPreset, setSelectedPreset] = useState<string>("shot_detection");
@@ -145,13 +149,13 @@ export default function Segment() {
   };
 
   const presetItems: DropdownItem[] = useMemo(
-    () => [...BUILTIN_ITEMS, ...savedToDropdownItems(savedPresets)],
-    [savedPresets],
+    () => [...BUILTIN_ITEMS, ...savedToDropdownItems(savedPresets, t("playground.segment.saved_description"))],
+    [savedPresets, t],
   );
 
   const onAttachImage = (file: File) => {
     if (file.size > 4 * 1024 * 1024) {
-      toast.error("Image too large — keep it under 4MB.");
+      toast.error(t("playground.segment.image_too_large"));
       return;
     }
     const reader = new FileReader();
@@ -161,11 +165,11 @@ export default function Segment() {
 
   const onSaveCurrentAsPreset = () => {
     if (!parsed.ok || parsed.defs.length === 0) {
-      toast.error("Fix the JSON before saving a preset.");
+      toast.error(t("playground.segment.fix_json_first"));
       return;
     }
     if (!saveLabel.trim()) {
-      toast.error("Pick a label for the saved preset.");
+      toast.error(t("playground.segment.pick_label"));
       return;
     }
     const def = { ...parsed.defs[0] };
@@ -180,7 +184,7 @@ export default function Segment() {
     setSelectedPreset(`__saved__${id}`);
     setSavePromptOpen(false);
     setSaveLabel("");
-    toast.success(`Saved preset “${id}”`);
+    toast.success(`Saved preset "${id}"`);
   };
 
   const onDeleteSelectedSaved = () => {
@@ -190,19 +194,19 @@ export default function Segment() {
     setSavedPresets(next);
     setSelectedPreset("shot_detection");
     onPresetChange("shot_detection");
-    toast.success(`Deleted preset “${id}”`);
+    toast.success(`Deleted preset "${id}"`);
   };
 
   const onCopyVideoUrl = async () => {
     if (!streamUrl) {
-      toast.error("Pick a video first to copy its URL.");
+      toast.error(t("playground.segment.copy_url_error"));
       return;
     }
     try {
       await navigator.clipboard.writeText(streamUrl);
-      toast.success("Video URL copied to clipboard.");
+      toast.success(t("playground.segment.copied_url"));
     } catch {
-      toast.error("Clipboard blocked — copy manually from the player.");
+      toast.error(t("playground.segment.clipboard_blocked"));
     }
   };
 
@@ -234,14 +238,14 @@ export default function Segment() {
         result: res,
       };
       setHistory(appendHistory(entry));
-      const empty = res.tracks.every((t) => t.segments.length === 0);
+      const empty = res.tracks.every((tr) => tr.segments.length === 0);
       if (empty) {
-        toast.message("No segments produced — the selected definitions have no implemented segmenter yet.");
+        toast.message(t("playground.segment.no_segments"));
       }
     } catch (err) {
       const msg =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        "Segment run failed";
+        t("playground.segment.run_failed");
       toast.error(msg);
     } finally {
       setRunning(false);
@@ -273,13 +277,13 @@ export default function Segment() {
 
   const timelineTracks: TimelineTrack[] = useMemo(() => {
     if (!result) return [];
-    return result.tracks.map((t) => {
-      const preset = PRESET_BY_ID[t.definition_id];
+    return result.tracks.map((tr) => {
+      const preset = PRESET_BY_ID[tr.definition_id];
       return {
-        id: t.definition_id,
-        label: t.definition_id,
+        id: tr.definition_id,
+        label: tr.definition_id,
         color: preset?.color ?? { fill: "#E5E5E5", stroke: "#404040" },
-        blocks: t.segments.map((s) => ({ t_start: s.t_start, t_end: s.t_end })),
+        blocks: tr.segments.map((s) => ({ t_start: s.t_start, t_end: s.t_end })),
       };
     });
   }, [result]);
@@ -287,9 +291,9 @@ export default function Segment() {
   const activeByTrack = useMemo(() => {
     const out: Record<string, TrackSegment | null> = {};
     if (!result) return out;
-    for (const t of result.tracks) {
-      out[t.definition_id] =
-        t.segments.find((s) => playhead >= s.t_start && playhead < s.t_end) ?? null;
+    for (const tr of result.tracks) {
+      out[tr.definition_id] =
+        tr.segments.find((s) => playhead >= s.t_start && playhead < s.t_end) ?? null;
     }
     return out;
   }, [result, playhead]);
@@ -303,17 +307,17 @@ export default function Segment() {
   return (
     <div className="flex h-full flex-col overflow-hidden bg-[var(--color-eggshell)]">
       <header className="flex items-start justify-between px-8 pt-6 pb-4">
-        <h1 className="text-[32px] font-light tracking-[-0.64px] text-[var(--color-obsidian)]">Segment</h1>
+        <h1 className="text-[32px] font-light tracking-[-0.64px] text-[var(--color-obsidian)]">{t("playground.segment.title")}</h1>
         <div className="flex items-center gap-2">
           <button className="inline-flex h-9 items-center gap-2 rounded-full border border-[var(--color-chalk)] bg-white px-4 text-[13px] text-[var(--color-obsidian)] hover:bg-[var(--color-powder)]">
-            <span aria-hidden>📒</span> Learn <ChevronDown size={12} />
+            <span aria-hidden>📒</span> {t("playground.segment.learn")} <ChevronDown size={12} />
           </button>
           <button
             type="button"
             onClick={() => setHistoryOpen(true)}
             className="inline-flex h-9 items-center gap-2 rounded-full border border-[var(--color-chalk)] bg-white px-4 text-[13px] text-[var(--color-obsidian)] hover:bg-[var(--color-powder)]"
           >
-            <HistoryIcon size={14} /> History
+            <HistoryIcon size={14} /> {t("playground.segment.history")}
             {history.length > 0 && (
               <span className="ml-1 rounded-full bg-neutral-200 px-1.5 font-mono text-[10px] text-neutral-700">
                 {history.length}
@@ -349,14 +353,14 @@ export default function Segment() {
                     onClick={() => setPickerOpen(true)}
                     className="inline-flex items-center gap-1 rounded-[7px] border border-neutral-400 px-1.5 py-1 text-[10px] text-neutral-700 transition hover:rounded-[10px] hover:bg-neutral-200"
                   >
-                    <VideoIcon size={12} /> Change Video
+                    <VideoIcon size={12} /> {t("playground.segment.change_video")}
                   </button>
                   <button
                     type="button"
                     onClick={onCopyVideoUrl}
                     className="inline-flex items-center gap-1 rounded-[7px] border border-neutral-400 px-1.5 py-1 text-[10px] text-neutral-700 transition hover:rounded-[10px] hover:bg-neutral-200"
                   >
-                    <LinkIcon size={12} /> Video URL
+                    <LinkIcon size={12} /> {t("playground.segment.video_url")}
                   </button>
                 </div>
               </div>
@@ -382,7 +386,7 @@ export default function Segment() {
                     >
                       <span className="inline-flex items-center gap-2 rounded-md bg-[var(--color-obsidian)] px-3 py-1.5 text-[13px] text-white">
                         <VideoIcon size={13} />
-                        {videosLoading ? "Loading…" : "Select a video"}
+                        {videosLoading ? t("actions.loading") : t("playground.segment.select_video")}
                       </span>
                     </button>
                   )}
@@ -421,16 +425,16 @@ export default function Segment() {
                       type="button"
                       onClick={() => setSavePromptOpen((v) => !v)}
                       className="inline-flex h-9 items-center gap-1 rounded-md border border-neutral-300 px-2 text-[12px] text-neutral-700 hover:bg-neutral-100"
-                      title="Save current definition as a preset"
+                      title={t("playground.segment.save_title")}
                     >
-                      <Save size={12} /> Save
+                      <Save size={12} /> {t("playground.segment.save")}
                     </button>
                     {selectedPreset.startsWith("__saved__") && (
                       <button
                         type="button"
                         onClick={onDeleteSelectedSaved}
                         className="grid h-9 w-9 place-items-center rounded-md border border-neutral-300 text-neutral-700 hover:bg-neutral-100"
-                        title="Delete this saved preset"
+                        title={t("playground.segment.delete_title")}
                       >
                         <Trash2 size={12} />
                       </button>
@@ -444,7 +448,7 @@ export default function Segment() {
                         value={saveLabel}
                         onChange={(e) => setSaveLabel(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && onSaveCurrentAsPreset()}
-                        placeholder="Preset name (e.g. ‘NBA highlights v2’)"
+                        placeholder={t("playground.segment.save_placeholder")}
                         className="flex-1 h-8 rounded border border-neutral-300 bg-white px-2 text-[12px] outline-none focus:border-neutral-700"
                       />
                       <button
@@ -452,7 +456,7 @@ export default function Segment() {
                         onClick={onSaveCurrentAsPreset}
                         className="rounded bg-neutral-800 px-3 py-1.5 text-[12px] font-medium text-white hover:bg-neutral-700"
                       >
-                        Save
+                        {t("playground.segment.save")}
                       </button>
                     </div>
                   )}
@@ -462,7 +466,7 @@ export default function Segment() {
                       <div className="absolute right-2 top-2 z-10 flex items-center gap-1">
                         <label
                           className="inline-flex cursor-pointer items-center gap-1 rounded-[7px] border border-neutral-700 bg-white px-1.5 py-1 text-[10px] text-neutral-900 shadow-[0_0_3px_0_rgba(29,28,27,0.4)] transition-colors hover:bg-neutral-100"
-                          title="Attach a reference image (visual hint for the segmenter)"
+                          title={t("playground.segment.attach_title")}
                         >
                           <Paperclip size={12} />
                           <input
@@ -479,7 +483,7 @@ export default function Segment() {
                         <button
                           type="button"
                           className="inline-flex items-center gap-1 rounded-[7px] border border-neutral-700 bg-white px-1.5 py-1 text-[10px] text-neutral-900 shadow-[0_0_3px_0_rgba(29,28,27,0.4)] hover:bg-neutral-100"
-                          title="Open the visual builder"
+                          title={t("playground.segment.builder_title")}
                           onClick={() => {
                             if (!parsed.ok) {
                               toast.error(`Fix JSON first: ${parsed.error}`);
@@ -488,7 +492,7 @@ export default function Segment() {
                             setBuilderOpen(true);
                           }}
                         >
-                          {"</>"} Edit in Builder
+                          {t("playground.segment.edit_in_builder")}
                         </button>
                       </div>
                       <textarea
@@ -503,18 +507,18 @@ export default function Segment() {
                     <div className="flex items-center gap-2 rounded-md border border-neutral-200 bg-neutral-50 p-2">
                       <img
                         src={imageAttachment}
-                        alt="attached"
+                        alt={t("playground.segment.attached_alt")}
                         className="h-12 w-12 rounded object-cover"
                       />
                       <div className="flex-1 text-[11px] text-neutral-600">
                         <ImageIcon size={12} className="mr-1 inline" />
-                        Image attached — will be sent with the segment definition.
+                        {t("playground.segment.image_attached")}
                       </div>
                       <button
                         type="button"
                         onClick={() => setImageAttachment(null)}
                         className="grid h-6 w-6 place-items-center rounded text-neutral-500 hover:bg-neutral-200 hover:text-neutral-900"
-                        aria-label="Remove attachment"
+                        aria-label={t("playground.segment.remove_attachment")}
                       >
                         <X size={12} />
                       </button>
@@ -540,13 +544,13 @@ export default function Segment() {
 
             {/* advanced settings */}
             <div className="flex items-center justify-between border-t border-neutral-200 pt-4 pb-2">
-              <span className="text-[12px] font-semibold text-neutral-600">Advanced Settings</span>
+              <span className="text-[12px] font-semibold text-neutral-600">{t("playground.segment.advanced_settings")}</span>
               <button
                 type="button"
                 onClick={onReset}
                 className="inline-flex items-center gap-1 rounded-[7px] px-1.5 py-1 text-[10px] text-neutral-900 hover:bg-neutral-100"
               >
-                <RotateCcw size={12} /> Reset
+                <RotateCcw size={12} /> {t("playground.segment.reset")}
               </button>
             </div>
             <div className="divide-y divide-neutral-200">
@@ -555,7 +559,7 @@ export default function Segment() {
                 <div className="flex items-center gap-1">
                   <input
                     inputMode="numeric"
-                    placeholder="00:00"
+                    placeholder={t("playground.segment.placeholder_start")}
                     value={startS}
                     onChange={(e) => setStartS(e.target.value)}
                     className="w-[72px] rounded border border-neutral-200 px-1 py-[5px] text-[13px] outline-none"
@@ -563,7 +567,7 @@ export default function Segment() {
                   <span className="text-[13px] text-neutral-600">-</span>
                   <input
                     inputMode="numeric"
-                    placeholder="00:00"
+                    placeholder={t("playground.segment.placeholder_start")}
                     value={endS}
                     onChange={(e) => setEndS(e.target.value)}
                     className="w-[72px] rounded border border-neutral-200 px-1 py-[5px] text-[13px] outline-none"
@@ -574,7 +578,7 @@ export default function Segment() {
                 <span className="font-mono text-[11px] font-medium text-neutral-900">min_segment_duration</span>
                 <input
                   inputMode="decimal"
-                  placeholder="≥ 0"
+                  placeholder={t("playground.segment.placeholder_min")}
                   value={minDuration}
                   onChange={(e) => setMinDuration(e.target.value)}
                   className="w-[112px] rounded border border-neutral-200 px-2 py-1 text-[13px] outline-none"
@@ -584,7 +588,7 @@ export default function Segment() {
                 <span className="font-mono text-[11px] font-medium text-neutral-900">max_segment_duration</span>
                 <input
                   inputMode="decimal"
-                  placeholder="≥ min duration"
+                  placeholder={t("playground.segment.placeholder_max")}
                   value={maxDuration}
                   onChange={(e) => setMaxDuration(e.target.value)}
                   className="w-[112px] rounded border border-neutral-200 px-2 py-1 text-[13px] outline-none"
@@ -596,8 +600,8 @@ export default function Segment() {
           {/* footer */}
           <div className="border-t border-neutral-200 px-6 py-4">
             <div className="mb-2 flex items-center justify-end gap-x-1 text-[13px] text-neutral-600">
-              <span>with</span>
-              <span className="font-semibold">tl-jockey pipeline</span>
+              <span>{t("playground.segment.with_pipeline")}</span>
+              <span className="font-semibold">{t("playground.segment.pipeline_name")}</span>
             </div>
             <button
               type="button"
@@ -605,8 +609,8 @@ export default function Segment() {
               onClick={onRun}
               className="w-full rounded-[16px] bg-neutral-800 px-4 py-3 text-[15px] font-medium text-white transition hover:rounded-[20px] hover:bg-neutral-700 disabled:bg-neutral-300 disabled:text-neutral-500"
             >
-              {running ? "Segmenting…" : "Segment"}
-              <span className="ml-2 text-[12px] opacity-50">Ctrl+↵</span>
+              {running ? t("playground.segment.running_label") : t("playground.segment.run_label")}
+              <span className="ml-2 text-[12px] opacity-50">{t("playground.segment.run_shortcut")}</span>
             </button>
           </div>
         </aside>
@@ -620,14 +624,14 @@ export default function Segment() {
                 onClick={() => setView("Visual")}
                 className={`min-w-[80px] border border-neutral-800 px-3 py-1.5 text-[13px] rounded-l-md ${view === "Visual" ? "bg-neutral-800 text-white" : "bg-white text-neutral-900 hover:bg-neutral-100"}`}
               >
-                Visual
+                {t("playground.segment.view_visual")}
               </button>
               <button
                 type="button"
                 onClick={() => setView("JSON")}
                 className={`min-w-[80px] border border-neutral-800 px-3 py-1.5 text-[13px] rounded-r-md ${view === "JSON" ? "bg-neutral-800 text-white" : "bg-white text-neutral-900 hover:bg-neutral-100"}`}
               >
-                JSON
+                {t("playground.segment.view_json")}
               </button>
             </div>
             <div className="flex items-center gap-2">
@@ -641,7 +645,7 @@ export default function Segment() {
 
           {!result && (
             <div className="flex flex-1 items-center justify-center rounded-[20px] border border-dashed border-neutral-300 bg-white text-sm text-neutral-500">
-              Pick a video and hit Segment to see the multi-track timeline + metadata.
+              {t("playground.segment.empty_state")}
             </div>
           )}
 
@@ -653,7 +657,7 @@ export default function Segment() {
                     <VideoPlayer
                       ref={player}
                       src={streamUrl}
-                      onTimeUpdate={(t) => setPlayhead(t)}
+                      onTimeUpdate={(time) => setPlayhead(time)}
                     />
                   </div>
                 )}
@@ -661,16 +665,16 @@ export default function Segment() {
                   duration={duration}
                   tracks={timelineTracks}
                   playhead={playhead}
-                  onSeek={(t) => {
-                    player.current?.seekTo(t);
-                    setPlayhead(t);
+                  onSeek={(time) => {
+                    player.current?.seekTo(time);
+                    setPlayhead(time);
                   }}
                   activePerTrack={activeStartByTrack}
                 />
                 <div className="flex items-center justify-between rounded-[12px] bg-neutral-300 px-5 py-2 text-[13px]">
-                  <span className="text-neutral-700">tl-jockey pipeline · generated just now</span>
+                  <span className="text-neutral-700">{t("playground.segment.generated_label")}</span>
                   <span className="text-neutral-700">
-                    {result.tracks.reduce((s, t) => s + t.segments.length, 0)} segments
+                    {t("playground.segment.segments_count", { count: result.tracks.reduce((s, tr) => s + tr.segments.length, 0) })}
                   </span>
                 </div>
               </div>
@@ -680,9 +684,9 @@ export default function Segment() {
                   tracks={result.tracks}
                   presetById={PRESET_BY_ID}
                   activeByTrack={activeByTrack}
-                  onSeek={(t) => {
-                    player.current?.seekTo(t);
-                    setPlayhead(t);
+                  onSeek={(time) => {
+                    player.current?.seekTo(time);
+                    setPlayhead(time);
                   }}
                 />
               </div>

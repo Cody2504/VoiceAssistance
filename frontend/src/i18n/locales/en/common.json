@@ -1,63 +1,139 @@
 {
-  "app": { "name": "Jockey" },
-  "lang": { "en": "English", "vi": "Tiếng Việt" },
+  "app": {
+    "name": "Jockey"
+  },
+  "lang": {
+    "en": "English",
+    "vi": "Tiếng Việt"
+  },
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "remove": "Remove",
+    "copy": "Copy",
+    "copied": "Copied",
+    "close": "Close",
+    "submit": "Submit",
+    "confirm": "Confirm",
+    "upload": "Upload",
+    "invite": "Invite",
+    "retry": "Retry",
+    "clear": "Clear",
+    "back": "Back",
+    "next": "Next",
+    "loading": "Loading…",
+    "search": "Search",
+    "search_placeholder": "Search…",
+    "learn_more": "Learn more",
+    "get_started": "Get started",
+    "watch_demo": "Watch demo",
+    "read_docs": "Read the docs",
+    "view_all": "View all",
+    "open": "Open",
+    "run": "Run",
+    "select": "Select"
+  },
+  "nav": {
+    "platform": "Platform",
+    "pricing": "Pricing",
+    "solutions": "Solutions",
+    "about": "About Us",
+    "open_app": "Open app",
+    "playground_cta": "Playground",
+    "talk_to_sales": "Talk to sales",
+    "select_language": "Select language",
+    "menu": {
+      "platform_heading": "Platform",
+      "capabilities_heading": "Capabilities",
+      "solutions_heading": "Solutions",
+      "platform_overview": "Platform Overview",
+      "platform_overview_desc": "Search, analyze & segment video",
+      "models": "Models",
+      "models_desc": "Our encoder + VLM, benchmarked",
+      "search": "Search",
+      "search_desc": "Find any scene in natural language",
+      "analyze": "Analyze",
+      "analyze_desc": "Summaries, chapters, Q&A",
+      "segment": "Segment",
+      "segment_desc": "Labeled, time-stamped chapters",
+      "compare_plans": "Compare Plans",
+      "pricing_calculator": "Pricing Calculator",
+      "enterprise_overview": "Enterprise Overview",
+      "media_entertainment": "Media & Entertainment",
+      "advertising": "Advertising",
+      "government_security": "Government & Security",
+      "automotive": "Automotive"
+    }
+  },
+  "footer": {
+    "tagline": "Video-native AI for search, analysis and segmentation — built on open CLIP, InternVideo2 and SG-DETR models.",
+    "copyright": "© {{year}} Jockey. Built with open models.",
+    "col": {
+      "platform": "Platform",
+      "solutions": "Solutions",
+      "developers": "Developers",
+      "company": "Company"
+    },
+    "links": {
+      "platform_overview": "Platform Overview",
+      "models": "Models",
+      "pricing": "Pricing",
+      "examples": "Examples",
+      "media_entertainment": "Media & Entertainment",
+      "advertising": "Advertising",
+      "government_security": "Government & Security",
+      "automotive": "Automotive",
+      "developer_hub": "Developer Hub",
+      "api_docs": "API Docs",
+      "sdks": "SDKs",
+      "sample_apps": "Sample Apps",
+      "about": "About",
+      "contact": "Contact"
+    }
+  },
+  "layout": {
+    "sidebar": {
+      "workspace": "Workspace",
+      "overview": "Overview",
+      "indexes": "Indexes",
+      "assets": "Assets",
+      "entities": "Entities",
+      "search": "Search",
+      "analyze": "Analyze",
+      "segment": "Segment",
+      "examples": "Examples",
+      "api_keys": "API Keys",
+      "settings": "Settings",
+      "api_docs": "API Docs",
+      "help": "Help",
+      "collapse": "Collapse",
+      "collapse_tooltip": "Collapse sidebar",
+      "expand_tooltip": "Expand sidebar"
+    },
+    "topbar": {
+      "used": "Used",
+      "book_demo": "Book a Demo",
+      "invite": "Invite"
+    },
+    "usermenu": {
+      "user_fallback": "User",
+      "free_plan": "Free plan",
+      "used": "Used",
+      "indexing": "Indexing",
+      "analyze_segment": "Analyze & Segment",
+      "max_duration": "Max duration per index",
+      "max_videos": "Max videos per index",
+      "upgrade": "Upgrade",
+      "pricing": "Pricing",
+      "sign_out": "Sign out"
+    }
+  },
   "library": {
     "title": "Your videos",
     "upload": "Upload video",
     "empty": "No videos yet. Drop one above to get started."
-  },
-  "landing": {
-    "nav": {
-      "product": "Product",
-      "docs": "Docs",
-      "pricing": "Pricing",
-      "open_app": "Open app",
-      "get_started": "Get started"
-    },
-    "hero": {
-      "eyebrow": "VIDEO INTELLIGENCE",
-      "h1_a": "Talk to your",
-      "h1_em": "videos.",
-      "sub": "Search, summarize, and locate any moment. Jockey turns your video library into a teammate who has seen everything.",
-      "cta_primary": "Get started",
-      "cta_secondary": "Watch demo",
-      "chip_query": "when does the keeper save the penalty?",
-      "chip_caption": "3 matches across 12:04"
-    },
-    "features": {
-      "title": "Three ways to use Jockey",
-      "search": {
-        "title": "Search",
-        "body": "Drag a video into chat and ask anything. Get answers grounded in the timeline."
-      },
-      "summarize": {
-        "title": "Summarize",
-        "body": "One-paragraph or chapter-by-chapter summaries of any video in your library."
-      },
-      "find": {
-        "title": "Find the moment",
-        "body": "Natural-language search across your whole library. Jockey jumps straight to the second."
-      }
-    },
-    "how": {
-      "title": "How it works",
-      "step1": { "title": "Upload videos", "body": "Drop in MP4s or paste a link. Jockey indexes the visuals, audio, and transcript." },
-      "step2": { "title": "Ask in plain words", "body": "Type a question or paste a transcript snippet. No filters, no SQL." },
-      "step3": { "title": "Jump to the moment", "body": "Click a match to seek the player to the exact second. Verify in one click." }
-    },
-    "footer": {
-      "product": "Product",
-      "company": "Company",
-      "legal": "Legal",
-      "features": "Features",
-      "pricing": "Pricing",
-      "docs": "Docs",
-      "about": "About",
-      "contact": "Contact",
-      "privacy": "Privacy",
-      "terms": "Terms",
-      "copyright": "© {{year}} Jockey. All rights reserved."
-    }
   },
   "auth": {
     "email": "Email",

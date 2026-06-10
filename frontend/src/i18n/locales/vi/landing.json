@@ -1,0 +1,229 @@
+{
+  "landing": {
+    "nav": {
+      "product": "Sản phẩm",
+      "docs": "Tài liệu",
+      "pricing": "Bảng giá",
+      "open_app": "Mở ứng dụng",
+      "get_started": "Bắt đầu"
+    },
+    "hero": {
+      "eyebrow": "TRÍ TUỆ VIDEO",
+      "h1_a": "Trò chuyện với",
+      "h1_em": "video của bạn.",
+      "sub": "Tìm kiếm, tóm tắt và định vị bất kỳ khoảnh khắc nào. Jockey biến thư viện video thành một đồng đội đã xem hết mọi thứ.",
+      "cta_primary": "Bắt đầu",
+      "cta_secondary": "Xem demo",
+      "chip_query": "thủ môn cản phạt đền lúc nào?",
+      "chip_caption": "3 kết quả trong 12:04",
+      "eyebrow_v2": "Nền tảng AI Video",
+      "h1_v2": "Nhìn thấy điều ẩn giấu trong mỗi video.",
+      "sub_v2": "Tìm kiếm, trò chuyện và phân đoạn cảnh quay bằng ngôn ngữ tự nhiên. Công nghệ hiểu video tiên tiến biến hàng giờ video thô thành những khoảnh khắc có thể tìm kiếm, trả lời và sẵn sàng cho AI.",
+      "start_free": "Bắt đầu miễn phí ↗",
+      "talk_to_sales": "Liên hệ tư vấn"
+    },
+    "features": {
+      "title": "Ba cách dùng Jockey",
+      "search": {
+        "title": "Tìm kiếm",
+        "body": "Kéo video vào chat và hỏi bất cứ điều gì. Câu trả lời gắn với mốc thời gian."
+      },
+      "summarize": {
+        "title": "Tóm tắt",
+        "body": "Một đoạn văn hoặc theo từng chương cho bất kỳ video nào trong thư viện."
+      },
+      "find": {
+        "title": "Tìm khoảnh khắc",
+        "body": "Tìm bằng ngôn ngữ tự nhiên trên toàn bộ thư viện. Jockey nhảy thẳng đến giây cần xem."
+      }
+    },
+    "how": {
+      "title": "Cách hoạt động",
+      "step1": {
+        "title": "Tải video lên",
+        "body": "Thả file MP4 hoặc dán liên kết. Jockey lập chỉ mục hình ảnh, âm thanh và lời thoại."
+      },
+      "step2": {
+        "title": "Hỏi bằng ngôn ngữ thường",
+        "body": "Gõ câu hỏi hoặc dán đoạn lời thoại. Không cần bộ lọc, không cần SQL."
+      },
+      "step3": {
+        "title": "Đến đúng khoảnh khắc",
+        "body": "Bấm vào kết quả để tua đến đúng giây. Kiểm chứng chỉ trong một cú nhấp."
+      }
+    },
+    "footer": {
+      "product": "Sản phẩm",
+      "company": "Công ty",
+      "legal": "Pháp lý",
+      "features": "Tính năng",
+      "pricing": "Bảng giá",
+      "docs": "Tài liệu",
+      "about": "Giới thiệu",
+      "contact": "Liên hệ",
+      "privacy": "Quyền riêng tư",
+      "terms": "Điều khoản",
+      "copyright": "© {{year}} Jockey. Bảo lưu mọi quyền."
+    },
+    "capabilities": {
+      "h2_line1": "Hiểu biết ở cấp độ con người.",
+      "h2_line2": "Cho những thành tích phi thường.",
+      "sub": "Trải nghiệm tìm kiếm ngữ nghĩa và khả năng chuyển đổi video sang văn bản vượt trội hơn bất cứ điều gì bạn từng thử — AI gốc video tạo ra sự khác biệt.",
+      "search_title": "Tìm kiếm",
+      "search_body": "Tìm các khoảnh khắc cụ thể trong video bằng cách mô tả cảnh quay bằng ngôn ngữ tự nhiên.",
+      "search_alt": "Minh họa tìm kiếm",
+      "analyze_title": "Phân tích",
+      "analyze_body": "Tạo văn bản từ video — tóm tắt, chương, điểm nổi bật và nhiều hơn nữa.",
+      "analyze_alt": "Minh họa phân tích",
+      "segment_title": "Phân đoạn",
+      "segment_body": "Chia video thành các chương có nhãn và dấu thời gian để tái sử dụng về sau.",
+      "segment_alt": "Minh họa phân đoạn"
+    },
+    "capability_detail": {
+      "learn_more": "Tìm hiểu thêm ↗",
+      "try_playground": "Thử trên Playground",
+      "search_eyebrow": "Tìm kiếm",
+      "search_title": "Tìm bất kỳ cảnh nào bằng ngôn ngữ tự nhiên.",
+      "search_body": "Kết quả nhanh, chính xác, nhận thức ngữ cảnh — thực sự hiểu điều bạn đang tìm. Tìm kiếm trên lời nói, văn bản, âm thanh và hình ảnh để khám phá video theo mọi chiều.",
+      "analyze_eyebrow": "Phân tích",
+      "analyze_title": "Tóm tắt, phân tích và mô tả.",
+      "analyze_body": "Tạo ngay các định dạng văn bản như Q&A, hashtag và tóm tắt. Tạo báo cáo hoặc phân tích chuyên ngành để trả lời những câu hỏi sâu nhất của bạn.",
+      "segment_eyebrow": "Phân đoạn",
+      "segment_title": "Biến video thành các chương có nhãn.",
+      "segment_body": "Xây dựng tính năng tìm kiếm ngữ nghĩa và phân loại theo lĩnh vực với embedding nắm bắt được sắc thái — khai thác tối đa toàn bộ dữ liệu của bạn."
+    },
+    "sample_apps": {
+      "see_all": "Xem tất cả ứng dụng mẫu",
+      "search_heading": "Bạn muốn tìm gì?",
+      "search_subtitle": "Thử 'tìm kiếm' với Ứng dụng mẫu",
+      "analyze_heading": "Bạn muốn mô tả gì?",
+      "analyze_subtitle": "Thử 'phân tích' với Ứng dụng mẫu",
+      "segment_heading": "Bạn muốn xây dựng gì?",
+      "segment_subtitle": "Thử 'phân đoạn' với Ứng dụng mẫu",
+      "search_card1_title": "Ứng dụng phân loại video Olympic",
+      "search_card1_body": "Công cụ mạnh mẽ được thiết kế để phân loại các môn thể thao Olympic khác nhau từ các đoạn video.",
+      "search_card2_title": "Ứng dụng tìm màu sắc trong video",
+      "search_card2_body": "Dù bạn đang tìm màu son môi hoàn hảo hay đơn giản là muốn phát hiện màu sắc cụ thể trong video, hướng dẫn này giúp bạn tận dụng AI tiên tiến để thực hiện một cách dễ dàng.",
+      "search_card3_title": "Công cụ tạo điểm nổi bật video",
+      "search_card3_body": "Công cụ tạo dấu thời gian chương YouTube tự động tạo ra các mốc thời gian cho video YouTube.",
+      "analyze_card1_title": "Tạo bài đăng mạng xã hội cho video của bạn",
+      "analyze_card1_body": "Ứng dụng này đơn giản hóa quy trình quảng bá video đa nền tảng bằng cách tạo các bài đăng độc đáo cho từng nền tảng mạng xã hội.",
+      "analyze_card2_title": "Công cụ tạo điểm nổi bật video",
+      "analyze_card2_body": "Ứng dụng này tự động phân tích nội dung video để tạo chương và điểm nổi bật, tối ưu hóa quy trình sản xuất video cho người sáng tạo nội dung.",
+      "analyze_card3_title": "Công cụ phân tích phỏng vấn",
+      "analyze_card3_body": "Ứng dụng đánh giá hiệu suất phỏng vấn xin việc bằng khả năng tạo văn bản từ nội dung video của Qwen3-VL.",
+      "segment_card1_title": "Quảng cáo theo ngữ cảnh và cá nhân hóa",
+      "segment_card1_body": "Công cụ phân tích cảnh quay nguồn, tóm tắt nội dung và đề xuất quảng cáo dựa trên ngữ cảnh và sắc thái cảm xúc của cảnh quay.",
+      "segment_card2_title": "Đề xuất sử dụng Multimodal Embeddings",
+      "segment_card2_body": "Bắt đầu khám phá video và tìm kiếm nội dung tương tự được hỗ trợ bởi tl-jockey Multimodal Embeddings.",
+      "segment_card3_title": "Bộ phân loại lĩnh vực ngữ nghĩa",
+      "segment_card3_body": "Xây dựng bộ phân loại của riêng bạn bằng ngôn ngữ tự nhiên: định nghĩa các lớp bằng tiếng Việt thông thường và chạy ngay trên bất kỳ video mới nào."
+    },
+    "pricing": {
+      "h2_line1": "Dùng miễn phí.",
+      "h2_line2": "Trả theo mức dùng.",
+      "sub": "Bắt đầu miễn phí và chỉ trả cho những gì bạn dùng. Không bất ngờ, không cam kết.",
+      "free_name": "Miễn phí",
+      "free_price": "$0",
+      "free_cadence": "/ tháng",
+      "free_blurb": "Khám phá ngay. Lập chỉ mục và tìm kiếm tối đa 5 giờ video.",
+      "free_cta": "Bắt đầu",
+      "free_f1": "5 giờ video / tháng",
+      "free_f2": "1 chỉ mục mặc định",
+      "free_f3": "Tìm kiếm, Phân tích, Phân đoạn",
+      "free_f4": "Hỗ trợ cộng đồng",
+      "dev_name": "Nhà phát triển",
+      "dev_price": "Trả theo mức dùng",
+      "dev_blurb": "Mở rộng lập chỉ mục và truy vấn với giá theo mức sử dụng.",
+      "dev_cta": "Nâng cấp",
+      "dev_f1": "Giá theo phút lập chỉ mục + truy vấn",
+      "dev_f2": "Không giới hạn chỉ mục",
+      "dev_f3": "API keys + webhooks",
+      "dev_f4": "Hỗ trợ email ưu tiên",
+      "ent_name": "Doanh nghiệp",
+      "ent_price": "Theo yêu cầu",
+      "ent_blurb": "Hạ tầng riêng, SSO và hỗ trợ triển khai chuyên sâu.",
+      "ent_cta": "Liên hệ tư vấn",
+      "ent_f1": "Hạ tầng riêng + SLA",
+      "ent_f2": "SAML / SSO + nhật ký kiểm tra",
+      "ent_f3": "Tùy chọn triển khai riêng tư",
+      "ent_f4": "Kỹ thuật giải pháp"
+    },
+    "models": {
+      "h2": "Các mô hình của chúng tôi.",
+      "sub": "Trọng số mở, benchmark minh bạch, không hộp đen. Kiểm tra, thay thế hoặc ghim một phiên bản.",
+      "viclip_role": "Nền tảng truy xuất hình ảnh",
+      "viclip_blurb": "CLIP ViT-L/14 đông cứng — các khung hình được nhúng và gộp trung bình để truy xuất kho dữ liệu và phân loại zero-shot.",
+      "qddetr_role": "Đầu định vị thời gian",
+      "qddetr_blurb": "Đầu dự đoán khoảng SG-DETR được huấn luyện trên đặc trưng InternVideo2 đông cứng để truy xuất khoảnh khắc và điểm nhấn."
+    },
+    "tutorials": {
+      "h2": "Làm chủ với các hướng dẫn khởi động nhanh.",
+      "sub": "Các công thức sẵn sàng cho production — clone repo, nhập video, ra mắt tính năng ngay chiều nay.",
+      "see_all": "Xem tất cả hướng dẫn",
+      "tutorial_link": "Hướng dẫn",
+      "code_link": "Code",
+      "card1_title": "Ai đã đề cập đến chúng tôi",
+      "card1_blurb": "Tìm mọi đoạn video có người nói đến thương hiệu hoặc sản phẩm.",
+      "card1_tag": "Phân tích thương hiệu",
+      "card2_title": "Tạo bài đăng mạng xã hội",
+      "card2_blurb": "Tự động tóm tắt video thành chú thích và thẻ chủ đề sẵn sàng cho TikTok / IG.",
+      "card2_tag": "Nội dung",
+      "card3_title": "Tìm màu son môi",
+      "card3_blurb": "Phát hiện mọi mẫu son môi trong video unboxing.",
+      "card3_tag": "Thương mại điện tử",
+      "card4_title": "Phân tích phỏng vấn",
+      "card4_blurb": "Chia chương các buổi phỏng vấn dài và tự động trích xuất các câu nổi bật.",
+      "card4_tag": "Truyền thông"
+    },
+    "cta": {
+      "h2": "Sẵn sàng nhìn video của bạn theo cách khác?",
+      "sub": "Mở Playground, tải một đoạn video lên và chạy Tìm kiếm, Phân tích hoặc Phân đoạn chỉ với một cú nhấp. Không cần thẻ tín dụng.",
+      "try_playground": "Thử trên Playground",
+      "talk_to_sales": "Liên hệ tư vấn"
+    },
+    "hero_demo": {
+      "aria_tabs": "Khả năng demo",
+      "tab_search": "Tìm kiếm",
+      "tab_chat": "Chat / QA",
+      "tab_segment": "Phân đoạn",
+      "search_label": "Tìm kiếm trong video mẫu",
+      "search_placeholder": "Tìm kiếm video này bằng ngôn ngữ tự nhiên…",
+      "search_button": "Tìm kiếm",
+      "search_try": "Thử:",
+      "search_empty": "Nhập truy vấn hoặc nhấn vào ví dụ — các khoảnh khắc khớp sẽ sáng lên trên dòng thời gian.",
+      "search_no_results": "Không tìm thấy khoảnh khắc nào khớp với \"{{query}}\". Thử goal, celebration hoặc trophy.",
+      "chat_label": "Hỏi về video mẫu",
+      "chat_placeholder": "Hỏi về video mẫu…",
+      "chat_send": "Gửi",
+      "chat_empty": "Đặt câu hỏi về đoạn video mẫu — chọn một câu trên hoặc tự gõ.",
+      "segment_footer": "Tự động phát hiện bằng shot detection, ASR & phân đoạn thay đổi chủ đề.",
+      "footer_sample": "Video mẫu · chạy hoàn toàn trong trình duyệt",
+      "footer_upload": "Tải video của bạn lên"
+    },
+    "demo_fixture": {
+      "m1_label": "Khởi đầu",
+      "m2_label": "Xây dựng lối chơi giữa sân",
+      "m3_label": "Cú sút vào khung thành",
+      "m4_label": "BÀN THẮNG — góc trên",
+      "m5_label": "Ăn mừng",
+      "m6_label": "Khán giả gầm vang",
+      "m7_label": "Còi kết thúc",
+      "m8_label": "Nâng cúp",
+      "s1_label": "Xây dựng",
+      "s2_label": "Bàn thắng",
+      "s3_label": "Ăn mừng",
+      "s4_label": "Cúp & kết thúc",
+      "qa1_q": "Chuyện gì xảy ra ở cuối video?",
+      "qa1_a": "Trận đấu kết thúc khi còi vang lên (1:11) và đội thắng nâng cúp trong tiếng pháo bông rực sáng trên sân (1:22).",
+      "qa2_q": "Có bàn thắng không? Lúc nào?",
+      "qa2_a": "Có — một bàn thắng duy nhất được ghi vào góc trên lúc 0:42, ngay sau đó là màn ăn mừng của các cầu thủ lúc 0:49.",
+      "qa3_q": "Mô tả khán giả.",
+      "qa3_a": "Sau bàn thắng, camera cắt sang khán đài nơi khán giả gầm vang và hâm mộ viên ăn mừng (0:58).",
+      "eq1": "bàn thắng",
+      "eq2": "ăn mừng",
+      "eq3": "nâng cúp",
+      "eq4": "khán giả cổ vũ"
+    }
+  }
+}

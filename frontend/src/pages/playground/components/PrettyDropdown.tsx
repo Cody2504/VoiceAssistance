@@ -1,12 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { cn } from "@/lib/utils";
 
 export interface DropdownItem {
   value: string;
   label: string;
+  /** i18n key that overrides `label` at render time. */
+  labelKey?: string;
   description?: string;
+  /** i18n key that overrides `description` at render time. */
+  descriptionKey?: string;
   badge?: string;
 }
 
@@ -14,6 +19,7 @@ interface Props {
   items: DropdownItem[];
   value: string;
   onChange: (value: string) => void;
+  /** Falls back to the i18n key `pgkit.dropdown.placeholder` when omitted. */
   placeholder?: string;
   className?: string;
 }
@@ -27,9 +33,11 @@ export function PrettyDropdown({
   items,
   value,
   onChange,
-  placeholder = "Select…",
+  placeholder,
   className,
 }: Props) {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t("pgkit.dropdown.placeholder");
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -61,7 +69,7 @@ export function PrettyDropdown({
         className="flex h-9 w-full items-center justify-between gap-2 rounded-md border border-neutral-300 bg-white px-3 text-left text-[13px] text-neutral-900 transition hover:border-neutral-500 focus:border-neutral-700 focus:outline-none"
       >
         <span className="truncate">
-          {selected ? selected.label : placeholder}
+          {selected ? (selected.labelKey ? t(selected.labelKey) : selected.label) : resolvedPlaceholder}
           {selected?.badge ? (
             <span className="ml-2 rounded border border-neutral-300 px-1 font-mono text-[10px] text-neutral-500">
               {selected.badge}
@@ -97,16 +105,16 @@ export function PrettyDropdown({
                   )}
                 >
                   <span className="flex items-center gap-2">
-                    <span className="text-[13px] text-neutral-900">{item.label}</span>
+                    <span className="text-[13px] text-neutral-900">{item.labelKey ? t(item.labelKey) : item.label}</span>
                     {item.badge && (
                       <span className="rounded border border-neutral-300 px-1 font-mono text-[10px] text-neutral-500">
                         {item.badge}
                       </span>
                     )}
                   </span>
-                  {item.description && (
+                  {(item.descriptionKey || item.description) && (
                     <span className="text-[10px] leading-[14px] text-neutral-500">
-                      {item.description}
+                      {item.descriptionKey ? t(item.descriptionKey) : item.description}
                     </span>
                   )}
                 </button>

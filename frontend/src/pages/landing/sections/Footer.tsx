@@ -30,44 +30,43 @@ function LangSwitch() {
 
 const LINKS = [
   {
-    label: "Platform",
+    headingKey: "footer.col.platform",
     items: [
-      { name: "Platform Overview", to: "/product/product-overview" },
-      { name: "Models", to: "/product/product-overview#models" },
-      { name: "Pricing", to: "/pricing" },
-      { name: "Examples", to: "/examples" },
+      { nameKey: "footer.links.platform_overview", to: "/product/product-overview" },
+      { nameKey: "footer.links.models", to: "/product/product-overview#models" },
+      { nameKey: "footer.links.pricing", to: "/pricing" },
+      { nameKey: "footer.links.examples", to: "/examples" },
     ],
   },
   {
-    label: "Solutions",
+    headingKey: "footer.col.solutions",
     items: [
-      { name: "Media & Entertainment", to: "/solutions/media-and-entertainment" },
-      { name: "Advertising", to: "/solutions/advertising" },
-      { name: "Government & Security", to: "/solutions/government-and-security" },
-      { name: "Automotive", to: "/solutions/automotive" },
+      { nameKey: "footer.links.media_entertainment", to: "/solutions/media-and-entertainment" },
+      { nameKey: "footer.links.advertising", to: "/solutions/advertising" },
+      { nameKey: "footer.links.government_security", to: "/solutions/government-and-security" },
+      { nameKey: "footer.links.automotive", to: "/solutions/automotive" },
     ],
   },
   {
-    label: "Developers",
+    headingKey: "footer.col.developers",
     items: [
-      { name: "Developer Hub", to: "/build" },
-      { name: "API Docs", to: "/build#api" },
-      { name: "SDKs", to: "/build#sdks" },
-      { name: "Sample Apps", to: "/build#samples" },
+      { nameKey: "footer.links.developer_hub", to: "/build" },
+      { nameKey: "footer.links.api_docs", to: "/build#api" },
+      { nameKey: "footer.links.sdks", to: "/build#sdks" },
+      { nameKey: "footer.links.sample_apps", to: "/build#samples" },
     ],
   },
   {
-    label: "Company",
+    headingKey: "footer.col.company",
     items: [
-      { name: "About", to: "/solutions" },
-      { name: "Contact", to: "/#cta" },
-      { name: "Privacy", to: "#" },
-      { name: "Terms", to: "#" },
+      { nameKey: "footer.links.about", to: "/solutions" },
+      { nameKey: "footer.links.contact", to: "/#cta" },
     ],
   },
 ];
 
 export function Footer() {
+  const { t } = useTranslation();
   const year = new Date().getFullYear();
   return (
     <footer className="border-t border-[var(--color-chalk)] bg-[var(--color-eggshell)]">
@@ -75,20 +74,19 @@ export function Footer() {
         <div>
           <Link to="/" aria-label="Jockey"><Logo size="md" /></Link>
           <p className="mt-4 max-w-[280px] text-[13px] leading-[1.55] text-[var(--color-gravel)]">
-            Video-native AI for search, analysis and segmentation — built on open ViCLIP and
-            QD-DETR models.
+            {t("footer.tagline")}
           </p>
         </div>
         {LINKS.map((col) => (
-          <div key={col.label}>
+          <div key={col.headingKey}>
             <h4 className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[var(--color-gravel)]">
-              {col.label}
+              {t(col.headingKey)}
             </h4>
             <ul className="mt-4 space-y-2.5 text-[13px] text-[var(--color-obsidian)]">
               {col.items.map((i) => (
-                <li key={i.name}>
+                <li key={i.nameKey}>
                   <Link to={i.to} className="hover:opacity-70 transition">
-                    {i.name}
+                    {t(i.nameKey)}
                   </Link>
                 </li>
               ))}
@@ -98,7 +96,7 @@ export function Footer() {
       </div>
       <div className="border-t border-[var(--color-chalk)]">
         <div className="mx-auto flex max-w-[1200px] flex-col items-start gap-3 px-6 py-5 text-[12px] text-[var(--color-slate)] md:flex-row md:items-center md:justify-between">
-          <span>© {year} Jockey. Built with open models.</span>
+          <span>{t("footer.copyright", { year })}</span>
           <LangSwitch />
         </div>
       </div>

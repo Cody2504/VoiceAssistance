@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 /**
  * TwelveLabs-style two-column playground page. Title left, "Learn" pill right.
@@ -19,6 +20,7 @@ export function PlaygroundShell({
   examplesPanel: ReactNode;
   resultsPanel?: ReactNode;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="h-full overflow-y-auto bg-[var(--color-eggshell)]">
       <div className="mx-auto max-w-[1200px] px-8 py-8">
@@ -28,7 +30,7 @@ export function PlaygroundShell({
           </h1>
           <button className="inline-flex h-9 items-center gap-2 rounded-full border border-[var(--color-chalk)] bg-white px-4 text-[13px] text-[var(--color-obsidian)] hover:bg-[var(--color-powder)]">
             <span aria-hidden="true">📒</span>
-            Learn <ChevronDown size={12} />
+            {t("pgkit.shell.learn")} <ChevronDown size={12} />
           </button>
         </header>
 
@@ -38,7 +40,7 @@ export function PlaygroundShell({
             <h2 className="max-w-[640px] text-center text-[24px] font-normal tracking-[-0.3px] text-[var(--color-obsidian)]">
               {subtitle}
             </h2>
-            <p className="mt-3 text-[13px] text-[var(--color-gravel)]">Start with an example</p>
+            <p className="mt-3 text-[13px] text-[var(--color-gravel)]">{t("pgkit.shell.start_with_example")}</p>
             <div className="mt-6 w-full">{examplesPanel}</div>
           </section>
         </div>

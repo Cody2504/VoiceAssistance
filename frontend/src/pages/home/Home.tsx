@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { ArrowUpRight, ArrowRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Footer } from "@/pages/landing/sections/Footer";
 
 /**
@@ -58,22 +59,6 @@ function buildInfraDiagram() {
 }
 const INFRA_DIAGRAM = buildInfraDiagram();
 
-// Each capability swaps the body copy and the matching TwelveLabs demo video
-// (tl_01..tl_05, alpha .mov for Safari + .webm fallback, served from /public).
-const CAPS = [
-  { title: "Search & discover", body: "Search entire libraries in natural language. Locate actions, scenes, dialogue and on-screen objects across hours or years of footage, no tags needed.", v: "tl_01" },
-  { title: "Segment content", body: "Automatically identify natural breaks, scene changes and pacing shifts in long-form video, grounded in what actually happened. Not a transcript reader, a video reasoner.", v: "tl_02" },
-  { title: "Ensure compliance", body: "Detect unsafe, off-brand or non-compliant moments across the whole library in real time, with time-stamped, confidence-scored results.", v: "tl_03" },
-  { title: "Create highlights", body: "Turn millions of clips into instant reels and trailers, pulling the moments that matter without a manual edit pass.", v: "tl_04" },
-  { title: "Generate insights", body: "Analyze video at scale to surface patterns and signals, so teams can quickly see what is working and make better creative and editorial decisions.", v: "tl_05" },
-];
-
-const METRICS = [
-  { value: "+13.1%", label: "Higher retrieval accuracy over prior baselines on internal benchmarks" },
-  { value: "10x", label: "Faster content review and compliance scanning" },
-  { value: "4 hrs", label: "Of footage indexed and searchable from a single API call" },
-];
-
 const BUILT_ON = [
   { slug: "pytorch", name: "PyTorch" },
   { slug: "huggingface", name: "Hugging Face" },
@@ -86,17 +71,7 @@ const BUILT_ON = [
 // Industry carousel. CARDS render in display order [Public, Creative, AdTech];
 // PILL_ORDER lists the pills in reference order, each centering its card index.
 // Cards are full-bleed (escape the max-width container) and link to solutions.
-const CARDS = [
-  { pill: "Public Sector", title: "Public Sector", body: "Evidence management, anomaly detection and after-incident reporting, all done in minutes using Jockey video intelligence.", to: "/solutions/government-and-security", img: "/twelvelabs/ind-public.png" },
-  { pill: "Creative Industries", title: "Creative Industries", body: "Turn archives from liabilities to strategic assets. Within seconds: timestamped clips, from every year, every shoot. What used to take a research team three days takes three seconds.", to: "/solutions/media-and-entertainment", img: "/twelvelabs/ind-creative.png" },
-  { pill: "Advertising and Marketing", title: "AdTech and Marketing", body: "Actually contextual targeting, driven by understanding, not metadata. Place ads only in brand-safe scenes, no tags, no manual review.", to: "/solutions/advertising", img: "/twelvelabs/ind-adtech.png" },
-];
 const PILL_ORDER = [1, 2, 0]; // Creative, Advertising, Public Sector
-
-const MODELS = [
-  { kind: "MULTIMODAL RETRIEVAL ENCODER", name: "Marengo-class retrieval", open: "ViCLIP", body: "Turns video into spatiotemporal embeddings, so every moment is findable by what is actually in it across speech, sound and visuals." },
-  { kind: "VIDEO LANGUAGE MODEL", name: "Pegasus-class reasoning", open: "Qwen3-VL", body: "Reasons over the full temporal arc of an asset, tracking entities, causation and narrative rather than sampling a few frames." },
-];
 
 const FILLED =
   "inline-flex h-11 items-center gap-1.5 rounded-full bg-[var(--color-obsidian)] px-6 text-[14px] font-medium text-white transition hover:bg-neutral-800 active:scale-[0.98]";
@@ -127,22 +102,22 @@ export default function Home() {
 
 /* ---------------- hero ---------------- */
 function Hero() {
+  const { t } = useTranslation();
   return (
     <Container className="pt-20 pb-16 text-center md:pt-24">
       <h1 className="fade-rise mx-auto max-w-[960px] text-[44px] font-medium leading-[1.02] tracking-[-1.5px] text-[var(--color-obsidian)] sm:text-[60px] lg:text-[72px]">
-        See the unseen. Know the unknowable.
+        {t("marketing.home.hero_heading")}
       </h1>
       <p className="fade-rise-delayed mx-auto mt-6 max-w-[620px] text-[16px] leading-[1.6] text-[var(--color-gravel)] md:text-[18px]">
-        Your video holds every insight, event and decision that mattered. Jockey turns raw footage
-        into searchable, answerable, AI-ready data at scale.
+        {t("marketing.home.hero_sub")}
       </p>
       <div className="fade-rise-delayed mt-9 flex flex-wrap items-center justify-center gap-3">
         <Link to="/signup" className={FILLED}>
-          Try on Playground
+          {t("marketing.home.try_playground")}
           <ArrowUpRight size={16} />
         </Link>
         <a href="#cta" className={GHOST_LIGHT}>
-          Talk to sales
+          {t("marketing.home.talk_to_sales")}
         </a>
       </div>
 
@@ -163,6 +138,7 @@ function Hero() {
 
 /* ---------------- dark "Results in minutes" infrastructure band ---------------- */
 function ResultsBand() {
+  const { t } = useTranslation();
   return (
     <section className="mt-20 bg-[#1d1c1b] text-[#f4f3f3]">
       <Container className="border-x border-white/12 py-0">
@@ -170,16 +146,15 @@ function ResultsBand() {
         <div className="grid border-b border-white/12 md:grid-cols-2">
           <div className="border-white/12 py-12 pr-8 md:border-r">
             <h2 className="text-[32px] font-medium leading-[1.08] tracking-[-0.8px] md:text-[44px]">
-              Results in minutes.
+              {t("marketing.home.results_heading")}
             </h2>
           </div>
           <div className="flex flex-col items-start gap-6 py-12 md:pl-10">
             <p className="max-w-[420px] text-[15px] leading-[1.6] text-white/70">
-              Infrastructure for video intelligence, turning raw video into searchable, AI-ready
-              data at massive scale.
+              {t("marketing.home.results_sub")}
             </p>
             <Link to="/build" className={GHOST_DARK}>
-              Developer Hub
+              {t("marketing.home.developer_hub")}
               <ArrowUpRight size={15} />
             </Link>
           </div>
@@ -189,25 +164,24 @@ function ResultsBand() {
         <div className="grid md:grid-cols-2">
           <div className="border-white/12 py-14 pr-8 md:border-r">
             <div className="flex w-[290px] max-w-full items-center rounded-[13px] bg-[#333231] px-4 py-2.5 text-[18px] font-medium text-white">
-              1. Infrastructure
+              {t("marketing.home.infra_step1")}
             </div>
             <div className="mt-5 max-w-[420px]">
               <p className="text-[14px] leading-[1.6] text-white/70">
-                Ingest multimodal data through a single pipeline at ~60x real-time speed. Index an
-                hour of video in a minute. 10k+ hours per day.
+                {t("marketing.home.infra_body")}
               </p>
               <Link
                 to="/build"
                 className="mt-5 inline-flex items-center gap-1.5 rounded-[14px] border border-white/70 px-3.5 py-1.5 text-[13px] font-medium text-[#f4f3f3] transition hover:bg-white/10"
               >
-                Learn more
+                {t("actions.learn_more")}
                 <ArrowUpRight size={14} />
               </Link>
             </div>
             <div className="mt-12 space-y-7 text-[18px] font-medium text-white/55">
-              <div>2. API + SDK</div>
-              <div>3. MCP</div>
-              <div>4. Integrations</div>
+              <div>{t("marketing.home.infra_step2")}</div>
+              <div>{t("marketing.home.infra_step3")}</div>
+              <div>{t("marketing.home.infra_step4")}</div>
             </div>
           </div>
           <div className="flex items-center py-10 md:pl-10">
@@ -220,6 +194,7 @@ function ResultsBand() {
 }
 
 function InfraDiagram() {
+  const { t } = useTranslation();
   const { longs, lats, dots } = INFRA_DIAGRAM;
   return (
     <div className="relative aspect-[5/4] w-full overflow-hidden rounded-[28px] border border-white/10 bg-[#211f1e]">
@@ -242,9 +217,9 @@ function InfraDiagram() {
           />
         ))}
       </svg>
-      <Callout className="left-[34%] top-[7%]" label="SPEED" lines={["~60x real-time ratio:", "~1 min to index 1H video;", "tracking to 100x ratio"]} />
-      <Callout className="bottom-[7%] left-[7%]" label="SCALE" lines={["10k+ hrs/day today;", "roadmap to 1M+ hrs/day"]} />
-      <Callout className="bottom-[7%] right-[6%]" label="PROPRIETARY" lines={["Patented end-to-end video", "processing + inference system"]} />
+      <Callout className="left-[34%] top-[7%]" label={t("marketing.home.speed_label")} lines={t("marketing.home.speed_lines").split("\n")} />
+      <Callout className="bottom-[7%] left-[7%]" label={t("marketing.home.scale_label")} lines={t("marketing.home.scale_lines").split("\n")} />
+      <Callout className="bottom-[7%] right-[6%]" label={t("marketing.home.proprietary_label")} lines={t("marketing.home.proprietary_lines").split("\n")} />
     </div>
   );
 }
@@ -265,8 +240,18 @@ function Callout({ className, label, lines }: { className: string; label: string
 /* ---------------- capabilities (frosted shell, auto-rotating list) ---------------- */
 const CAP_ROTATE_MS = 4500;
 function Capabilities() {
+  const { t } = useTranslation();
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
+
+  const CAPS = [
+    { title: t("marketing.home.caps.search_title"), body: t("marketing.home.caps.search_body"), v: "tl_01" },
+    { title: t("marketing.home.caps.segment_title"), body: t("marketing.home.caps.segment_body"), v: "tl_02" },
+    { title: t("marketing.home.caps.compliance_title"), body: t("marketing.home.caps.compliance_body"), v: "tl_03" },
+    { title: t("marketing.home.caps.highlights_title"), body: t("marketing.home.caps.highlights_body"), v: "tl_04" },
+    { title: t("marketing.home.caps.insights_title"), body: t("marketing.home.caps.insights_body"), v: "tl_05" },
+  ];
+
   // Auto-advance like the real site; pause on hover and skip entirely for
   // reduced-motion users. Re-arms on every `active` change, so a manual click
   // grants a full interval before the next auto-step.
@@ -301,13 +286,12 @@ function Capabilities() {
       <div className="grid border-x border-[var(--color-chalk)] md:grid-cols-2">
         <div className="py-10 pr-8 md:border-r md:border-[var(--color-chalk)]">
           <h2 className="text-[32px] font-medium leading-[1.08] tracking-[-0.8px] md:text-[44px]">
-            Built for the most demanding video workflows.
+            {t("marketing.home.caps_heading")}
           </h2>
         </div>
         <div className="flex items-end py-10 md:pl-10">
           <p className="max-w-[440px] text-[15px] leading-[1.6] text-[var(--color-gravel)]">
-            Designed for organizations working with video at scale, turning raw, passive footage
-            into a strategic asset teams can actually use.
+            {t("marketing.home.caps_sub")}
           </p>
         </div>
       </div>
@@ -324,7 +308,7 @@ function Capabilities() {
               const on = i === active;
               return (
                 <button
-                  key={c.title}
+                  key={c.v}
                   type="button"
                   aria-pressed={on}
                   onClick={() => setActive(i)}
@@ -437,7 +421,7 @@ function ColorWaveNumber({ text, className }: { text: string; className?: string
             aria-hidden="true"
             style={{ color: lit ? WAVE_HUES[i % WAVE_HUES.length] : undefined, transition: "color 200ms ease" }}
           >
-            {ch === " " ? " " : ch}
+            {ch === " " ? " " : ch}
           </span>
         );
       })}
@@ -447,15 +431,22 @@ function ColorWaveNumber({ text, className }: { text: string; className?: string
 
 /* ---------------- metrics + trusted by ---------------- */
 function Metrics() {
+  const { t } = useTranslation();
+
+  const METRICS = [
+    { value: t("marketing.home.metrics.accuracy_value"), label: t("marketing.home.metrics.accuracy_label") },
+    { value: t("marketing.home.metrics.speed_value"), label: t("marketing.home.metrics.speed_label") },
+    { value: t("marketing.home.metrics.hours_value"), label: t("marketing.home.metrics.hours_label") },
+  ];
+
   return (
     <Container className="py-20">
       <div className="grid gap-8 md:grid-cols-2">
         <h2 className="text-[32px] font-medium leading-[1.08] tracking-[-0.8px] md:text-[44px]">
-          Create, scale and move faster with video.
+          {t("marketing.home.metrics_heading")}
         </h2>
         <p className="max-w-[440px] self-end text-[15px] leading-[1.6] text-[var(--color-gravel)]">
-          Built to handle petabytes of multimodal data, with retrieval and reasoning benchmarked
-          against the best general-purpose models.
+          {t("marketing.home.metrics_sub")}
         </p>
       </div>
 
@@ -479,7 +470,7 @@ function Metrics() {
 
       <div className="mt-16">
         <p className="text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--color-slate)]">
-          Built on open infrastructure
+          {t("marketing.home.built_on")}
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-x-12 gap-y-8">
           {BUILT_ON.map((b) => (
@@ -499,10 +490,17 @@ function Metrics() {
 
 /* ---------------- industry cards (pill-switched centered carousel) ---------------- */
 function Industries() {
+  const { t } = useTranslation();
   const [active, setActive] = useState(1);
   const trackRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<(HTMLAnchorElement | null)[]>([]);
   const [tx, setTx] = useState(0);
+
+  const CARDS = [
+    { pill: t("marketing.home.industries.public_pill"), title: t("marketing.home.industries.public_title"), body: t("marketing.home.industries.public_body"), to: "/solutions/government-and-security", img: "/twelvelabs/ind-public.png" },
+    { pill: t("marketing.home.industries.creative_pill"), title: t("marketing.home.industries.creative_title"), body: t("marketing.home.industries.creative_body"), to: "/solutions/media-and-entertainment", img: "/twelvelabs/ind-creative.png" },
+    { pill: t("marketing.home.industries.adtech_pill"), title: t("marketing.home.industries.adtech_title"), body: t("marketing.home.industries.adtech_body"), to: "/solutions/advertising", img: "/twelvelabs/ind-adtech.png" },
+  ];
 
   useEffect(() => {
     const recalc = () => {
@@ -524,12 +522,12 @@ function Industries() {
         <div className="grid border-x border-[var(--color-chalk)] md:grid-cols-2">
           <div className="py-10 pr-8 md:border-r md:border-[var(--color-chalk)]">
             <h2 className="text-[32px] font-medium leading-[1.08] tracking-[-0.8px] md:text-[44px]">
-              Built for every video workflow.
+              {t("marketing.home.industries_heading")}
             </h2>
           </div>
           <div className="flex items-end py-10 md:pl-10">
             <p className="max-w-[440px] text-[15px] leading-[1.6] text-[var(--color-gravel)]">
-              Video intelligence for teams in media, sports, advertising, government, security and more.
+              {t("marketing.home.industries_sub")}
             </p>
           </div>
         </div>
@@ -580,7 +578,7 @@ function Industries() {
                 <h3 className="text-[26px] font-medium tracking-[-0.5px] text-white md:text-[38px]">{it.title}</h3>
                 <p className="mt-3 max-w-[420px] text-[14px] leading-[1.55] text-white/85 md:text-[15px]">{it.body}</p>
                 <span className="mt-6 inline-flex w-fit items-center gap-1.5 rounded-[14px] border border-white/70 px-4 py-2 text-[13px] font-medium text-white transition group-hover:bg-white/10">
-                  Learn more
+                  {t("actions.learn_more")}
                   <ArrowUpRight size={14} className="transition group-hover:translate-x-0.5" />
                 </span>
               </div>
@@ -594,6 +592,7 @@ function Industries() {
 
 /* ---------------- secure by design (full-bleed pastel wash) ---------------- */
 function Secure() {
+  const { t } = useTranslation();
   return (
     <section className="relative overflow-hidden">
       <img
@@ -607,19 +606,18 @@ function Secure() {
           <div className="hidden justify-center md:flex">
             <img
               src="/twelvelabs/secure-art.png"
-              alt="Encrypted, access-controlled video stack"
+              alt={t("marketing.home.secure_img_alt")}
               loading="lazy"
               className="w-full max-w-[560px] object-contain"
             />
           </div>
           <div className="md:border-l md:border-[var(--color-obsidian)]/15 md:pl-12">
-            <h2 className="text-[32px] font-medium leading-[1.08] tracking-[-0.8px] md:text-[44px]">Secure by design</h2>
+            <h2 className="text-[32px] font-medium leading-[1.08] tracking-[-0.8px] md:text-[44px]">{t("marketing.home.secure_heading")}</h2>
             <p className="mt-5 max-w-[420px] text-[15px] leading-[1.6] text-[var(--color-gravel)]">
-              SOC 2 Type II certified. Encrypted data handling. The entire intelligence stack deploys
-              where you want.
+              {t("marketing.home.secure_body")}
             </p>
             <Link to="/solutions#security" className={`mt-7 ${GHOST_LIGHT}`}>
-              Learn more
+              {t("actions.learn_more")}
               <ArrowUpRight size={15} />
             </Link>
           </div>
@@ -631,10 +629,17 @@ function Secure() {
 
 /* ---------------- models ---------------- */
 function Models() {
+  const { t } = useTranslation();
+
+  const MODELS = [
+    { kind: t("marketing.home.models.marengo_kind"), name: t("marketing.home.models.marengo_name"), open: "CLIP-L", body: t("marketing.home.models.marengo_body") },
+    { kind: t("marketing.home.models.pegasus_kind"), name: t("marketing.home.models.pegasus_name"), open: "Qwen3-VL", body: t("marketing.home.models.pegasus_body") },
+  ];
+
   return (
     <Container className="py-20">
       <h2 className="max-w-[640px] text-[32px] font-medium leading-[1.08] tracking-[-0.8px] md:text-[44px]">
-        Video-native perception and reasoning.
+        {t("marketing.home.models_heading")}
       </h2>
       <div className="mt-10 grid gap-5 md:grid-cols-2">
         {MODELS.map((m) => (
@@ -646,7 +651,7 @@ function Models() {
             </span>
             <p className="mt-4 text-[14px] leading-[1.6] text-[var(--color-gravel)]">{m.body}</p>
             <Link to="/product/product-overview" className="mt-5 inline-flex items-center gap-1 text-[14px] font-medium text-[var(--color-accent-blue)] hover:gap-1.5">
-              Learn more
+              {t("actions.learn_more")}
               <ArrowRight size={15} />
             </Link>
           </div>
@@ -658,22 +663,23 @@ function Models() {
 
 /* ---------------- final CTA ---------------- */
 function FinalCta() {
+  const { t } = useTranslation();
   return (
     <Container className="pb-24 pt-8">
       <div id="cta" className="rounded-[32px] bg-gradient-warm px-8 py-20 text-center md:py-24">
         <h2 className="mx-auto max-w-[760px] text-[36px] font-medium leading-[1.05] tracking-[-1px] text-[var(--color-obsidian)] md:text-[52px]">
-          Ready to see what your archive actually knows?
+          {t("marketing.home.cta_heading")}
         </h2>
         <p className="mx-auto mt-5 max-w-[520px] text-[15px] leading-[1.55] text-[var(--color-gravel)]">
-          Try it in the Playground, or talk to our team. No credit card required.
+          {t("marketing.home.cta_sub")}
         </p>
         <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
           <Link to="/signup" className={FILLED}>
-            Start building
+            {t("marketing.home.start_building")}
             <ArrowUpRight size={16} />
           </Link>
           <Link to="/pricing" className={GHOST_LIGHT}>
-            Talk to sales
+            {t("nav.talk_to_sales")}
           </Link>
         </div>
       </div>

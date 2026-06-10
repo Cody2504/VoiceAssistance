@@ -37,6 +37,11 @@ import Examples from "@/pages/examples/Examples";
 import SettingsLayout from "@/pages/settings/SettingsLayout";
 import BillingPlan from "@/pages/settings/BillingPlan";
 import { Organization, APIKeysPage, Usage, RateLimits, Webhooks, ProfilePage } from "@/pages/settings/SettingsStubs";
+import AdminRoute from "@/routes/AdminRoute";
+import AdminOverview from "@/pages/admin/AdminOverview";
+import AdminUsers from "@/pages/admin/AdminUsers";
+import AdminUserDetail from "@/pages/admin/AdminUserDetail";
+import AdminBilling from "@/pages/admin/AdminBilling";
 
 /**
  * Smoothly scroll to the #anchor in the URL after navigation. react-router does
@@ -113,7 +118,7 @@ export default function App() {
           <Route path="/playground/moderate" element={<Moderate />} />
           <Route path="/playground/sounds" element={<Sounds />} />
           <Route path="/chat" element={<Navigate to="/workspace" replace />} />
-          <Route path="/chat/:conversationId" element={<Navigate to="/workspace" replace />} />
+          <Route path="/chat/:conversationId" element={<Workspace />} />
 
           <Route path="/settings" element={<SettingsLayout />}>
             <Route index element={<Navigate to="/settings/billing" replace />} />
@@ -124,6 +129,13 @@ export default function App() {
             <Route path="rate-limits" element={<RateLimits />} />
             <Route path="webhooks" element={<Webhooks />} />
             <Route path="profile" element={<ProfilePage />} />
+          </Route>
+
+          <Route element={<AdminRoute />}>
+            <Route path="/admin" element={<AdminOverview />} />
+            <Route path="/admin/users" element={<AdminUsers />} />
+            <Route path="/admin/users/:userId" element={<AdminUserDetail />} />
+            <Route path="/admin/billing" element={<AdminBilling />} />
           </Route>
 
           <Route path="/api-keys" element={<Navigate to="/settings/api-keys" replace />} />

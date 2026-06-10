@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { UserPlus } from "lucide-react";
 import { Link } from "react-router";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { UserMenu } from "./UserMenu";
@@ -12,6 +13,7 @@ import { UserMenu } from "./UserMenu";
  */
 export function TopBar() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const initials = (() => {
@@ -29,11 +31,11 @@ export function TopBar() {
         to="/pricing"
         className="hidden text-[13px] text-[var(--color-gravel)] hover:text-[var(--color-obsidian)] md:inline mr-2"
       >
-        Used <span className="text-[var(--color-obsidian)]">0 min</span> / 10 hr
+        {t("layout.usermenu.used")} <span className="text-[var(--color-obsidian)]">0 min</span> / 5 hr
       </Link>
 
-      <TopBarButton>Book a Demo</TopBarButton>
-      <TopBarButton rightIcon={<UserPlus size={14} />}>Invite</TopBarButton>
+      <TopBarButton>{t("layout.topbar.book_demo")}</TopBarButton>
+      <TopBarButton rightIcon={<UserPlus size={14} />}>{t("layout.topbar.invite")}</TopBarButton>
 
       <div className="relative">
         <button

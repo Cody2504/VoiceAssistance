@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Check, RefreshCw, Video as VideoIcon, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { listIndexVideos, type IndexVideoEntry } from "@/apis/indexes.api";
 import { cn, formatSeconds } from "@/lib/utils";
@@ -21,8 +22,10 @@ export function VideoMultiPicker({
   indexId,
   selectedIds,
   onChange,
-  emptyLabel = "Select videos in this index",
+  emptyLabel,
 }: Props) {
+  const { t } = useTranslation();
+  const resolvedEmptyLabel = emptyLabel ?? t("pgkit.video_multi_picker.default_label");
   const [open, setOpen] = useState(false);
   const [videos, setVideos] = useState<IndexVideoEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -47,8 +50,8 @@ export function VideoMultiPicker({
   const total = videos.length;
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const triggerLabel = selectedIds.length === 0
-    ? emptyLabel
-    : `${selectedIds.length} of ${total} selected`;
+    ? resolvedEmptyLabel
+    : t("pgkit.video_multi_picker.selected_of", { selected: selectedIds.length, total });
 
   const toggle = (vid: string) => {
     const next = new Set(selectedSet);
@@ -82,7 +85,7 @@ export function VideoMultiPicker({
           >
             <div className="flex items-center justify-between border-b border-neutral-200 px-6 py-4">
               <div className="flex items-center gap-2">
-                <h2 className="text-[15px] font-semibold text-neutral-900">Select videos in this index</h2>
+                <h2 className="text-[15px] font-semibold text-neutral-900">{t("pgkit.video_multi_picker.modal_title")}</h2>
                 <span className="rounded-full bg-neutral-100 px-2 py-0.5 font-mono text-[10px] text-neutral-600">
                   {loading ? "…" : `${selectedIds.length} / ${total}`}
                 </span>
@@ -93,7 +96,7 @@ export function VideoMultiPicker({
                   onClick={refresh}
                   disabled={loading}
                   className="grid h-8 w-8 place-items-center rounded-[10px] text-neutral-700 hover:bg-neutral-100 disabled:text-neutral-400"
-                  title="Refresh"
+                  title={t("pgkit.video_picker.refresh")}
                 >
                   <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
                 </button>
@@ -112,20 +115,20 @@ export function VideoMultiPicker({
                 onClick={selectAll}
                 className="text-[12px] text-[var(--color-obsidian)] hover:underline"
               >
-                Select all
+                {t("pgkit.video_multi_picker.select_all")}
               </button>
               <button
                 onClick={clear}
                 className="text-[12px] text-[var(--color-gravel)] hover:text-[var(--color-obsidian)]"
               >
-                Clear
+                {t("actions.clear")}
               </button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-2">
               {!loading && total === 0 && (
                 <div className="m-4 rounded-[14px] border border-dashed border-neutral-300 bg-neutral-50 p-6 text-center text-[13px] text-neutral-600">
-                  No videos in this index yet. Add some from the Index detail page.
+                  {t("pgkit.video_multi_picker.no_videos")}
                 </div>
               )}
               {videos.map((v) => {
@@ -169,7 +172,7 @@ export function VideoMultiPicker({
                 onClick={() => setOpen(false)}
                 className="rounded-full bg-[var(--color-obsidian)] px-4 py-1.5 text-[13px] text-white transition duration-150 ease-out hover:bg-neutral-800 active:scale-[0.97]"
               >
-                Done
+                {t("pgkit.video_multi_picker.done")}
               </button>
             </div>
           </div>

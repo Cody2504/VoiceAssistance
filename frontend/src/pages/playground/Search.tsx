@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Link } from "react-router";
 import { Captions, ImageIcon, SquareArrowOutUpRight, UserCircle2, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { Input } from "@/components/ui/input";
 import { searchCorpus, searchCorpusByImage, type CorpusSearchResponse, type CorpusShot } from "@/apis/videos.api";
@@ -31,6 +32,7 @@ interface TranscriptionOptions {
 }
 
 export default function Search() {
+  const { t } = useTranslation();
   const [form, setForm] = useState<SearchPreset>(DEFAULT_FORM);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<CorpusSearchResponse | null>(null);
@@ -45,7 +47,7 @@ export default function Search() {
 
   const onPickImage = (file: File) => {
     if (!file.type.startsWith("image/")) {
-      toast.error("Please choose an image file");
+      toast.error(t("actions.upload"));
       return;
     }
     const reader = new FileReader();
@@ -63,23 +65,25 @@ export default function Search() {
         ? await searchCorpusByImage({ image: image.dataUrl, top_n: form.top_n, group_by: form.group_by })
         : await searchCorpus({ query: form.query.trim(), top_n: form.top_n, group_by: form.group_by });
       setResult(r);
-      if (r.shots.length === 0) toast.info("No matches found");
+      if (r.shots.length === 0) toast.info(t("playground.search.no_matches_found"));
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        "Search failed";
+        t("actions.retry");
       toast.error(msg);
     } finally {
       setRunning(false);
     }
   };
 
+  const videoCount = result ? new Set(result.shots.map((s) => s.video_id)).size : 0;
+
   return (
     <PlaygroundShell
-      title="Search"
-      subtitle="Find any moment in your videos."
+      title={t("playground.search.title")}
+      subtitle={t("playground.search.subtitle")}
       formPanel={
-        <FormPanel runLabel="Search" onRun={run} running={running} canRun={canRun}>
+        <FormPanel runLabel={t("actions.search")} onRun={run} running={running} canRun={canRun}>
           <Field label="index" required>
             <IndexPicker
               selectedIndexId={indexSelection?.id}
@@ -93,18 +97,18 @@ export default function Search() {
                 <textarea
                   value={form.query}
                   onChange={(e) => setForm({ ...form, query: e.target.value })}
-                  placeholder="Search actions, objects, sounds and logos"
+                  placeholder={t("playground.search.placeholder")}
                   className="block min-h-[68px] w-full resize-none border-none bg-transparent text-[13px] leading-6 text-[var(--color-obsidian)] outline-none placeholder:text-[var(--color-gravel)]/80"
                 />
                 {image && (
                   <div className="mb-1 inline-flex items-center gap-2 rounded-[10px] border border-[var(--color-chalk)] bg-[var(--color-powder)] px-2 py-1">
-                    <img src={image.dataUrl} alt="query entity" className="h-8 w-8 rounded object-cover" />
+                    <img src={image.dataUrl} alt={t("playground.search.entity_alt")} className="h-8 w-8 rounded object-cover" />
                     <span className="max-w-[140px] truncate text-[11px] text-[var(--color-gravel)]" title={image.name}>
                       {image.name}
                     </span>
                     <button
                       type="button"
-                      aria-label="Remove image"
+                      aria-label={t("playground.search.remove_image")}
                       onClick={() => setImage(null)}
                       className="grid h-5 w-5 place-items-center rounded-full text-[var(--color-gravel)] hover:bg-[var(--color-chalk)] hover:text-[var(--color-obsidian)]"
                     >
@@ -126,8 +130,8 @@ export default function Search() {
                 <div className="flex items-center gap-x-2 pb-0.5 pt-1">
                   <button
                     type="button"
-                    aria-label="Search by image"
-                    title="Search by image"
+                    aria-label={t("playground.search.search_by_image")}
+                    title={t("playground.search.search_by_image")}
                     onClick={() => fileRef.current?.click()}
                     className="grid h-7 w-7 place-items-center rounded-[8px] border border-[var(--color-chalk)] text-[var(--color-gravel)] transition-[border-radius,background-color] duration-200 ease-out hover:rounded-[12px] hover:bg-[var(--color-powder)]"
                   >
@@ -135,8 +139,8 @@ export default function Search() {
                   </button>
                   <button
                     type="button"
-                    aria-label="Search by image entity"
-                    title="Paste an image as a visual entity to search by"
+                    aria-label={t("playground.search.search_by_entity")}
+                    title={t("playground.search.search_by_entity")}
                     onClick={() => fileRef.current?.click()}
                     className="inline-flex h-7 items-center gap-1 rounded-[8px] border border-[var(--color-chalk)] px-2 text-[11px] text-[var(--color-gravel)] transition-[border-radius,background-color] duration-200 ease-out hover:rounded-[12px] hover:bg-[var(--color-powder)]"
                   >
@@ -151,17 +155,17 @@ export default function Search() {
           <Field label="search_options" required type="ARRAY">
             <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
               <CheckOption
-                label="Visual"
+                label={t("playground.search.opt_visual")}
                 checked={searchOpts.visual}
                 onChange={(v) => setSearchOpts((s) => ({ ...s, visual: v }))}
               />
               <CheckOption
-                label="Audio"
+                label={t("playground.search.opt_audio")}
                 checked={searchOpts.audio}
                 onChange={(v) => setSearchOpts((s) => ({ ...s, audio: v }))}
               />
               <CheckOption
-                label="Transcription"
+                label={t("playground.search.opt_transcription")}
                 checked={searchOpts.transcription}
                 onChange={(v) => setSearchOpts((s) => ({ ...s, transcription: v }))}
               />
@@ -172,12 +176,12 @@ export default function Search() {
             <Field label="transcription_options" type="ARRAY">
               <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
                 <CheckOption
-                  label="Lexical"
+                  label={t("playground.search.opt_lexical")}
                   checked={transcriptOpts.lexical}
                   onChange={(v) => setTranscriptOpts((s) => ({ ...s, lexical: v }))}
                 />
                 <CheckOption
-                  label="Semantic"
+                  label={t("playground.search.opt_semantic")}
                   checked={transcriptOpts.semantic}
                   onChange={(v) => setTranscriptOpts((s) => ({ ...s, semantic: v }))}
                 />
@@ -186,7 +190,7 @@ export default function Search() {
           )}
 
           <AdvancedSettings onReset={() => setForm({ ...form, top_n: 10, group_by: "clip" })}>
-            <Field label="group_by" type="ENUM" hint="`clip` returns shot-level hits; `video` returns one hit per video.">
+            <Field label="group_by" type="ENUM" hint={t("playground.search.hint_group_by")}>
               <select
                 value={form.group_by}
                 onChange={(e) => setForm({ ...form, group_by: e.target.value as "clip" | "video" })}
@@ -196,7 +200,7 @@ export default function Search() {
                 <option value="video">video</option>
               </select>
             </Field>
-            <Field label="top_n" type="INTEGER" hint="1–50. Max number of hits returned.">
+            <Field label="top_n" type="INTEGER" hint={t("playground.search.hint_top_n")}>
               <Input
                 type="number"
                 min={1}
@@ -219,15 +223,13 @@ export default function Search() {
         result && (
           <>
             <ResultsPanel
-              title="Top search rankings"
-              counter={`${result.shots.length} result${result.shots.length === 1 ? "" : "s"} from ${
-                new Set(result.shots.map((s) => s.video_id)).size
-              } video${new Set(result.shots.map((s) => s.video_id)).size === 1 ? "" : "s"}`}
+              title={t("playground.search.results_title")}
+              counter={`${result.shots.length} ${t(result.shots.length === 1 ? "playground.search.results_counter_one" : "playground.search.results_counter_other", { count: result.shots.length, videos: videoCount })}`}
             >
               {result.shots.length === 0 ? (
                 <p className="text-sm text-neutral-500">
-                  No matches. Try a different phrasing or upload more videos in{" "}
-                  <Link className="underline" to="/playground/library">Library</Link>.
+                  {t("playground.search.no_matches")}{" "}
+                  <Link className="underline" to="/playground/library">{t("playground.search.no_matches_library")}</Link>.
                 </p>
               ) : (
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -256,6 +258,7 @@ export default function Search() {
 }
 
 function ShotCard({ rank, shot, onPreview }: { rank: number; shot: CorpusShot; onPreview: () => void }) {
+  const { t } = useTranslation();
   const [showTranscript, setShowTranscript] = useState(false);
   const range = `${formatSeconds(shot.t_start)} – ${formatSeconds(shot.t_end)}`;
   return (
@@ -289,7 +292,7 @@ function ShotCard({ rank, shot, onPreview }: { rank: number; shot: CorpusShot; o
       {/* transcript (toggle) */}
       {showTranscript && shot.asr_text && (
         <p className="max-h-28 overflow-auto text-[12px] leading-snug text-[var(--color-gravel)]">
-          “{shot.asr_text}”
+          "{shot.asr_text}"
         </p>
       )}
 
@@ -298,7 +301,7 @@ function ShotCard({ rank, shot, onPreview }: { rank: number; shot: CorpusShot; o
         <button
           type="button"
           disabled={!shot.asr_text}
-          aria-label={showTranscript ? "Hide transcript" : "Show transcript"}
+          aria-label={showTranscript ? t("actions.close") : t("playground.search.opt_transcription")}
           aria-pressed={showTranscript}
           onClick={() => setShowTranscript((v) => !v)}
           className="inline-flex h-7 items-center gap-1 rounded-lg border border-[var(--color-chalk)] px-1.5 text-[12px] text-[var(--color-obsidian)] hover:bg-white disabled:opacity-40"
@@ -309,7 +312,7 @@ function ShotCard({ rank, shot, onPreview }: { rank: number; shot: CorpusShot; o
           to={`/video/${shot.video_id}`}
           className="inline-flex items-center gap-1 text-[12px] text-[var(--color-obsidian)] hover:underline"
         >
-          See full video
+          {t("playground.search.see_full_video")}
           <SquareArrowOutUpRight size={13} />
         </Link>
       </div>

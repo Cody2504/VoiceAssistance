@@ -1,9 +1,12 @@
 import { RefreshCw, Sparkles, ListTree } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 export interface ExampleTile<P = Record<string, unknown>> {
   id: string;
   title: string;
+  /** Optional i18n key. When present, resolved via t() and shown instead of `title`. */
+  titleKey?: string;
   tags: string[];
   preset: P;
 }
@@ -19,7 +22,10 @@ const KIND_STYLE: Record<
   Kind,
   {
     Icon: typeof RefreshCw;
+    /** English fallback label (used for tag filtering logic). */
     label: string;
+    /** i18n key for the displayed kind label. */
+    labelKey: string;
     /** Hover fill applied to the whole card. */
     hoverBg: string;
     /** Icon chip background and stroke. */
@@ -33,6 +39,7 @@ const KIND_STYLE: Record<
   search: {
     Icon: RefreshCw,
     label: "Search",
+    labelKey: "layout.sidebar.search",
     hoverBg: "group-hover:bg-[#fbdfff]",
     chipBg: "bg-[#fbdfff]",
     chipBorder: "border-[#7b5880]",
@@ -42,6 +49,7 @@ const KIND_STYLE: Record<
   analyze: {
     Icon: Sparkles,
     label: "Analyze",
+    labelKey: "layout.sidebar.analyze",
     hoverBg: "group-hover:bg-[#fde3a2]",
     chipBg: "bg-[#fde3a2]",
     chipBorder: "border-[#7d5d0c]",
@@ -51,6 +59,7 @@ const KIND_STYLE: Record<
   segment: {
     Icon: ListTree,
     label: "Segment",
+    labelKey: "layout.sidebar.segment",
     hoverBg: "group-hover:bg-[#c4eefe]",
     chipBg: "bg-[#c4eefe]",
     chipBorder: "border-[#26586d]",
@@ -72,8 +81,10 @@ interface Props<P> {
  * featured first and remaining tags rendered as outlined neutral chips.
  */
 export function ExamplesPanel<P>({ examples, onSelect, kind }: Props<P>) {
+  const { t } = useTranslation();
   const style = KIND_STYLE[kind];
   const Icon = style.Icon;
+  const kindLabel = t(style.labelKey);
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -101,7 +112,7 @@ export function ExamplesPanel<P>({ examples, onSelect, kind }: Props<P>) {
                 <Icon size={12} className={style.chipIconClass} strokeWidth={2} />
               </span>
               <p className="line-clamp-3 text-[13px] font-normal leading-[1.4] text-[var(--color-obsidian)]">
-                {ex.title}
+                {ex.titleKey ? t(ex.titleKey) : ex.title}
               </p>
             </div>
             <div className="mt-auto flex flex-wrap gap-1.5 pt-3">
@@ -111,16 +122,16 @@ export function ExamplesPanel<P>({ examples, onSelect, kind }: Props<P>) {
                   style.featTag,
                 )}
               >
-                {style.label}
+                {kindLabel}
               </span>
               {ex.tags
-                .filter((t) => t.toLowerCase() !== style.label.toLowerCase())
-                .map((t) => (
+                .filter((tag) => tag.toLowerCase() !== style.label.toLowerCase())
+                .map((tag) => (
                   <span
-                    key={t}
+                    key={tag}
                     className="inline-flex items-center rounded border border-[var(--color-obsidian)] px-1 py-[2px] text-[9px] font-normal uppercase tracking-[0.06em] text-[var(--color-obsidian)]"
                   >
-                    {t}
+                    {tag}
                   </span>
                 ))}
             </div>

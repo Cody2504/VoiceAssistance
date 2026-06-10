@@ -1,4 +1,5 @@
 import { Link } from "react-router";
+import { useTranslation } from "react-i18next";
 import { HeroDemo } from "./HeroDemo";
 
 /**
@@ -18,6 +19,7 @@ const MOTIF: { src: string; cls: string; x: string; y: string; dur: string }[] =
 ];
 
 export function Hero() {
+  const { t } = useTranslation();
   return (
     <section className="relative overflow-hidden bg-[var(--color-eggshell)]">
       {/* drifting thumbnail motif */}
@@ -52,28 +54,26 @@ export function Hero() {
       {/* foreground content */}
       <div className="relative mx-auto max-w-[1280px] px-6 pt-20 pb-16 text-center md:pt-24">
         <p className="mb-5 text-[13px] uppercase tracking-[0.18em] text-[var(--color-gravel)]">
-          Video AI Platform
+          {t("landing.hero.eyebrow_v2")}
         </p>
         <h1 className="mx-auto max-w-[920px] text-[52px] font-light leading-[1.04] tracking-[-1.5px] text-[var(--color-obsidian)] md:text-[68px]">
-          See the unseen in every video.
+          {t("landing.hero.h1_v2")}
         </h1>
         <p className="mx-auto mt-7 max-w-[640px] text-[16px] leading-[1.55] text-[var(--color-gravel)] md:text-[17px]">
-          Search, chat with, and segment your footage in natural language. State-of-the-art
-          video understanding turns hours of raw video into searchable, answerable, AI-ready
-          moments.
+          {t("landing.hero.sub_v2")}
         </p>
         <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
           <Link
             to="/signup"
             className="inline-flex h-11 cursor-pointer items-center gap-1.5 rounded-full bg-[var(--color-obsidian)] px-6 text-[14px] font-medium text-white transition duration-150 ease-out hover:bg-neutral-800 active:scale-[0.97]"
           >
-            Start free ↗
+            {t("landing.hero.start_free")}
           </Link>
           <a
             href="#cta"
             className="inline-flex h-11 cursor-pointer items-center rounded-full border border-[var(--color-chalk)] bg-white px-6 text-[14px] font-medium text-[var(--color-obsidian)] transition hover:bg-[var(--color-powder)]"
           >
-            Talk to sales
+            {t("landing.hero.talk_to_sales")}
           </a>
         </div>
 

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ChevronDown, ChevronRight, ListChecks } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -29,38 +30,40 @@ function fmtSec(s: number): string {
   return `${m}:${String(r).padStart(2, "0")}`;
 }
 
-function toolLabel(name: string | undefined, args: unknown): string {
-  if (!name) return "Tool call";
+type TFn = (key: string, opts?: Record<string, unknown>) => string;
+
+function toolLabel(name: string | undefined, args: unknown, t: TFn): string {
+  if (!name) return t("chat.thinking.tool_default");
   const a = (args ?? {}) as Record<string, unknown>;
   switch (name) {
     case "search_corpus":
     case "video-search":
-      return "Searching the corpus";
+      return t("chat.thinking.tool_search_corpus");
     case "search_video_local":
-      return "Searching one video";
+      return t("chat.thinking.tool_search_video");
     case "ask_video_local":
       if (typeof a.t_start === "number" && typeof a.t_end === "number") {
-        return `Reading transcript ${fmtSec(a.t_start)}–${fmtSec(a.t_end)}`;
+        return t("chat.thinking.tool_transcript_range", { start: fmtSec(a.t_start), end: fmtSec(a.t_end) });
       }
-      return "Summarizing the video";
+      return t("chat.thinking.tool_summarize");
     case "time-range-analysis":
       if (typeof a.t_start === "number" && typeof a.t_end === "number") {
-        return `Reading transcript ${fmtSec(a.t_start)}–${fmtSec(a.t_end)}`;
+        return t("chat.thinking.tool_transcript_range", { start: fmtSec(a.t_start), end: fmtSec(a.t_end) });
       }
-      return "Reading transcript";
+      return t("chat.thinking.tool_read_transcript");
     case "gist-text-generation":
     case "summarize-text-generation":
     case "free-text-generation":
-      return "Summarizing the video";
+      return t("chat.thinking.tool_summarize");
     default:
       return name;
   }
 }
 
-function agentPhaseLabel(agent?: string): string {
-  if (agent === "planner") return "Understanding your request";
-  if (agent === "supervisor" || agent === "instructor") return "Choosing a worker";
-  return "Thinking";
+function agentPhaseLabel(agent: string | undefined, t: TFn): string {
+  if (agent === "planner") return t("chat.thinking.phase_planner");
+  if (agent === "supervisor" || agent === "instructor") return t("chat.thinking.phase_supervisor");
+  return t("chat.thinking.phase_default");
 }
 
 function isErrorResult(r: unknown): boolean {
@@ -75,12 +78,13 @@ export function deriveSteps(
   raw: ThinkingStep[],
   assistantHasContent: boolean,
   complete: boolean,
+  t: TFn,
 ): DerivedStep[] {
   const out: DerivedStep[] = [];
 
   raw.forEach((s, i) => {
     if (s.type === "thought") {
-      const label = agentPhaseLabel(s.agent);
+      const label = agentPhaseLabel(s.agent, t);
       const prev = out[out.length - 1];
       if (prev && prev.kind === "phase" && prev.label === label) {
         prev.body = (prev.body ?? "") + (s.text ?? "");
@@ -91,7 +95,7 @@ export function deriveSteps(
       out.push({
         kind: "tool",
         key: `s-${i}`,
-        label: toolLabel(s.tool, s.args),
+        label: toolLabel(s.tool, s.args, t),
         status: "active",
         tool: s.tool ?? "?",
         args: s.args,
@@ -109,7 +113,7 @@ export function deriveSteps(
   });
 
   if (assistantHasContent && out.length > 0) {
-    out.push({ kind: "phase", key: "reply", label: "Composing reply", status: "done" });
+    out.push({ kind: "phase", key: "reply", label: t("chat.thinking.phase_composing"), status: "done" });
   }
 
   if (!complete && out.length > 0) {
@@ -121,7 +125,8 @@ export function deriveSteps(
 }
 
 export function AgentsThinking({ steps, assistantHasContent, complete }: Props) {
-  const derived = deriveSteps(steps, assistantHasContent, complete);
+  const { t } = useTranslation();
+  const derived = deriveSteps(steps, assistantHasContent, complete, t as TFn);
   const [open, setOpen] = useState(true);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
@@ -137,10 +142,10 @@ export function AgentsThinking({ steps, assistantHasContent, complete }: Props) 
       >
         <span className="flex items-center gap-2">
           <ListChecks size={16} className="text-neutral-600" />
-          {complete ? "Agents Thinking" : "Agents Thinking…"}
+          {complete ? t("chat.thinking.header") : t("chat.thinking.header_active")}
         </span>
         <span className="flex items-center gap-2 text-xs text-neutral-500">
-          {count} {count === 1 ? "step" : "steps"}
+          {t(count === 1 ? "chat.thinking.step_count_one" : "chat.thinking.step_count_other", { count })}
           <ChevronDown size={14} className={cn("transition", open && "rotate-180")} />
         </span>
       </button>
@@ -164,6 +169,7 @@ export function AgentsThinking({ steps, assistantHasContent, complete }: Props) 
                 step={s}
                 expanded={!!expanded[s.key]}
                 onToggle={() => setExpanded((m) => ({ ...m, [s.key]: !m[s.key] }))}
+                t={t as TFn}
               />
             ))}
           </ol>
@@ -203,10 +209,12 @@ function StepRow({
   step,
   expanded,
   onToggle,
+  t,
 }: {
   step: DerivedStep;
   expanded: boolean;
   onToggle: () => void;
+  t: TFn;
 }) {
   const hasBody = step.kind === "phase" ? Boolean(step.body) : true;
   return (
@@ -250,12 +258,12 @@ function StepRow({
             ) : (
               <div className="space-y-2">
                 <div>
-                  <div className="mb-1 font-mono text-[10px] uppercase text-neutral-500">args</div>
+                  <div className="mb-1 font-mono text-[10px] uppercase text-neutral-500">{t("chat.thinking.args_label")}</div>
                   <pre className="overflow-x-auto whitespace-pre-wrap">{JSON.stringify(step.args, null, 2)}</pre>
                 </div>
                 {step.result !== undefined && (
                   <div>
-                    <div className="mb-1 font-mono text-[10px] uppercase text-neutral-500">result</div>
+                    <div className="mb-1 font-mono text-[10px] uppercase text-neutral-500">{t("chat.thinking.result_label")}</div>
                     <pre className="overflow-x-auto whitespace-pre-wrap">{JSON.stringify(step.result, null, 2)}</pre>
                   </div>
                 )}

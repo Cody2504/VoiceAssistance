@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { ChevronDown, RefreshCw, Sparkles, ListTree } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 type Kind = "search" | "analyze" | "segment";
@@ -9,38 +10,32 @@ type FilterValue = "all" | Kind;
 interface ExampleEntry {
   id: string;
   kind: Kind;
-  title: string;
-  tags: string[];
+  titleKey: string;
+  tagKeys: string;
   route: string;
 }
 
 const EXAMPLES: ExampleEntry[] = [
   // Search
-  { id: "viral",      kind: "search",  title: "Find that viral clip all your friends are talking about but don't remember its title", tags: ["Content Recommendation", "User Engagement"], route: "/playground/search" },
-  { id: "objects",    kind: "search",  title: "Search exact number of objects",                                                       tags: ["Sports Analytics", "Object Counting"],     route: "/playground/search" },
-  { id: "logos",      kind: "search",  title: "Detect logos and text on screen",                                                       tags: ["Product Search", "Brand Analytics"],       route: "/playground/search" },
-  { id: "products",   kind: "search",  title: "Find products and how they are mentioned within videos",                                tags: ["E-Commerce", "Brand Analytics"],           route: "/playground/search" },
-  { id: "sounds",     kind: "search",  title: "Listen for specific sounds",                                                            tags: ["Content Analysis", "Music Understanding"], route: "/playground/search" },
-  { id: "highlights", kind: "search",  title: "Engage fans through fun video highlights",                                              tags: ["Fan Engagement", "Sports"],                route: "/playground/search" },
+  { id: "viral",      kind: "search",  titleKey: "marketing.examples.examples.viral_title",      tagKeys: "marketing.examples.examples.viral_tags",      route: "/playground/search" },
+  { id: "objects",    kind: "search",  titleKey: "marketing.examples.examples.objects_title",    tagKeys: "marketing.examples.examples.objects_tags",    route: "/playground/search" },
+  { id: "logos",      kind: "search",  titleKey: "marketing.examples.examples.logos_title",      tagKeys: "marketing.examples.examples.logos_tags",      route: "/playground/search" },
+  { id: "products",   kind: "search",  titleKey: "marketing.examples.examples.products_title",   tagKeys: "marketing.examples.examples.products_tags",   route: "/playground/search" },
+  { id: "sounds",     kind: "search",  titleKey: "marketing.examples.examples.sounds_title",     tagKeys: "marketing.examples.examples.sounds_tags",     route: "/playground/search" },
+  { id: "highlights", kind: "search",  titleKey: "marketing.examples.examples.highlights_title", tagKeys: "marketing.examples.examples.highlights_tags", route: "/playground/search" },
   // Analyze
-  { id: "describe",   kind: "analyze", title: "Generate video description that fits your needs",     tags: ["Fan Engagement", "Sports"],                       route: "/playground/analyze" },
-  { id: "police",     kind: "analyze", title: "Create a police report with exact timestamps",        tags: ["Security"],                                       route: "/playground/analyze" },
-  { id: "visual",     kind: "analyze", title: "Analyse visual components for insights and inspiration", tags: ["Content Analysis", "Q&A", "Advertisement"],     route: "/playground/analyze" },
-  { id: "recs",       kind: "analyze", title: "Make content based recommendations",                  tags: ["Content Recommendation", "Media & Entertainment"], route: "/playground/analyze" },
-  { id: "deeper",     kind: "analyze", title: "Understand the visual elements on a deeper level",    tags: ["Content Analysis", "Media & Entertainment", "Q&A"], route: "/playground/analyze" },
-  { id: "moderate",   kind: "analyze", title: "Moderate content based on your target audience",      tags: ["Content Moderation", "Media & Entertainment"],     route: "/playground/analyze" },
-  { id: "ask",        kind: "analyze", title: "Ask anything specific about the video",               tags: ["Q&A", "Social Media"],                            route: "/playground/analyze" },
+  { id: "describe",   kind: "analyze", titleKey: "marketing.examples.examples.describe_title",   tagKeys: "marketing.examples.examples.describe_tags",   route: "/playground/analyze" },
+  { id: "police",     kind: "analyze", titleKey: "marketing.examples.examples.police_title",     tagKeys: "marketing.examples.examples.police_tags",     route: "/playground/analyze" },
+  { id: "visual",     kind: "analyze", titleKey: "marketing.examples.examples.visual_title",     tagKeys: "marketing.examples.examples.visual_tags",     route: "/playground/analyze" },
+  { id: "recs",       kind: "analyze", titleKey: "marketing.examples.examples.recs_title",       tagKeys: "marketing.examples.examples.recs_tags",       route: "/playground/analyze" },
+  { id: "deeper",     kind: "analyze", titleKey: "marketing.examples.examples.deeper_title",     tagKeys: "marketing.examples.examples.deeper_tags",     route: "/playground/analyze" },
+  { id: "moderate",   kind: "analyze", titleKey: "marketing.examples.examples.moderate_title",   tagKeys: "marketing.examples.examples.moderate_tags",   route: "/playground/analyze" },
+  { id: "ask",        kind: "analyze", titleKey: "marketing.examples.examples.ask_title",        tagKeys: "marketing.examples.examples.ask_tags",        route: "/playground/analyze" },
   // Segment
-  { id: "product-loc", kind: "segment", title: "Locate every moment your product appears on screen", tags: ["Brand Analytics", "E-Commerce", "Advertisement"],  route: "/playground/segment" },
-  { id: "speakers",    kind: "segment", title: "Identify every speaker turn throughout your video",  tags: ["Content Analysis", "Media & Entertainment"],       route: "/playground/segment" },
-  { id: "game",        kind: "segment", title: "Break down game footage by play type and key moments", tags: ["Sports Analytics", "Fan Engagement"],            route: "/playground/segment" },
+  { id: "product-loc", kind: "segment", titleKey: "marketing.examples.examples.product_loc_title", tagKeys: "marketing.examples.examples.product_loc_tags", route: "/playground/segment" },
+  { id: "speakers",    kind: "segment", titleKey: "marketing.examples.examples.speakers_title",    tagKeys: "marketing.examples.examples.speakers_tags",    route: "/playground/segment" },
+  { id: "game",        kind: "segment", titleKey: "marketing.examples.examples.game_title",        tagKeys: "marketing.examples.examples.game_tags",        route: "/playground/segment" },
 ];
-
-const KIND_LABEL: Record<Kind, string> = {
-  search: "Search",
-  analyze: "Analyze",
-  segment: "Segment",
-};
 
 // Mirrors the TwelveLabs light-X / dark-X palette per category.
 const KIND_STYLE: Record<
@@ -81,9 +76,16 @@ const KIND_STYLE: Record<
 };
 
 export default function Examples() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [filter, setFilter] = useState<FilterValue>("all");
   const [filterOpen, setFilterOpen] = useState(false);
+
+  const KIND_LABEL: Record<Kind, string> = {
+    search: t("marketing.examples.kind_search"),
+    analyze: t("marketing.examples.kind_analyze"),
+    segment: t("marketing.examples.kind_segment"),
+  };
 
   const visible = useMemo(
     () => (filter === "all" ? EXAMPLES : EXAMPLES.filter((e) => e.kind === filter)),
@@ -93,19 +95,19 @@ export default function Examples() {
   return (
     <div className="mx-auto max-w-[1180px] px-8 py-8">
       <h1 className="max-w-[820px] text-[26px] font-light leading-[1.25] tracking-[-0.4px] text-[var(--color-obsidian)]">
-        We've curated and pre-indexed videos from various industries.
-        <br />
-        Dive right in and try our features.
+        {t("marketing.examples.heading").split("\n").map((line, i, arr) => (
+          <span key={i}>{line}{i < arr.length - 1 && <br />}</span>
+        ))}
       </h1>
 
       <div className="mt-7 flex items-center gap-2">
-        <span className="text-[13px] text-[var(--color-gravel)]">Filter by examples</span>
+        <span className="text-[13px] text-[var(--color-gravel)]">{t("marketing.examples.filter_label")}</span>
         <div className="relative">
           <button
             onClick={() => setFilterOpen((o) => !o)}
             className="inline-flex h-9 w-44 items-center justify-between gap-2 rounded-lg border border-[var(--color-chalk)] bg-white px-3 text-[13px] text-[var(--color-obsidian)] hover:bg-[var(--color-powder)]"
           >
-            <span className="capitalize">{filter === "all" ? "All" : KIND_LABEL[filter]}</span>
+            <span className="capitalize">{filter === "all" ? t("marketing.examples.filter_all") : KIND_LABEL[filter]}</span>
             <ChevronDown size={14} />
           </button>
           {filterOpen && (
@@ -122,7 +124,7 @@ export default function Examples() {
                     filter === k && "bg-[var(--color-powder)] font-medium",
                   )}
                 >
-                  {k === "all" ? "All" : KIND_LABEL[k as Kind]}
+                  {k === "all" ? t("marketing.examples.filter_all") : KIND_LABEL[k as Kind]}
                 </button>
               ))}
             </div>
@@ -134,6 +136,7 @@ export default function Examples() {
         {visible.map((ex) => {
           const style = KIND_STYLE[ex.kind];
           const Icon = style.Icon;
+          const tags = t(ex.tagKeys).split(",");
           return (
             <button
               key={ex.id}
@@ -158,7 +161,7 @@ export default function Examples() {
                   </span>
                 </div>
                 <h3 className="line-clamp-4 text-[17px] font-normal leading-[1.3] text-[var(--color-obsidian)]">
-                  {ex.title}
+                  {t(ex.titleKey)}
                 </h3>
                 <div className="mt-auto flex flex-wrap gap-1.5 pt-3">
                   <span
@@ -169,12 +172,12 @@ export default function Examples() {
                   >
                     {KIND_LABEL[ex.kind]}
                   </span>
-                  {ex.tags.map((t) => (
+                  {tags.map((tag) => (
                     <span
-                      key={t}
+                      key={tag}
                       className="inline-flex items-center rounded border border-[var(--color-obsidian)] px-1 py-[3px] text-[10px] font-normal uppercase tracking-[0.06em] text-[var(--color-obsidian)]"
                     >
-                      {t}
+                      {tag}
                     </span>
                   ))}
                 </div>

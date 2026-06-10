@@ -1,0 +1,137 @@
+{
+  "pgkit": {
+    "advanced": {
+      "title": "Advanced Settings",
+      "reset": "Reset"
+    },
+    "shell": {
+      "learn": "Learn",
+      "start_with_example": "Start with an example"
+    },
+    "form": {
+      "running": "Running…"
+    },
+    "results": {
+      "title": "Results"
+    },
+    "history": {
+      "title": "History",
+      "close": "Close history",
+      "filter_placeholder": "Filter by asset ID or URL",
+      "clear": "Clear history",
+      "task_count_one": "{{count}} task",
+      "task_count_other": "{{count}} tasks",
+      "empty_no_runs": "No runs yet. Hit Segment on the left to start.",
+      "empty_no_match": "No matches for that filter.",
+      "status_ready": "ready",
+      "track_seg": "{{tracks}} track · {{segs}} seg",
+      "tracks_seg": "{{tracks}} tracks · {{segs}} seg"
+    },
+    "index_picker": {
+      "select_label": "Select an index",
+      "modal_title": "Select an index to Search",
+      "filter_placeholder": "Filter by index name",
+      "sort_label": "Sort by",
+      "sort_recent": "Recent upload",
+      "untitled": "Untitled Index",
+      "change": "Change index",
+      "no_indexes": "No indexes yet.",
+      "create_one": "Create one →"
+    },
+    "video_picker": {
+      "select_label": "Select a video",
+      "change": "Change video",
+      "modal_title": "Select a video",
+      "empty_title": "No ready videos yet",
+      "empty_desc": "Upload a clip on the Assets page. Once indexing finishes it'll appear here automatically.",
+      "open_assets": "Open Assets",
+      "manage_assets": "Manage in Assets",
+      "refresh": "Refresh",
+      "refresh_list": "Refresh video list",
+      "change_compact": "change",
+      "ready_count": "{{count}} ready"
+    },
+    "video_multi_picker": {
+      "default_label": "Select videos in this index",
+      "modal_title": "Select videos in this index",
+      "selected_of": "{{selected}} of {{total}} selected",
+      "select_all": "Select all",
+      "done": "Done",
+      "no_videos": "No videos in this index yet. Add some from the Index detail page."
+    },
+    "segment_builder": {
+      "title": "Segment Definition Builder",
+      "builder_col": "Builder",
+      "editor_col": "Editor",
+      "def_id_placeholder": "definition_id (e.g. speakers)",
+      "def_id_label": "Definition id",
+      "remove_def": "Remove definition",
+      "field_count_one": "({{count}} field)",
+      "field_count_other": "({{count}} fields)",
+      "description_label": "Description",
+      "description_char_count": "{{count}}/2000",
+      "description_placeholder": "When should a segment be created?",
+      "description_aria": "Definition description",
+      "fields_label": "Fields",
+      "fields_count": "{{count}}/20",
+      "field_name_placeholder": "field_name",
+      "field_name_aria": "Field name",
+      "field_type_aria": "Field type",
+      "field_type_string": "String",
+      "field_type_number": "Number",
+      "field_type_boolean": "Boolean",
+      "field_enum_placeholder": "enum (comma-separated, optional)",
+      "field_enum_aria": "Field enum values",
+      "remove_field": "Remove field",
+      "add_field": "Add Field",
+      "time_ranges_label": "Time Ranges",
+      "time_ranges_placeholder": "Ex: 0-10, 30-45",
+      "time_ranges_hint": "Use commas to separate multiple ranges.",
+      "time_ranges_aria": "Time ranges",
+      "add_def": "Add Segment Definition",
+      "def_count": "{{count}}/10",
+      "json_preview_aria": "JSON preview of segment definitions",
+      "apply": "Apply",
+      "close": "Close"
+    },
+    "dropdown": {
+      "placeholder": "Select…"
+    },
+    "metadata": {
+      "title": "Metadata",
+      "not_implemented": "Segmenter not implemented yet — empty track.",
+      "no_active_segment": "No active segment at current time",
+      "no_fields": "(no fields)"
+    },
+    "timeline": {
+      "waiting": "Waiting for results…"
+    },
+    "examples": {
+      "search_s1_title": "Find a cooking step",
+      "search_s2_title": "Locate a sports highlight",
+      "search_s3_title": "Group matches by video",
+      "ground_g1_title": "Moment of action",
+      "ground_g2_title": "Specific gesture",
+      "analyze_a1_title": "Summarize the video",
+      "analyze_a2_title": "Extract chapters"
+    },
+    "presets": {
+      "shot_detection_label": "Shot Detection",
+      "shot_detection_desc": "Detect shot boundaries with camera angle and type classification.",
+      "speaker_diarization_label": "Speaker Diarization",
+      "speaker_diarization_desc": "Identify speaker changes and segment by who is speaking.",
+      "topic_changes_label": "Topic Changes",
+      "topic_changes_desc": "Detect when the topic or subject matter shifts in the video.",
+      "sports_highlights_label": "Sports Highlights",
+      "sports_highlights_desc": "Detect key sports moments: plays, scoring, penalties, celebrations.",
+      "editorial_segment_label": "Editorial Segment",
+      "editorial_segment_desc": "Segment video into editorial narratives/stories (news, documentary).",
+      "person_of_focus_label": "Person of Focus",
+      "person_of_focus_desc": "Track who is the primary person on screen throughout the video.",
+      "ocr_label": "On-Screen Text & Graphics",
+      "ocr_desc": "Detect on-screen text overlays, lower thirds, logos, and graphic elements.",
+      "write_my_own_label": "Write My Own",
+      "write_my_own_desc": "Start from scratch with an empty segment definition."
+    }
+  }
+}

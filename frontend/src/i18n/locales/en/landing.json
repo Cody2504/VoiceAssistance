@@ -1,0 +1,229 @@
+{
+  "landing": {
+    "nav": {
+      "product": "Product",
+      "docs": "Docs",
+      "pricing": "Pricing",
+      "open_app": "Open app",
+      "get_started": "Get started"
+    },
+    "hero": {
+      "eyebrow": "VIDEO INTELLIGENCE",
+      "h1_a": "Talk to your",
+      "h1_em": "videos.",
+      "sub": "Search, summarize, and locate any moment. Jockey turns your video library into a teammate who has seen everything.",
+      "cta_primary": "Get started",
+      "cta_secondary": "Watch demo",
+      "chip_query": "when does the keeper save the penalty?",
+      "chip_caption": "3 matches across 12:04",
+      "eyebrow_v2": "Video AI Platform",
+      "h1_v2": "See the unseen in every video.",
+      "sub_v2": "Search, chat with, and segment your footage in natural language. State-of-the-art video understanding turns hours of raw video into searchable, answerable, AI-ready moments.",
+      "start_free": "Start free ↗",
+      "talk_to_sales": "Talk to sales"
+    },
+    "features": {
+      "title": "Three ways to use Jockey",
+      "search": {
+        "title": "Search",
+        "body": "Drag a video into chat and ask anything. Get answers grounded in the timeline."
+      },
+      "summarize": {
+        "title": "Summarize",
+        "body": "One-paragraph or chapter-by-chapter summaries of any video in your library."
+      },
+      "find": {
+        "title": "Find the moment",
+        "body": "Natural-language search across your whole library. Jockey jumps straight to the second."
+      }
+    },
+    "how": {
+      "title": "How it works",
+      "step1": {
+        "title": "Upload videos",
+        "body": "Drop in MP4s or paste a link. Jockey indexes the visuals, audio, and transcript."
+      },
+      "step2": {
+        "title": "Ask in plain words",
+        "body": "Type a question or paste a transcript snippet. No filters, no SQL."
+      },
+      "step3": {
+        "title": "Jump to the moment",
+        "body": "Click a match to seek the player to the exact second. Verify in one click."
+      }
+    },
+    "footer": {
+      "product": "Product",
+      "company": "Company",
+      "legal": "Legal",
+      "features": "Features",
+      "pricing": "Pricing",
+      "docs": "Docs",
+      "about": "About",
+      "contact": "Contact",
+      "privacy": "Privacy",
+      "terms": "Terms",
+      "copyright": "© {{year}} Jockey. All rights reserved."
+    },
+    "capabilities": {
+      "h2_line1": "Human-level understanding.",
+      "h2_line2": "For superhuman feats.",
+      "sub": "Experience semantic search and video-to-text capabilities that surpass anything you've tried before — video-native AI makes all the difference.",
+      "search_title": "Search",
+      "search_body": "Find specific moments within your videos by describing the scene in natural language.",
+      "search_alt": "Search illustration",
+      "analyze_title": "Analyze",
+      "analyze_body": "Generate text from videos — summary, chapters, highlights and more.",
+      "analyze_alt": "Analyze illustration",
+      "segment_title": "Segment",
+      "segment_body": "Partition videos into labeled, time-stamped chapters you can reuse downstream.",
+      "segment_alt": "Segment illustration"
+    },
+    "capability_detail": {
+      "learn_more": "Learn more ↗",
+      "try_playground": "Try on Playground",
+      "search_eyebrow": "Search",
+      "search_title": "Find any scene in natural language.",
+      "search_body": "Fast, precise, context-aware results that truly understand what you're looking for. Search across speech, text, audio and visuals to explore your video in every dimension.",
+      "analyze_eyebrow": "Analyze",
+      "analyze_title": "Summarize, analyze and describe.",
+      "analyze_body": "Create instant text formats like Q&As, hashtags, and summaries. Generate reports or get domain-specific analysis to answer your deepest questions.",
+      "segment_eyebrow": "Segment",
+      "segment_title": "Turn video into labeled chapters.",
+      "segment_body": "Build features like semantic search and domain classification with embeddings that capture nuance — and make the most of all your data."
+    },
+    "sample_apps": {
+      "see_all": "See all sample apps",
+      "search_heading": "What do you want to find?",
+      "search_subtitle": "Try 'search' with a Sample App",
+      "analyze_heading": "What do you want to describe?",
+      "analyze_subtitle": "Try 'analyze' with a Sample App",
+      "segment_heading": "What do you want to build?",
+      "segment_subtitle": "Try 'segment' with a Sample App",
+      "search_card1_title": "Olympic Video Classification Application",
+      "search_card1_body": "A powerful tool designed to categorize various Olympic sports using video clips.",
+      "search_card2_title": "Shade Finder App: Pinpoint Specific Colors in Videos",
+      "search_card2_body": "Whether you're looking for the perfect berry-toned lipstick or just curious about spotting specific colors in your videos, this guide will help you leverage cutting-edge AI to do so effortlessly.",
+      "search_card3_title": "Video Highlight Generator",
+      "search_card3_body": "The YouTube Chapter Highlight Generator is a tool developed to automatically generate chapter timestamps for YouTube videos.",
+      "analyze_card1_title": "Generate social media posts for your videos",
+      "analyze_card1_body": "This application simplifies the cross-platform video promotion workflow by generating unique posts for each social media platform.",
+      "analyze_card2_title": "Video Highlight Generator",
+      "analyze_card2_body": "This application automatically analyzes video content to create chapters and highlights, streamlining the video production workflow for content creators.",
+      "analyze_card3_title": "Interview Analyzer",
+      "analyze_card3_body": "This application evaluates job interview performances using the ability of the Qwen3-VL video understanding engine to generate text based on video content.",
+      "segment_card1_title": "Contextual and Personalized Ads",
+      "segment_card1_body": "A tool for analyzing source footage, summarizing content, and recommending ads based on the footage's context and emotional tone.",
+      "segment_card2_title": "Recommendations using Multimodal Embeddings",
+      "segment_card2_body": "Start exploring videos and discovering similar content powered by tl-jockey Multimodal Embeddings.",
+      "segment_card3_title": "Semantic Domain Classifier",
+      "segment_card3_body": "Build your own classifier using natural language: define classes in plain English and run instantly on any new video."
+    },
+    "pricing": {
+      "h2_line1": "Play for free.",
+      "h2_line2": "Pay as you go.",
+      "sub": "Start free and only pay for what you use. No surprises, no commitments.",
+      "free_name": "Free",
+      "free_price": "$0",
+      "free_cadence": "/ month",
+      "free_blurb": "Kick the tires. Index and search up to 5 hours of video.",
+      "free_cta": "Get started",
+      "free_f1": "5 hours of video / month",
+      "free_f2": "1 default index",
+      "free_f3": "Search, Analyze, Segment",
+      "free_f4": "Community support",
+      "dev_name": "Developer",
+      "dev_price": "Pay as you go",
+      "dev_blurb": "Scale ingest and queries with usage-based pricing.",
+      "dev_cta": "Upgrade",
+      "dev_f1": "Per-minute ingest + per-query pricing",
+      "dev_f2": "Unlimited indexes",
+      "dev_f3": "API keys + webhooks",
+      "dev_f4": "Priority email support",
+      "ent_name": "Enterprise",
+      "ent_price": "Custom",
+      "ent_blurb": "Dedicated capacity, SSO, and white-glove onboarding.",
+      "ent_cta": "Talk to sales",
+      "ent_f1": "Dedicated infra + SLAs",
+      "ent_f2": "SAML / SSO + audit logs",
+      "ent_f3": "Private deployment options",
+      "ent_f4": "Solutions engineering"
+    },
+    "models": {
+      "h2": "Our stable of models.",
+      "sub": "Open weights, audited benchmarks, no black boxes. Inspect, swap, or pin a version.",
+      "viclip_role": "Visual retrieval backbone",
+      "viclip_blurb": "Frozen CLIP ViT-L/14 — frames are embedded and mean-pooled for corpus retrieval and zero-shot classification.",
+      "qddetr_role": "Temporal grounding head",
+      "qddetr_blurb": "Trained SG-DETR span head over frozen InternVideo2 features for moment retrieval and highlights."
+    },
+    "tutorials": {
+      "h2": "Take the reins with our quick-start tutorials.",
+      "sub": "Production-ready recipes — clone the repo, ingest a few videos, ship a feature this afternoon.",
+      "see_all": "See all tutorials",
+      "tutorial_link": "Tutorial",
+      "code_link": "Code",
+      "card1_title": "Who talked about us",
+      "card1_blurb": "Find every clip a speaker mentions a brand or product.",
+      "card1_tag": "Brand Analytics",
+      "card2_title": "Generate social media posts",
+      "card2_blurb": "Auto-summarize a video into TikTok / IG-ready captions and topic tags.",
+      "card2_tag": "Content",
+      "card3_title": "Shade finder",
+      "card3_blurb": "Detect every lipstick swatch across an unboxing reel.",
+      "card3_tag": "E-Commerce",
+      "card4_title": "Interview analyzer",
+      "card4_blurb": "Chapter long-form interviews and pull stand-out quotes automatically.",
+      "card4_tag": "Media"
+    },
+    "cta": {
+      "h2": "Ready to see your video differently?",
+      "sub": "Open the playground, upload a clip, and run Search, Analyze, or Segment in a single click. No credit card required.",
+      "try_playground": "Try on Playground",
+      "talk_to_sales": "Talk to sales"
+    },
+    "hero_demo": {
+      "aria_tabs": "Demo capability",
+      "tab_search": "Search",
+      "tab_chat": "Chat / QA",
+      "tab_segment": "Segment",
+      "search_label": "Search the sample video",
+      "search_placeholder": "Search this video in natural language…",
+      "search_button": "Search",
+      "search_try": "Try:",
+      "search_empty": "Type a query or tap an example — matching moments light up on the timeline above.",
+      "search_no_results": "No moments matched \"{{query}}\". Try goal, celebration, or trophy.",
+      "chat_label": "Ask about the sample video",
+      "chat_placeholder": "Ask about the sample video…",
+      "chat_send": "Send",
+      "chat_empty": "Ask a question about the sample clip — pick one above or type your own.",
+      "segment_footer": "Auto-detected with shot detection, ASR & topic-change segmentation.",
+      "footer_sample": "Sample video · runs entirely in your browser",
+      "footer_upload": "Upload your own video"
+    },
+    "demo_fixture": {
+      "m1_label": "Kick-off",
+      "m2_label": "Midfield build-up",
+      "m3_label": "Shot on goal",
+      "m4_label": "GOAL — top corner",
+      "m5_label": "Celebration",
+      "m6_label": "Crowd roars",
+      "m7_label": "Final whistle",
+      "m8_label": "Trophy lift",
+      "s1_label": "Build-up",
+      "s2_label": "The goal",
+      "s3_label": "Celebration",
+      "s4_label": "Trophy & wrap-up",
+      "qa1_q": "What happens at the end of the video?",
+      "qa1_a": "The match finishes at the final whistle (1:11) and the winning side lifts the trophy as confetti falls over the pitch (1:22).",
+      "qa2_q": "Is there a goal? When?",
+      "qa2_a": "Yes — a single goal is scored into the top corner at 0:42, immediately followed by the players' celebration at 0:49.",
+      "qa3_q": "Describe the crowd.",
+      "qa3_a": "After the goal the camera cuts to the stands where the crowd roars and fans celebrate (0:58).",
+      "eq1": "the goal",
+      "eq2": "celebration",
+      "eq3": "trophy lift",
+      "eq4": "crowd cheering"
+    }
+  }
+}

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 /**
  * Left-column form container styled like the TwelveLabs reference: rounded
@@ -20,6 +21,7 @@ export function FormPanel({
   canRun?: boolean;
   hint?: string;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col gap-5 rounded-[18px] border border-[var(--color-chalk)] bg-white p-5 shadow-hairline">
       {children}
@@ -34,7 +36,7 @@ export function FormPanel({
       >
         {running ? (
           <>
-            <Loader2 size={14} className="animate-spin" /> Running…
+            <Loader2 size={14} className="animate-spin" /> {t("pgkit.form.running")}
           </>
         ) : (
           <>

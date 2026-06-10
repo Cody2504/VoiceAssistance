@@ -6,13 +6,18 @@
  * on a sample video, mirroring the ElevenLabs "interactive demo in the hero"
  * pattern. When a real read-only search endpoint exists, swap `searchMoments`
  * for a fetch — the component contract stays identical.
+ *
+ * User-visible strings (label, q, a) are stored as i18n keys so that
+ * HeroDemo.tsx can resolve them with t(). The `keywords` array and
+ * search logic remain in English for the toy keyword matcher.
  */
 
 export interface DemoMoment {
   id: string;
   /** seconds into the clip */
   t: number;
-  label: string;
+  /** i18n key for the display label */
+  labelKey: string;
   /** terms that should surface this moment for a natural-language query */
   keywords: string[];
   /** hue (0–360) for the synthetic filmstrip tile */
@@ -23,13 +28,16 @@ export interface DemoSegment {
   id: string;
   start: number;
   end: number;
-  label: string;
+  /** i18n key for the display label */
+  labelKey: string;
   hue: number;
 }
 
 export interface DemoQA {
-  q: string;
-  a: string;
+  /** i18n key for the question */
+  qKey: string;
+  /** i18n key for the answer */
+  aKey: string;
   /** moment timestamps cited by the answer */
   cites: number[];
 }
@@ -41,30 +49,42 @@ export const DEMO_DURATION = 90;
 export const DEMO_FRAMES = 16;
 
 export const DEMO_MOMENTS: DemoMoment[] = [
-  { id: "m1", t: 3, label: "Kick-off", keywords: ["kickoff", "kick off", "start", "whistle", "begin"], hue: 150 },
-  { id: "m2", t: 17, label: "Midfield build-up", keywords: ["pass", "midfield", "build up", "dribble", "possession"], hue: 130 },
-  { id: "m3", t: 34, label: "Shot on goal", keywords: ["shot", "strike", "attempt", "shoots"], hue: 40 },
-  { id: "m4", t: 42, label: "GOAL — top corner", keywords: ["goal", "scores", "score", "net", "top corner"], hue: 18 },
-  { id: "m5", t: 49, label: "Celebration", keywords: ["celebration", "celebrate", "cheer", "hug", "happy"], hue: 280 },
-  { id: "m6", t: 58, label: "Crowd roars", keywords: ["crowd", "fans", "cheering", "stadium", "noise"], hue: 320 },
-  { id: "m7", t: 71, label: "Final whistle", keywords: ["whistle", "final", "end", "full time", "finish"], hue: 200 },
-  { id: "m8", t: 82, label: "Trophy lift", keywords: ["trophy", "lift", "win", "champions", "cup", "confetti"], hue: 48 },
+  { id: "m1", t: 3,  labelKey: "landing.demo_fixture.m1_label", keywords: ["kickoff", "kick off", "start", "whistle", "begin"], hue: 150 },
+  { id: "m2", t: 17, labelKey: "landing.demo_fixture.m2_label", keywords: ["pass", "midfield", "build up", "dribble", "possession"], hue: 130 },
+  { id: "m3", t: 34, labelKey: "landing.demo_fixture.m3_label", keywords: ["shot", "strike", "attempt", "shoots"], hue: 40 },
+  { id: "m4", t: 42, labelKey: "landing.demo_fixture.m4_label", keywords: ["goal", "scores", "score", "net", "top corner"], hue: 18 },
+  { id: "m5", t: 49, labelKey: "landing.demo_fixture.m5_label", keywords: ["celebration", "celebrate", "cheer", "hug", "happy"], hue: 280 },
+  { id: "m6", t: 58, labelKey: "landing.demo_fixture.m6_label", keywords: ["crowd", "fans", "cheering", "stadium", "noise"], hue: 320 },
+  { id: "m7", t: 71, labelKey: "landing.demo_fixture.m7_label", keywords: ["whistle", "final", "end", "full time", "finish"], hue: 200 },
+  { id: "m8", t: 82, labelKey: "landing.demo_fixture.m8_label", keywords: ["trophy", "lift", "win", "champions", "cup", "confetti"], hue: 48 },
 ];
 
 export const DEMO_SEGMENTS: DemoSegment[] = [
-  { id: "s1", start: 0, end: 30, label: "Build-up", hue: 145 },
-  { id: "s2", start: 30, end: 46, label: "The goal", hue: 22 },
-  { id: "s3", start: 46, end: 66, label: "Celebration", hue: 290 },
-  { id: "s4", start: 66, end: 90, label: "Trophy & wrap-up", hue: 48 },
+  { id: "s1", start: 0,  end: 30, labelKey: "landing.demo_fixture.s1_label", hue: 145 },
+  { id: "s2", start: 30, end: 46, labelKey: "landing.demo_fixture.s2_label", hue: 22 },
+  { id: "s3", start: 46, end: 66, labelKey: "landing.demo_fixture.s3_label", hue: 290 },
+  { id: "s4", start: 66, end: 90, labelKey: "landing.demo_fixture.s4_label", hue: 48 },
 ];
 
 export const DEMO_QA: DemoQA[] = [
-  { q: "What happens at the end of the video?", a: "The match finishes at the final whistle (1:11) and the winning side lifts the trophy as confetti falls over the pitch (1:22).", cites: [71, 82] },
-  { q: "Is there a goal? When?", a: "Yes — a single goal is scored into the top corner at 0:42, immediately followed by the players' celebration at 0:49.", cites: [42, 49] },
-  { q: "Describe the crowd.", a: "After the goal the camera cuts to the stands where the crowd roars and fans celebrate (0:58).", cites: [58] },
+  { qKey: "landing.demo_fixture.qa1_q", aKey: "landing.demo_fixture.qa1_a", cites: [71, 82] },
+  { qKey: "landing.demo_fixture.qa2_q", aKey: "landing.demo_fixture.qa2_a", cites: [42, 49] },
+  { qKey: "landing.demo_fixture.qa3_q", aKey: "landing.demo_fixture.qa3_a", cites: [58] },
 ];
 
-export const EXAMPLE_QUERIES = ["the goal", "celebration", "trophy lift", "crowd cheering"];
+/** i18n keys for the example query chips shown in the search tab. */
+export const EXAMPLE_QUERY_KEYS = [
+  "landing.demo_fixture.eq1",
+  "landing.demo_fixture.eq2",
+  "landing.demo_fixture.eq3",
+  "landing.demo_fixture.eq4",
+];
+
+/**
+ * English keyword strings used by the toy matcher — kept separate from the
+ * display keys so the matcher always works regardless of UI language.
+ */
+export const EXAMPLE_QUERIES_EN = ["the goal", "celebration", "trophy lift", "crowd cheering"];
 
 /** mm:ss formatter for timestamps. */
 export function fmtTime(sec: number): string {
@@ -75,7 +95,7 @@ export function fmtTime(sec: number): string {
 
 /**
  * Toy "semantic" search: lowercase token overlap against each moment's
- * keywords + label. Good enough to feel responsive in a demo; deterministic
+ * keywords + labelKey. Good enough to feel responsive in a demo; deterministic
  * and dependency-free. Returns moments sorted by score (desc).
  */
 export function searchMoments(query: string): DemoMoment[] {
@@ -83,7 +103,7 @@ export function searchMoments(query: string): DemoMoment[] {
   if (!q) return [];
   const terms = q.split(/\s+/).filter(Boolean);
   const scored = DEMO_MOMENTS.map((m) => {
-    const hay = (m.label + " " + m.keywords.join(" ")).toLowerCase();
+    const hay = m.keywords.join(" ").toLowerCase();
     let score = 0;
     for (const term of terms) {
       if (hay.includes(term)) score += 2;

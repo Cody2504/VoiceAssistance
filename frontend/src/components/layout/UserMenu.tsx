@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Link } from "react-router";
+import { useTranslation } from "react-i18next";
 import { Info, ArrowUpRight } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -15,6 +16,7 @@ interface Props {
  */
 export function UserMenu({ initials, onClose }: Props) {
   const { user, logout } = useAuth();
+  const { t } = useTranslation();
   const ref = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -33,7 +35,7 @@ export function UserMenu({ initials, onClose }: Props) {
   }, [onClose]);
 
   const usedMin = 0;
-  const cap = 600; // 10 hr in minutes
+  const cap = 300; // 5 hr in minutes (free monthly indexing allowance)
   const pct = Math.min(100, (usedMin / cap) * 100);
   const indexingPct = pct * 0.6;
   const analyzePct = pct * 0.4;
@@ -50,7 +52,7 @@ export function UserMenu({ initials, onClose }: Props) {
       </div>
       <div className="mb-5 text-center">
         <p className="text-[15px] font-medium text-[var(--color-obsidian)]">
-          {user?.email?.split("@")[0] ?? "User"}
+          {user?.email?.split("@")[0] ?? t("layout.usermenu.user_fallback")}
         </p>
         <p className="mt-0.5 text-[13px] text-[var(--color-gravel)]">{user?.email}</p>
       </div>
@@ -58,11 +60,11 @@ export function UserMenu({ initials, onClose }: Props) {
       <div className="mb-5 rounded-xl border border-[var(--color-chalk)] bg-[var(--color-eggshell)] p-4">
         <div className="mb-2 flex items-center justify-between">
           <div className="flex items-center gap-1 text-[13px] font-medium text-[var(--color-obsidian)]">
-            Free plan
+            {t("layout.usermenu.free_plan")}
             <Info size={12} className="text-[var(--color-slate)]" />
           </div>
           <div className="text-[13px] text-[var(--color-gravel)]">
-            Used <span className="text-[var(--color-obsidian)]">{usedMin} min</span> / 10 hr
+            {t("layout.usermenu.used")} <span className="text-[var(--color-obsidian)]">{usedMin} min</span> / 5 hr
           </div>
         </div>
         <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-chalk)]">
@@ -74,22 +76,22 @@ export function UserMenu({ initials, onClose }: Props) {
         </div>
         <div className="mt-2 flex gap-4 text-[11px] text-[var(--color-gravel)]">
           <span className="inline-flex items-center gap-1">
-            <span className="h-2 w-2 rounded-sm bg-[#5fb364]" /> Indexing
+            <span className="h-2 w-2 rounded-sm bg-[#5fb364]" /> {t("layout.usermenu.indexing")}
           </span>
           <span className="inline-flex items-center gap-1">
-            <span className="h-2 w-2 rounded-sm bg-[#e5b659]" /> Analyze &amp; Segment
+            <span className="h-2 w-2 rounded-sm bg-[#e5b659]" /> {t("layout.usermenu.analyze_segment")}
           </span>
         </div>
 
         <div className="mt-4 space-y-2 text-[13px]">
           <div className="flex items-center justify-between">
-            <span className="text-[var(--color-obsidian)]">Max duration per index</span>
+            <span className="text-[var(--color-obsidian)]">{t("layout.usermenu.max_duration")}</span>
             <span className="text-[var(--color-gravel)]">
               <span className="text-[var(--color-obsidian)]">0</span> hr / 10 hr
             </span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-[var(--color-obsidian)]">Max videos per index</span>
+            <span className="text-[var(--color-obsidian)]">{t("layout.usermenu.max_videos")}</span>
             <span className="text-[var(--color-gravel)]">
               <span className="text-[var(--color-obsidian)]">0</span> videos / 100 videos
             </span>
@@ -102,7 +104,7 @@ export function UserMenu({ initials, onClose }: Props) {
         onClick={onClose}
         className="mb-3 flex h-11 w-full items-center justify-center gap-1.5 rounded-full bg-[var(--color-obsidian)] text-[14px] font-medium text-white transition duration-150 ease-out hover:bg-neutral-800 active:scale-[0.98]"
       >
-        Upgrade ↑
+        {t("layout.usermenu.upgrade")} ↑
       </Link>
 
       <div className="space-y-2 text-[13px]">
@@ -111,7 +113,7 @@ export function UserMenu({ initials, onClose }: Props) {
           onClick={onClose}
           className="flex items-center justify-between rounded-lg px-2 py-1.5 hover:bg-[var(--color-powder)]"
         >
-          <span className="text-[var(--color-obsidian)]">Pricing</span>
+          <span className="text-[var(--color-obsidian)]">{t("layout.usermenu.pricing")}</span>
           <ArrowUpRight size={13} className="text-[var(--color-gravel)]" />
         </Link>
         <button
@@ -122,7 +124,7 @@ export function UserMenu({ initials, onClose }: Props) {
           }}
           className="flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-[var(--color-obsidian)] hover:bg-[var(--color-powder)]"
         >
-          Sign out
+          {t("layout.usermenu.sign_out")}
         </button>
       </div>
     </div>

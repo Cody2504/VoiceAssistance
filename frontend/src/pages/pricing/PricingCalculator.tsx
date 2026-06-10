@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { ArrowUpRight, ArrowLeft, Info } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import {
   FAMILIES,
@@ -101,6 +102,7 @@ function FamilyHeader({ id }: { id: FamilyId }) {
 }
 
 export default function PricingCalculator() {
+  const { t } = useTranslation();
   const [inputs, setInputs] = useState<CalcInputs>(DEFAULTS);
 
   // Map UI inputs onto the billing units used in pricingData.ts.
@@ -124,6 +126,8 @@ export default function PricingCalculator() {
     cost: cost.byItem[item.id] ?? 0,
   }));
 
+  const indexItem = ITEMS.find(i => i.id === "index");
+
   return (
     <main className="mx-auto max-w-6xl px-6 pb-24 pt-12 md:pt-16">
       <Link
@@ -131,16 +135,15 @@ export default function PricingCalculator() {
         className="inline-flex items-center gap-1.5 text-sm text-[var(--ink-soft)] transition hover:text-[var(--ink)]"
       >
         <ArrowLeft className="h-3.5 w-3.5" />
-        Back to pricing
+        {t("marketing.pricing_calc.back")}
       </Link>
 
       <header className="fade-rise mt-6 text-center">
         <h1 className="text-[40px] font-semibold tracking-[-0.02em] md:text-[56px]">
-          Pricing calculator
+          {t("marketing.pricing_calc.heading")}
         </h1>
         <p className="mx-auto mt-4 max-w-[52ch] text-sm text-[var(--ink-soft)] md:text-base">
-          Estimate your monthly bill based on indexing volume, search activity, and generation
-          calls. Edit any field — totals update live.
+          {t("marketing.pricing_calc.sub")}
         </p>
       </header>
 
@@ -150,35 +153,35 @@ export default function PricingCalculator() {
           {/* Eclipse */}
           <section className="rounded-3xl border border-[var(--line)] bg-white p-6 md:p-7">
             <FamilyHeader id="eclipse" />
-            <p className="mt-1 text-xs text-[var(--ink-muted)]">Indexing, search, moment grounding</p>
+            <p className="mt-1 text-xs text-[var(--ink-muted)]">{t("marketing.pricing_calc.eclipse_sub")}</p>
 
             <div className="mt-4 divide-y divide-[var(--line)]">
               <NumberField
-                label="Estimate monthly video upload"
-                hint={`$${ITEMS.find(i => i.id === "index")?.developerRate}/min`}
+                label={t("marketing.pricing_calc.field_index_label")}
+                hint={`$${indexItem?.developerRate}/min`}
                 value={inputs.indexHours}
                 onChange={(v) => setInputs((s) => ({ ...s, indexHours: v }))}
                 min={0}
                 step={1}
-                suffix="hours"
+                suffix={t("marketing.pricing_calc.field_index_suffix")}
               />
               <NumberField
-                label="Search API — monthly queries"
-                hint="$3 / 1K queries"
+                label={t("marketing.pricing_calc.field_search_label")}
+                hint={t("marketing.pricing_calc.field_search_hint")}
                 value={inputs.searchQueries}
                 onChange={(v) => setInputs((s) => ({ ...s, searchQueries: v }))}
                 min={0}
                 step={100}
-                suffix="queries"
+                suffix={t("marketing.pricing_calc.field_search_suffix")}
               />
               <NumberField
-                label="Moment grounding — monthly calls"
-                hint="$0.005 / call"
+                label={t("marketing.pricing_calc.field_ground_label")}
+                hint={t("marketing.pricing_calc.field_ground_hint")}
                 value={inputs.groundCalls}
                 onChange={(v) => setInputs((s) => ({ ...s, groundCalls: v }))}
                 min={0}
                 step={10}
-                suffix="calls"
+                suffix={t("marketing.pricing_calc.field_ground_suffix")}
               />
             </div>
           </section>
@@ -186,26 +189,26 @@ export default function PricingCalculator() {
           {/* Secretariat */}
           <section className="rounded-3xl border border-[var(--line)] bg-white p-6 md:p-7">
             <FamilyHeader id="secretariat" />
-            <p className="mt-1 text-xs text-[var(--ink-muted)]">Time-range Q&A, whole-video summary</p>
+            <p className="mt-1 text-xs text-[var(--ink-muted)]">{t("marketing.pricing_calc.secretariat_sub")}</p>
 
             <div className="mt-4 divide-y divide-[var(--line)]">
               <NumberField
-                label="Time-range Q&A — monthly calls"
-                hint="$0.02 / call"
+                label={t("marketing.pricing_calc.field_qa_label")}
+                hint={t("marketing.pricing_calc.field_qa_hint")}
                 value={inputs.qaCalls}
                 onChange={(v) => setInputs((s) => ({ ...s, qaCalls: v }))}
                 min={0}
                 step={10}
-                suffix="calls"
+                suffix={t("marketing.pricing_calc.field_qa_suffix")}
               />
               <NumberField
-                label="Whole-video summary — monthly calls"
-                hint="$0.10 / call"
+                label={t("marketing.pricing_calc.field_summarize_label")}
+                hint={t("marketing.pricing_calc.field_summarize_hint")}
                 value={inputs.summarizeCalls}
                 onChange={(v) => setInputs((s) => ({ ...s, summarizeCalls: v }))}
                 min={0}
                 step={5}
-                suffix="calls"
+                suffix={t("marketing.pricing_calc.field_summarize_suffix")}
               />
             </div>
           </section>
@@ -213,9 +216,9 @@ export default function PricingCalculator() {
           <section className="rounded-3xl border border-[var(--line)] bg-white p-6 md:p-7">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm font-medium text-[var(--ink)]">Projection horizon</div>
+                <div className="text-sm font-medium text-[var(--ink)]">{t("marketing.pricing_calc.projection_title")}</div>
                 <div className="mt-0.5 text-xs text-[var(--ink-muted)]">
-                  Multiplies monthly cost by N months. Useful for budgeting demos and trials.
+                  {t("marketing.pricing_calc.projection_hint")}
                 </div>
               </div>
               <select
@@ -225,7 +228,7 @@ export default function PricingCalculator() {
               >
                 {[1, 3, 6, 12].map((m) => (
                   <option key={m} value={m}>
-                    {m} month{m > 1 ? "s" : ""}
+                    {m} {m > 1 ? t("marketing.pricing_calc.month_plural") : t("marketing.pricing_calc.month_singular")}
                   </option>
                 ))}
               </select>
@@ -236,9 +239,9 @@ export default function PricingCalculator() {
         {/* RIGHT: live cost summary, sticky */}
         <aside>
           <div className="sticky top-20 rounded-3xl border border-[var(--line)] bg-white p-6 md:p-7">
-            <div className="text-lg font-semibold text-[var(--ink)]">Cost summary</div>
+            <div className="text-lg font-semibold text-[var(--ink)]">{t("marketing.pricing_calc.cost_summary")}</div>
             <p className="mt-0.5 text-xs text-[var(--ink-muted)]">
-              Developer (pay-as-you-go) — updates live.
+              {t("marketing.pricing_calc.cost_summary_sub")}
             </p>
 
             {/* Eclipse subtotal */}
@@ -248,9 +251,9 @@ export default function PricingCalculator() {
                 {itemRows
                   .filter(({ item }) => item.family === "eclipse")
                   .map(({ item, cost }) => (
-                    <CostRow key={item.id} label={item.label} value={formatUSD(cost)} />
+                    <CostRow key={item.id} label={t(item.labelKey)} value={formatUSD(cost)} />
                   ))}
-                <CostRow label="Eclipse subtotal" value={formatUSD(cost.byFamily.eclipse)} accent />
+                <CostRow label={t("marketing.pricing_calc.eclipse_subtotal")} value={formatUSD(cost.byFamily.eclipse)} accent />
               </div>
             </div>
 
@@ -261,10 +264,10 @@ export default function PricingCalculator() {
                 {itemRows
                   .filter(({ item }) => item.family === "secretariat")
                   .map(({ item, cost }) => (
-                    <CostRow key={item.id} label={item.label} value={formatUSD(cost)} />
+                    <CostRow key={item.id} label={t(item.labelKey)} value={formatUSD(cost)} />
                   ))}
                 <CostRow
-                  label="Secretariat subtotal"
+                  label={t("marketing.pricing_calc.secretariat_subtotal")}
                   value={formatUSD(cost.byFamily.secretariat)}
                   accent
                 />
@@ -274,7 +277,7 @@ export default function PricingCalculator() {
             {/* Total */}
             <div className="mt-7 rounded-2xl bg-[var(--bg)] p-5">
               <div className="flex items-baseline justify-between">
-                <span className="text-sm text-[var(--ink-soft)]">Monthly total</span>
+                <span className="text-sm text-[var(--ink-soft)]">{t("marketing.pricing_calc.monthly_total")}</span>
                 <span className="text-2xl font-semibold tracking-tight">
                   {formatUSD(monthlyTotal)}
                 </span>
@@ -282,7 +285,7 @@ export default function PricingCalculator() {
               {inputs.months > 1 && (
                 <div className="mt-2 flex items-baseline justify-between">
                   <span className="text-xs text-[var(--ink-muted)]">
-                    Projected ({inputs.months} months)
+                    {t("marketing.pricing_calc.projected", { months: inputs.months })}
                   </span>
                   <span className="text-sm font-medium text-[var(--ink)]">
                     {formatUSD(projectedTotal)}
@@ -293,28 +296,26 @@ export default function PricingCalculator() {
 
             {/* CTA */}
             <div className="mt-6">
-              <div className="text-sm font-semibold text-[var(--ink)]">Start for free</div>
+              <div className="text-sm font-semibold text-[var(--ink)]">{t("marketing.pricing_calc.start_free_heading")}</div>
               <p className="mt-1 text-xs text-[var(--ink-muted)]">
-                Free plan covers 5 hours of indexing and 1,000 search queries each month — no
-                credit card required.
+                {t("marketing.pricing_calc.start_free_body")}
               </p>
               <Link
                 to="/signup"
                 className="mt-4 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-full bg-[var(--ink)] px-5 text-sm font-semibold text-white transition duration-150 ease-out hover:bg-black active:scale-[0.98]"
               >
-                Get started
+                {t("marketing.pricing_calc.get_started")}
                 <ArrowUpRight className="h-3.5 w-3.5" />
               </Link>
             </div>
 
             <div className="mt-5 flex gap-2 rounded-lg bg-[var(--bg)] p-3 text-[11px] leading-relaxed text-[var(--ink-muted)]">
               <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              Rates apply to the Developer plan. Free includes monthly caps; Enterprise uses
-              committed contracts. See the{" "}
+              {t("marketing.pricing_calc.disclaimer")}{" "}
               <Link to="/pricing" className="underline hover:text-[var(--ink)]">
-                pricing page
+                {t("marketing.pricing_calc.disclaimer_link")}
               </Link>{" "}
-              for details.
+              {t("marketing.pricing_calc.disclaimer_suffix")}
             </div>
           </div>
         </aside>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -17,6 +18,7 @@ import { formatSeconds } from "@/lib/utils";
 type Tab = "ground" | "search" | "qa";
 
 export default function VideoDetail() {
+  const { t } = useTranslation();
   const { videoId } = useParams<{ videoId: string }>();
   const video = useVideoStatus(videoId);
   const [streamUrl, setStreamUrl] = useState("");
@@ -26,11 +28,19 @@ export default function VideoDetail() {
 
   useEffect(() => {
     if (videoId && video?.status === "ready") {
-      getStreamUrl(videoId).then(setStreamUrl).catch(() => toast.error("Failed to load video"));
+      getStreamUrl(videoId)
+        .then(setStreamUrl)
+        .catch(() => toast.error(t("console.video.load_failed")));
     }
-  }, [videoId, video?.status]);
+  }, [videoId, video?.status, t]);
 
   const seek = (t: number) => player.current?.seekTo(t);
+
+  const tabLabels: Record<Tab, string> = {
+    ground: t("console.video.tab_ground"),
+    search: t("console.video.tab_search"),
+    qa: t("console.video.tab_qa"),
+  };
 
   return (
     <div className="grid h-full grid-cols-[1.6fr_1fr] gap-6 p-6">
@@ -48,13 +58,13 @@ export default function VideoDetail() {
 
       <Card className="flex min-h-0 flex-col">
         <div className="mb-3 flex gap-1 border-b border-neutral-100 pb-2 text-xs">
-          {(["ground", "search", "qa"] as Tab[]).map((t) => (
+          {(["ground", "search", "qa"] as Tab[]).map((tab_) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`rounded px-3 py-1 transition ${tab === t ? "bg-neutral-100 text-neutral-900" : "text-neutral-500 hover:text-neutral-800"}`}
+              key={tab_}
+              onClick={() => setTab(tab_)}
+              className={`rounded px-3 py-1 transition ${tab === tab_ ? "bg-neutral-100 text-neutral-900" : "text-neutral-500 hover:text-neutral-800"}`}
             >
-              {t.toUpperCase()}
+              {tabLabels[tab_]}
             </button>
           ))}
         </div>
@@ -62,7 +72,7 @@ export default function VideoDetail() {
         <div className="min-h-0 flex-1">
           {tab === "ground" && videoId && (
             <DirectQueryPanel
-              label="Run trained grounding head"
+              label={t("console.video.ground_label")}
               onRun={async (q) => setGrounding(await groundVideo(videoId, q))}
               renderResult={grounding ? () => (
                 <div className="space-y-1 text-xs">
@@ -83,13 +93,17 @@ export default function VideoDetail() {
           )}
           {tab === "search" && videoId && (
             <DirectQueryPanel
-              label="Qdrant similarity search"
-              onRun={async (q) => { const r = await searchVideo(videoId, q); toast.info(`${r.shots.length} hits`); return r; }}
+              label={t("console.video.search_label")}
+              onRun={async (q) => {
+                const r = await searchVideo(videoId, q);
+                toast.info(t("console.video.hits", { count: r.shots.length }));
+                return r;
+              }}
             />
           )}
           {tab === "qa" && videoId && (
             <DirectQueryPanel
-              label="Ask a question about the video"
+              label={t("console.video.qa_label")}
               onRun={async (q) => askVideo(videoId, q)}
             />
           )}
@@ -100,11 +114,12 @@ export default function VideoDetail() {
 }
 
 function VideoStatusBanner({ video }: { video?: VideoSummary }) {
+  const { t } = useTranslation();
   if (!video) return null;
   if (video.status === "ready") return null;
   return (
     <div className="rounded-md border border-neutral-200 bg-neutral-50 p-3 text-xs text-neutral-600">
-      Status: <span className="font-mono">{video.status}</span>
+      {t("console.video.status_label")} <span className="font-mono">{video.status}</span>
       {video.error && <span className="ml-2 text-red-600">{video.error}</span>}
     </div>
   );
@@ -117,6 +132,7 @@ function DirectQueryPanel({
   onRun: (q: string) => Promise<unknown>;
   renderResult?: () => React.ReactNode;
 }) {
+  const { t } = useTranslation();
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
   const [out, setOut] = useState<unknown>();
@@ -126,7 +142,7 @@ function DirectQueryPanel({
     if (!q.trim()) return;
     setBusy(true);
     try { setOut(await onRun(q)); }
-    catch (err) { toast.error((err as Error).message || "Request failed"); }
+    catch (err) { toast.error((err as Error).message || t("console.video.failed")); }
     finally { setBusy(false); }
   };
 
@@ -134,7 +150,7 @@ function DirectQueryPanel({
     <div className="flex h-full flex-col">
       <form onSubmit={run} className="mb-3 flex gap-2">
         <Input placeholder={label} value={q} onChange={(e) => setQ(e.target.value)} disabled={busy} />
-        <Button type="submit" disabled={busy || !q.trim()}>Run</Button>
+        <Button type="submit" disabled={busy || !q.trim()}>{t("console.video.run_btn")}</Button>
       </form>
       <div className="min-h-0 flex-1 overflow-auto">
         {renderResult ? renderResult() : (

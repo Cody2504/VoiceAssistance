@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { Check, RefreshCw, UploadCloud, Video as VideoIcon, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { listVideos, type VideoSummary } from "@/apis/videos.api";
 import { cn, formatSeconds } from "@/lib/utils";
@@ -52,8 +53,10 @@ export function VideoPicker({
   selectedId,
   onSelect,
   variant = "panel",
-  emptyLabel = "Select a video",
+  emptyLabel,
 }: Props) {
+  const { t } = useTranslation();
+  const resolvedEmptyLabel = emptyLabel ?? t("pgkit.video_picker.select_label");
   const { videos, loading, error } = useVideoLibrary();
   const [open, setOpen] = useState(false);
 
@@ -69,11 +72,11 @@ export function VideoPicker({
         <span className="flex min-w-0 items-center gap-2">
           <VideoIcon className="h-4 w-4 shrink-0 text-[var(--color-gravel)]" />
           <span className="truncate text-[var(--color-obsidian)]">
-            {selected ? selected.original_filename : loading ? "Loading…" : emptyLabel}
+            {selected ? selected.original_filename : loading ? t("actions.loading") : resolvedEmptyLabel}
           </span>
         </span>
         {selected && (
-          <span className="font-mono text-[10px] text-[var(--color-gravel)]">change</span>
+          <span className="font-mono text-[10px] text-[var(--color-gravel)]">{t("pgkit.video_picker.change_compact")}</span>
         )}
         <VideoPickerModal
           open={open}
@@ -107,13 +110,13 @@ export function VideoPicker({
               {selected.shot_count ?? 0} shots
             </span>
             <span className="mt-2 rounded-full bg-[var(--color-obsidian)] px-3 py-1 text-[12px] text-white">
-              Change video
+              {t("pgkit.video_picker.change")}
             </span>
           </div>
         ) : (
           <span className="inline-flex items-center gap-2 rounded-md bg-[var(--color-obsidian)] px-3 py-1.5 text-[13px] text-white">
             <VideoIcon size={13} />
-            {loading ? "Loading…" : emptyLabel}
+            {loading ? t("actions.loading") : resolvedEmptyLabel}
           </span>
         )}
       </button>
@@ -158,6 +161,8 @@ export function VideoPickerModal({
   onSelect: (v: VideoSummary) => void;
   onRefresh?: () => void;
 }) {
+  const { t } = useTranslation();
+
   useEffect(() => {
     if (open) onRefresh?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -174,9 +179,9 @@ export function VideoPickerModal({
       >
         <div className="flex items-center justify-between border-b border-neutral-200 px-6 py-4">
           <div className="flex items-center gap-2">
-            <h2 className="text-[15px] font-semibold text-neutral-900">Select a video</h2>
+            <h2 className="text-[15px] font-semibold text-neutral-900">{t("pgkit.video_picker.modal_title")}</h2>
             <span className="rounded-full bg-neutral-100 px-2 py-0.5 font-mono text-[10px] text-neutral-600">
-              {loading ? "…" : `${videos.length} ready`}
+              {loading ? "…" : t("pgkit.video_picker.ready_count", { count: videos.length })}
             </span>
           </div>
           <div className="flex items-center gap-1">
@@ -185,8 +190,8 @@ export function VideoPickerModal({
               onClick={() => onRefresh?.()}
               disabled={loading}
               className="grid h-8 w-8 place-items-center rounded-[10px] text-neutral-700 hover:bg-neutral-100 disabled:text-neutral-400"
-              title="Refresh"
-              aria-label="Refresh video list"
+              title={t("pgkit.video_picker.refresh")}
+              aria-label={t("pgkit.video_picker.refresh_list")}
             >
               <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
             </button>
@@ -194,7 +199,7 @@ export function VideoPickerModal({
               type="button"
               onClick={onClose}
               className="grid h-8 w-8 place-items-center rounded-[10px] text-neutral-700 hover:bg-neutral-100"
-              aria-label="Close"
+              aria-label={t("actions.close")}
             >
               <X size={16} />
             </button>
@@ -211,17 +216,16 @@ export function VideoPickerModal({
           {isEmpty && (
             <div className="m-4 flex flex-col items-center gap-3 rounded-[14px] border border-dashed border-neutral-300 bg-neutral-50 p-8 text-center">
               <UploadCloud size={28} className="text-neutral-400" />
-              <p className="text-[14px] font-medium text-neutral-900">No ready videos yet</p>
+              <p className="text-[14px] font-medium text-neutral-900">{t("pgkit.video_picker.empty_title")}</p>
               <p className="max-w-[360px] text-[12px] text-neutral-600">
-                Upload a clip on the Assets page. Once indexing finishes it'll appear here
-                automatically.
+                {t("pgkit.video_picker.empty_desc")}
               </p>
               <Link
                 to="/assets"
                 onClick={onClose}
                 className="mt-2 inline-flex items-center gap-2 rounded-full bg-neutral-900 px-4 py-2 text-[13px] font-medium text-white transition duration-150 ease-out hover:bg-neutral-700 active:scale-[0.97]"
               >
-                Open Assets <span aria-hidden>→</span>
+                {t("pgkit.video_picker.open_assets")} <span aria-hidden>→</span>
               </Link>
             </div>
           )}
@@ -267,7 +271,7 @@ export function VideoPickerModal({
               onClick={onClose}
               className="inline-flex items-center gap-1 text-[12px] text-neutral-600 hover:text-neutral-900"
             >
-              Manage in Assets <span aria-hidden>→</span>
+              {t("pgkit.video_picker.manage_assets")} <span aria-hidden>→</span>
             </Link>
           </div>
         )}

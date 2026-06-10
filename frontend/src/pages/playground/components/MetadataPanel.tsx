@@ -1,4 +1,5 @@
 import { Play } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import type { SegmentTrack, TrackSegment } from "@/apis/videos.api";
 import { formatSeconds } from "@/lib/utils";
@@ -20,9 +21,10 @@ function findSegmentIndex(track: SegmentTrack, active: TrackSegment | null) {
 }
 
 export function MetadataPanel({ tracks, presetById, activeByTrack, onSeek }: Props) {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-sm font-bold text-neutral-700">Metadata</p>
+      <p className="text-sm font-bold text-neutral-700">{t("pgkit.metadata.title")}</p>
       {tracks.map((track) => {
         const preset = presetById[track.definition_id];
         const active = activeByTrack[track.definition_id] ?? null;
@@ -68,19 +70,19 @@ export function MetadataPanel({ tracks, presetById, activeByTrack, onSeek }: Pro
             <div className="px-6 pb-6 pl-10">
               {!track.implemented && (
                 <p className="font-mono text-[11px] text-neutral-400">
-                  Segmenter not implemented yet — empty track.
+                  {t("pgkit.metadata.not_implemented")}
                 </p>
               )}
               {track.implemented && !active && (
                 <p className="font-mono text-[11px] text-neutral-400">
-                  No active segment at current time
+                  {t("pgkit.metadata.no_active_segment")}
                 </p>
               )}
               {track.implemented && active && (
                 <div className="flex flex-col gap-2">
                   {Object.entries(active.metadata).length === 0 && (
                     <p className="font-mono text-[11px] text-neutral-400">
-                      (no fields)
+                      {t("pgkit.metadata.no_fields")}
                     </p>
                   )}
                   {Object.entries(active.metadata).map(([k, v]) => (

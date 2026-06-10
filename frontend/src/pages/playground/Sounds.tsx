@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 import { Input } from "@/components/ui/input";
 import { getSounds, type SoundsResponse, type VideoSummary } from "@/apis/videos.api";
@@ -11,16 +12,18 @@ import { ExamplesPanel, type ExampleTile } from "./components/ExamplesPanel";
 import { ResultsPanel } from "./components/ResultsPanel";
 import { VideoPicker } from "./components/VideoPicker";
 
-const EXAMPLES: ExampleTile<{ tag: string }>[] = [
-  { id: "laughter",  title: "Find moments with laughter",          tags: ["Sounds", "Emotion"], preset: { tag: "Laughter" } },
-  { id: "applause",  title: "Find applause / cheering",            tags: ["Sounds", "Crowd"],   preset: { tag: "Applause" } },
-  { id: "music",     title: "Find music in the soundtrack",         tags: ["Sounds", "Music"],   preset: { tag: "Music" } },
-  { id: "speech",    title: "Find speech-heavy shots",              tags: ["Sounds", "Dialogue"],preset: { tag: "Speech" } },
-  { id: "vehicle",   title: "Detect vehicle / engine noise",        tags: ["Sounds", "Outdoor"], preset: { tag: "Vehicle" } },
-  { id: "alarm",     title: "Find alarms or sirens",                tags: ["Sounds", "Safety"],  preset: { tag: "Alarm" } },
-];
-
 export default function Sounds() {
+  const { t } = useTranslation();
+
+  const EXAMPLES: ExampleTile<{ tag: string }>[] = [
+    { id: "laughter",  title: t("playground.sounds.example_laughter_title"), tags: ["Sounds", "Emotion"],   preset: { tag: "Laughter" } },
+    { id: "applause",  title: t("playground.sounds.example_applause_title"), tags: ["Sounds", "Crowd"],     preset: { tag: "Applause" } },
+    { id: "music",     title: t("playground.sounds.example_music_title"),    tags: ["Sounds", "Music"],     preset: { tag: "Music" } },
+    { id: "speech",    title: t("playground.sounds.example_speech_title"),   tags: ["Sounds", "Dialogue"],  preset: { tag: "Speech" } },
+    { id: "vehicle",   title: t("playground.sounds.example_vehicle_title"),  tags: ["Sounds", "Outdoor"],   preset: { tag: "Vehicle" } },
+    { id: "alarm",     title: t("playground.sounds.example_alarm_title"),    tags: ["Sounds", "Safety"],    preset: { tag: "Alarm" } },
+  ];
+
   const [video, setVideo] = useState<VideoSummary | null>(null);
   const [tag, setTag] = useState("");
   const [running, setRunning] = useState(false);
@@ -32,7 +35,7 @@ export default function Sounds() {
     try {
       setResult(await getSounds(video.id, tag.trim() || undefined));
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? "Sounds query failed";
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? t("playground.sounds.error");
       toast.error(msg);
     } finally {
       setRunning(false);
@@ -41,23 +44,23 @@ export default function Sounds() {
 
   return (
     <PlaygroundShell
-      title="Sounds"
-      subtitle="Find shots by audio event — laughter, applause, music, alarms, and 523 more."
+      title={t("playground.sounds.title")}
+      subtitle={t("playground.sounds.subtitle")}
       formPanel={
         <FormPanel
-          runLabel="Search sounds"
+          runLabel={t("playground.sounds.run_label")}
           onRun={run}
           running={running}
           canRun={!!video && !running}
-          hint="PANN CNN14 tagged each shot with top-5 AudioSet labels at ingest. Search is a case-insensitive substring match."
+          hint={t("playground.sounds.hint")}
         >
           <Field label="video" required>
             <VideoPicker selectedId={video?.id} onSelect={setVideo} />
           </Field>
-          <Field label="tag" hint="AudioSet label substring (e.g. Laughter, Music). Leave blank to list all shots.">
+          <Field label="tag" hint={t("playground.sounds.hint_tag")}>
             <Input
               type="text"
-              placeholder="Laughter"
+              placeholder={t("playground.sounds.tag_placeholder")}
               value={tag}
               onChange={(e) => setTag(e.target.value)}
             />
@@ -74,12 +77,12 @@ export default function Sounds() {
       resultsPanel={
         result && (
           <ResultsPanel
-            title={result.tag ? `Shots tagged "${result.tag}"` : "All shots — audio tags"}
+            title={result.tag ? t("playground.sounds.tagged_title", { tag: result.tag }) : t("playground.sounds.all_shots_title")}
             counter={`${result.shots.length} shot${result.shots.length === 1 ? "" : "s"}`}
           >
             {result.shots.length === 0 ? (
               <p className="text-sm text-neutral-500">
-                No shots match{result.tag ? ` "${result.tag}"` : ""}. Try a different tag, or re-ingest the video if audio tags weren't computed.
+                {t("playground.sounds.no_matches", { tag: result.tag ? ` "${result.tag}"` : "" })}
               </p>
             ) : (
               <ul className="max-h-[480px] space-y-1 overflow-y-auto pr-2">
@@ -92,13 +95,13 @@ export default function Sounds() {
                     </div>
                     {s.audio_tags && s.audio_tags.length > 0 && (
                       <div className="mt-1 flex flex-wrap gap-1">
-                        {s.audio_tags.map((t) => (
+                        {s.audio_tags.map((audioTag) => (
                           <span
-                            key={t.label}
+                            key={audioTag.label}
                             className="rounded border border-neutral-200 bg-neutral-50 px-1.5 py-0.5 font-mono text-[10px] text-neutral-700"
-                            title={`score=${t.score.toFixed(3)}`}
+                            title={`score=${audioTag.score.toFixed(3)}`}
                           >
-                            {t.label} <span className="text-neutral-400">{t.score.toFixed(2)}</span>
+                            {audioTag.label} <span className="text-neutral-400">{audioTag.score.toFixed(2)}</span>
                           </span>
                         ))}
                       </div>

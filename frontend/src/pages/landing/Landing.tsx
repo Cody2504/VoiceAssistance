@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Hero } from "./sections/Hero";
 import { Capabilities } from "./sections/Capabilities";
 import { CapabilityDetail } from "./sections/CapabilityDetail";
@@ -11,20 +12,20 @@ import { SearchIcon, AnalyzeIcon, EmbedIcon } from "@/components/brand/FeatureIc
 
 const SEARCH_CARDS: SampleAppCard[] = [
   {
-    title: "Olympic Video Classification Application",
-    body: "A powerful tool designed to categorize various Olympic sports using video clips.",
+    titleKey: "landing.sample_apps.search_card1_title",
+    bodyKey: "landing.sample_apps.search_card1_body",
     language: "Python",
     href: "#",
   },
   {
-    title: "Shade Finder App: Pinpoint Specific Colors in Videos",
-    body: "Whether you're looking for the perfect berry-toned lipstick or just curious about spotting specific colors in your videos, this guide will help you leverage cutting-edge AI to do so effortlessly.",
+    titleKey: "landing.sample_apps.search_card2_title",
+    bodyKey: "landing.sample_apps.search_card2_body",
     language: "Python",
     href: "#",
   },
   {
-    title: "Video Highlight Generator",
-    body: "The YouTube Chapter Highlight Generator is a tool developed to automatically generate chapter timestamps for YouTube videos.",
+    titleKey: "landing.sample_apps.search_card3_title",
+    bodyKey: "landing.sample_apps.search_card3_body",
     language: "Python",
     href: "#",
   },
@@ -32,20 +33,20 @@ const SEARCH_CARDS: SampleAppCard[] = [
 
 const ANALYZE_CARDS: SampleAppCard[] = [
   {
-    title: "Generate social media posts for your videos",
-    body: "This application simplifies the cross-platform video promotion workflow by generating unique posts for each social media platform.",
+    titleKey: "landing.sample_apps.analyze_card1_title",
+    bodyKey: "landing.sample_apps.analyze_card1_body",
     language: "Node",
     href: "#",
   },
   {
-    title: "Video Highlight Generator",
-    body: "This application automatically analyzes video content to create chapters and highlights, streamlining the video production workflow for content creators.",
+    titleKey: "landing.sample_apps.analyze_card2_title",
+    bodyKey: "landing.sample_apps.analyze_card2_body",
     language: "Node",
     href: "#",
   },
   {
-    title: "Interview Analyzer",
-    body: "This application evaluates job interview performances using the ability of the Pegasus video understanding engine to generate text based on video content.",
+    titleKey: "landing.sample_apps.analyze_card3_title",
+    bodyKey: "landing.sample_apps.analyze_card3_body",
     language: "Python",
     href: "#",
   },
@@ -53,26 +54,27 @@ const ANALYZE_CARDS: SampleAppCard[] = [
 
 const EMBED_CARDS: SampleAppCard[] = [
   {
-    title: "Contextual and Personalized Ads",
-    body: "A tool for analyzing source footage, summarizing content, and recommending ads based on the footage's context and emotional tone.",
+    titleKey: "landing.sample_apps.segment_card1_title",
+    bodyKey: "landing.sample_apps.segment_card1_body",
     language: "Node",
     href: "#",
   },
   {
-    title: "Recommendations using Multimodal Embeddings",
-    body: "Start exploring videos and discovering similar content powered by tl-jockey Multimodal Embeddings.",
+    titleKey: "landing.sample_apps.segment_card2_title",
+    bodyKey: "landing.sample_apps.segment_card2_body",
     language: "Python",
     href: "#",
   },
   {
-    title: "Semantic Domain Classifier",
-    body: "Build your own classifier using natural language: define classes in plain English and run instantly on any new video.",
+    titleKey: "landing.sample_apps.segment_card3_title",
+    bodyKey: "landing.sample_apps.segment_card3_body",
     language: "Python",
     href: "#",
   },
 ];
 
 export default function Landing() {
+  const { t } = useTranslation();
   return (
     <>
       <Hero />
@@ -80,10 +82,10 @@ export default function Landing() {
 
       <CapabilityDetail
         id="search"
-        eyebrow="Search"
+        eyebrow={t("landing.capability_detail.search_eyebrow")}
         eyebrowIcon={<SearchIcon size={22} />}
-        title="Find any scene in natural language."
-        body="Fast, precise, context-aware results that truly understand what you're looking for. Search across speech, text, audio and visuals to explore your video in every dimension."
+        title={t("landing.capability_detail.search_title")}
+        body={t("landing.capability_detail.search_body")}
         backgroundVideo="/twelvelabs/search-bg.mp4"
         videoPoster="/twelvelabs/search-bg.jpg"
         contentTopClass="pt-6 md:pt-10"
@@ -92,8 +94,8 @@ export default function Landing() {
       />
 
       <SampleApps
-        heading="What do you want to find?"
-        subtitle="Try 'search' with a Sample App"
+        headingKey="landing.sample_apps.search_heading"
+        subtitleKey="landing.sample_apps.search_subtitle"
         cards={SEARCH_CARDS}
         panelClass="bg-[#fbdfff]"
         strokeClass="border-[#7b5880] text-[#7b5880]"
@@ -101,18 +103,18 @@ export default function Landing() {
 
       <CapabilityDetail
         id="analyze"
-        eyebrow="Analyze"
+        eyebrow={t("landing.capability_detail.analyze_eyebrow")}
         eyebrowIcon={<AnalyzeIcon size={22} />}
-        title="Summarize, analyze and describe."
-        body="Create instant text formats like Q&As, hashtags, and summaries. Generate reports or get domain-specific analysis to answer your deepest questions."
+        title={t("landing.capability_detail.analyze_title")}
+        body={t("landing.capability_detail.analyze_body")}
         backgroundImage="/twelvelabs/analyze-bg.png"
         ctaTo="/playground/analyze"
         toneClass="text-[var(--color-obsidian)]"
       />
 
       <SampleApps
-        heading="What do you want to describe?"
-        subtitle="Try 'analyze' with a Sample App"
+        headingKey="landing.sample_apps.analyze_heading"
+        subtitleKey="landing.sample_apps.analyze_subtitle"
         cards={ANALYZE_CARDS}
         panelClass="bg-[#fde3a2]"
         strokeClass="border-[#7d5d0c] text-[#7d5d0c]"
@@ -120,18 +122,18 @@ export default function Landing() {
 
       <CapabilityDetail
         id="segment"
-        eyebrow="Segment"
+        eyebrow={t("landing.capability_detail.segment_eyebrow")}
         eyebrowIcon={<EmbedIcon size={22} />}
-        title="Turn video into labeled chapters."
-        body="Build features like semantic search and domain classification with embeddings that capture nuance — and make the most of all your data."
+        title={t("landing.capability_detail.segment_title")}
+        body={t("landing.capability_detail.segment_body")}
         backgroundImage="/twelvelabs/embed-bg.png"
         ctaTo="/playground/segment"
         toneClass="text-[var(--color-obsidian)]"
       />
 
       <SampleApps
-        heading="What do you want to build?"
-        subtitle="Try 'segment' with a Sample App"
+        headingKey="landing.sample_apps.segment_heading"
+        subtitleKey="landing.sample_apps.segment_subtitle"
         cards={EMBED_CARDS}
         panelClass="bg-[#c4eefe]"
         strokeClass="border-[#26586d] text-[#26586d]"

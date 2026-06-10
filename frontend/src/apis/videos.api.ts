@@ -92,7 +92,8 @@ export interface Span { t_start: number; t_end: number; score: number; }
 
 /**
  * New Ground response shape — `moments` carries sub-second (start, end, score)
- * spans from Lighthouse CG-DETR (or QD-DETR-CLAP for audio-only inputs).
+ * spans from InternVideo2 features + a trained SG-DETR head (with CG-DETR /
+ * QD-DETR-CLAP as the fallback path for audio-only inputs).
  * `shots`/`spans` are retained as optional for backwards compatibility with
  * the legacy QD-DETR backend during migration.
  */

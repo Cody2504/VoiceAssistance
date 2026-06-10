@@ -1,0 +1,152 @@
+{
+  "console": {
+    "indexes": {
+      "title": "Chỉ mục của tôi",
+      "create_btn": "Tạo chỉ mục",
+      "filter_placeholder": "Lọc theo tên chỉ mục",
+      "sort_by": "Sắp xếp theo",
+      "sort_recent": "Tải lên gần đây",
+      "sort_name": "Tên (A→Z)",
+      "sort_duration": "Số lượng video",
+      "free_plan_banner": "Bạn đang sử dụng Gói miễn phí, chỉ mục của bạn sẽ hết hạn sau 90 ngày kể từ ngày tạo.",
+      "default_title": "Chỉ mục của tôi (Mặc định)",
+      "untitled": "Chỉ mục chưa đặt tên",
+      "created_on": "Tạo lúc {{date}}",
+      "video_count_one": "{{count}} Video",
+      "video_count_other": "{{count}} Video",
+      "delete_confirm": "Xóa chỉ mục \"{{title}}\"?",
+      "delete_label": "Xóa"
+    },
+    "create_index_modal": {
+      "title": "Tạo chỉ mục",
+      "description": "Nhóm các video liên quan (ví dụ: một loạt bài giảng) để các truy vấn liên video có thể hoạt động trên chúng.",
+      "label_title": "Tiêu đề",
+      "label_description": "Mô tả",
+      "optional": "(tuỳ chọn)",
+      "placeholder_title": "ví dụ: Bài giảng ML Xuân 2026",
+      "error_title_required": "Tiêu đề là bắt buộc",
+      "error_create_failed": "Không thể tạo chỉ mục",
+      "btn_creating": "Đang tạo…",
+      "btn_create": "Tạo"
+    },
+    "index_detail": {
+      "all_indexes": "Tất cả chỉ mục",
+      "untitled": "Chỉ mục chưa đặt tên",
+      "video_count": "{{count}} video",
+      "video_count_plural": "{{count}} video",
+      "created": "Tạo lúc {{date}}",
+      "upload_btn": "Tải lên chỉ mục này",
+      "add_from_library": "Thêm từ thư viện",
+      "empty_hint": "Chưa có video nào trong chỉ mục này. Tải lên chỉ mục này, Thêm từ thư viện, hoặc kéo thả tệp video vào thẻ này.",
+      "remove_confirm": "Xoá video này khỏi chỉ mục?",
+      "remove_title": "Xoá khỏi chỉ mục",
+      "uploading": "đang tải lên…",
+      "error_load": "Không thể tải chỉ mục",
+      "error_remove": "Không thể xoá video",
+      "error_video_only": "Chỉ chấp nhận tệp video.",
+      "upload_failed": "Tải lên thất bại cho {{name}}: {{message}}",
+      "upload_failed_short": "Tải lên thất bại cho {{name}}"
+    },
+    "add_videos_modal": {
+      "title": "Thêm video vào chỉ mục này",
+      "empty": "Không có video sẵn sàng để thêm. Hãy tải lên trên trang Tài nguyên trước."
+    },
+    "entities": {
+      "title": "Thực thể",
+      "empty_title": "Chưa phát hiện thực thể nào",
+      "empty_desc": "Các thực thể (người, sản phẩm, địa điểm) được trích xuất từ các video đã lập chỉ mục sẽ hiển thị ở đây. Hãy chạy lượt Phân tích trên một video để điền dữ liệu vào trang này."
+    },
+    "assets": {
+      "title": "Tài nguyên",
+      "desc": "Mỗi video ở đây đều được lập chỉ mục và có thể tìm kiếm độc lập. Nhóm các video liên quan vào một Chỉ mục để cho phép đặt câu hỏi liên video như so sánh và truy vết khái niệm trong một khoá học.",
+      "upload_btn": "Tải lên tài nguyên",
+      "uploading": "Đang tải lên {{done}}/{{total}}…",
+      "filter_placeholder": "Lọc theo tên tệp hoặc ID tài nguyên",
+      "filter_by": "Lọc theo",
+      "filter_file_type": "Loại tệp",
+      "filter_all": "Tất cả",
+      "filter_video": "Video",
+      "filter_image": "Hình ảnh",
+      "filter_audio": "Âm thanh",
+      "count_videos": "{{count}} video",
+      "count_images": "{{count}} hình ảnh",
+      "count_audios": "{{count}} âm thanh",
+      "loading": "Đang tải tài nguyên của bạn…",
+      "drop_label": "Kéo thả tệp video, hình ảnh & âm thanh hoặc duyệt tệp",
+      "limit_audio": "Kích thước tệp âm thanh ≤200MB",
+      "limit_video": "Kích thước tệp video ≤4GB",
+      "limit_image": "Kích thước tệp hình ảnh ≤5MB",
+      "col_name": "Tên",
+      "col_type": "Loại",
+      "col_status": "Trạng thái",
+      "col_duration": "Thời lượng",
+      "col_size": "Kích thước",
+      "col_modified": "Chỉnh sửa",
+      "status_queued": "Đã xếp hàng",
+      "status_indexing": "Đang lập chỉ mục",
+      "status_ready": "Sẵn sàng",
+      "status_error": "Lỗi",
+      "upload_done_one": "Đã tải lên {{total}} tệp",
+      "upload_done_other": "Đã tải lên {{total}} tệp",
+      "upload_progress": "Đang tải lên {{current}} / {{total}}",
+      "upload_failed": "{{count}} thất bại — bỏ qua",
+      "upload_background": "Đang lập chỉ mục nền — theo dõi cột Trạng thái."
+    },
+    "video": {
+      "status_label": "Trạng thái:",
+      "tab_ground": "Định vị",
+      "tab_search": "Tìm kiếm",
+      "tab_qa": "Hỏi đáp",
+      "ground_label": "Chạy đầu định vị đã huấn luyện",
+      "search_label": "Tìm kiếm tương đồng Qdrant",
+      "qa_label": "Đặt câu hỏi về video",
+      "run_btn": "Chạy",
+      "hits": "{{count}} kết quả",
+      "failed": "Yêu cầu thất bại",
+      "load_failed": "Không thể tải video"
+    },
+    "workspace": {
+      "library_title": "Thư viện của bạn",
+      "library_hint": "Kéo một video vào cuộc trò chuyện để đặt câu hỏi về nó."
+    },
+    "s3test": {
+      "title": "Kiểm tra S3 — {{bucket}}",
+      "desc_prefix": "Chế độ xem độc lập của tiền tố",
+      "desc_prefix2": "tiền tố. Hình thu nhỏ lấy từ",
+      "desc_suffix": "; nhấn để xem trước qua URL được ký trước.",
+      "refresh": "Làm mới",
+      "error_title": "Không thể tải bucket",
+      "error_hint": "scripts/s3_browser.py có đang chạy trên :8765 và thông tin xác thực AWS có trong .env không?",
+      "loading_bucket": "Đang tải bucket…",
+      "empty_bucket": "Bucket trống dưới videos/. Chạy python scripts/s3_ingest.py --all để điền dữ liệu.",
+      "object_count_one": "{{count}} đối tượng",
+      "object_count_other": "{{count}} đối tượng",
+      "label_video": "Video"
+    },
+    "library": {
+      "drop_active": "Thả để tải lên",
+      "drop_hint": "Kéo video vào đây, hoặc dùng nút →",
+      "upload_btn": "Tải lên",
+      "upload_queued": "Đã xếp hàng tải lên để lập chỉ mục",
+      "upload_failed": "Tải lên thất bại",
+      "delete_failed": "Xoá thất bại",
+      "deleted": "Đã xoá video",
+      "delete_confirm": "Xoá \"{{name}}\"? Hành động này xoá tệp, chỉ mục và tất cả dữ liệu phái sinh.",
+      "delete_aria": "Xoá video",
+      "empty": "Chưa có video nào."
+    },
+    "video_player": {
+    },
+    "grounding": {
+      "empty_hint": "Hỏi trợ lý hoặc chạy định vị để xem độ liên quan theo thời gian",
+      "moment_title": "{{start}}–{{end}}s · điểm {{score}}",
+      "shot_title": "cảnh quay {{idx}} · {{start}}–{{end}}s · {{rel}}"
+    },
+    "preview": {
+      "loading": "Đang tải…"
+    },
+    "thumb": {
+      "fallback": "video"
+    }
+  }
+}

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { LibraryGrid } from "@/components/library/LibraryGrid";
 import { VideoPreviewModal } from "@/components/video/VideoPreviewModal";
@@ -12,16 +13,16 @@ import type { VideoSummary } from "@/apis/videos.api";
  * adds page chrome + a preview modal on click.
  */
 export default function Library() {
+  const { t } = useTranslation();
   const [preview, setPreview] = useState<VideoSummary | null>(null);
 
   return (
     <div className="h-full overflow-y-auto bg-neutral-50/40">
       <div className="mx-auto max-w-6xl px-8 py-8">
         <header className="mb-6">
-          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">Library</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">{t("playground.library.title")}</h1>
           <p className="mt-1 text-sm text-neutral-500">
-            Upload videos to make them searchable. Indexing runs automatically — videos appear here
-            once they're ready.
+            {t("playground.library.subtitle")}
           </p>
         </header>
 

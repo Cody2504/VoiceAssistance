@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ImageIcon, Plus, Send, Video as VideoIcon, X } from "lucide-react";
 
 import type { VideoSummary } from "@/apis/videos.api";
@@ -20,6 +21,7 @@ interface Props {
  * on the bottom-right. Accepts dropped video items (drag-and-drop from library).
  */
 export function ChatComposer({ attached, onRemove, onSend, onDropVideo, busy, placeholder }: Props) {
+  const { t } = useTranslation();
   const [text, setText] = useState("");
   const [chatMode, setChatMode] = useState(true);
   const [dragOver, setDragOver] = useState(false);
@@ -34,9 +36,9 @@ export function ChatComposer({ attached, onRemove, onSend, onDropVideo, busy, pl
   };
 
   const submit = () => {
-    const t = text.trim();
-    if (!t || busy) return;
-    onSend(t, attached.map((v) => v.id), image?.dataUrl);
+    const txt = text.trim();
+    if (!txt || busy) return;
+    onSend(txt, attached.map((v) => v.id), image?.dataUrl);
     setText("");
     setImage(null);
   };
@@ -84,7 +86,7 @@ export function ChatComposer({ attached, onRemove, onSend, onDropVideo, busy, pl
             <button
               type="button"
               onClick={() => setImage(null)}
-              aria-label="Remove image"
+              aria-label={t("chat.composer.remove_image_aria")}
               className="absolute -right-2 -top-2 grid h-6 w-6 place-items-center rounded-full bg-neutral-900 text-white shadow transition duration-150 ease-out hover:bg-neutral-700 active:scale-90 focus-visible:outline-2 focus-visible:outline-signal"
             >
               <X size={13} />
@@ -112,7 +114,7 @@ export function ChatComposer({ attached, onRemove, onSend, onDropVideo, busy, pl
           if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }
         }}
         rows={2}
-        placeholder={placeholder ?? "Chat with your videos"}
+        placeholder={placeholder ?? t("chat.composer.placeholder")}
         className="w-full resize-none border-0 px-4 pt-3 pb-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none"
       />
 
@@ -121,7 +123,7 @@ export function ChatComposer({ attached, onRemove, onSend, onDropVideo, busy, pl
           <button
             type="button"
             className="rounded-full p-2 text-neutral-600 transition duration-150 ease-out hover:bg-neutral-100 active:scale-95"
-            title="Attach (drag a video from the library here)"
+            title={t("chat.composer.attach_video_title")}
           >
             <Plus size={16} />
           </button>
@@ -129,8 +131,8 @@ export function ChatComposer({ attached, onRemove, onSend, onDropVideo, busy, pl
             type="button"
             onClick={() => fileRef.current?.click()}
             className="rounded-full p-2 text-neutral-600 transition duration-150 ease-out hover:bg-neutral-100 active:scale-95 focus-visible:outline-2 focus-visible:outline-signal"
-            title="Attach an image — ask Jockey to find the matching scene"
-            aria-label="Attach image"
+            title={t("chat.composer.attach_image_title")}
+            aria-label={t("chat.composer.attach_image_aria")}
           >
             <ImageIcon size={16} />
           </button>
@@ -143,7 +145,7 @@ export function ChatComposer({ attached, onRemove, onSend, onDropVideo, busy, pl
             )}
           >
             <VideoIcon size={12} />
-            Chat Mode
+            {t("chat.composer.chat_mode")}
           </button>
         </div>
 
@@ -152,7 +154,7 @@ export function ChatComposer({ attached, onRemove, onSend, onDropVideo, busy, pl
           onClick={submit}
           disabled={busy || !text.trim()}
           className="grid h-9 w-9 place-items-center rounded-full bg-neutral-900 text-white transition duration-150 ease-out hover:bg-neutral-700 active:scale-95 disabled:bg-neutral-200 disabled:text-neutral-400 disabled:active:scale-100"
-          aria-label="Send"
+          aria-label={t("chat.composer.send_aria")}
         >
           <Send size={14} />
         </button>

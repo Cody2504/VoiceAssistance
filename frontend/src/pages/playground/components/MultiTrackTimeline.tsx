@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 
 import { formatSeconds } from "@/lib/utils";
 
@@ -35,6 +36,7 @@ export function MultiTrackTimeline({
   onSeek,
   activePerTrack,
 }: Props) {
+  const { t } = useTranslation();
   const ticks = useMemo(() => {
     if (!duration || duration <= 0) return [] as number[];
     const step =
@@ -47,7 +49,7 @@ export function MultiTrackTimeline({
   if (!duration || duration <= 0) {
     return (
       <div className="rounded-[20px] bg-neutral-100 p-6 text-center text-xs text-neutral-500">
-        Waiting for results…
+        {t("pgkit.timeline.waiting")}
       </div>
     );
   }

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 import { GroundingTimeline } from "@/components/video/GroundingTimeline";
 import { VideoPlayer, type VideoPlayerHandle } from "@/components/video/VideoPlayer";
@@ -21,6 +22,7 @@ import { VideoPicker } from "./components/VideoPicker";
 import { GROUND_EXAMPLES, type GroundPreset } from "./data/examples";
 
 export default function Ground() {
+  const { t } = useTranslation();
   const [video, setVideo] = useState<VideoSummary | null>(null);
   const [query, setQuery] = useState("");
   const [running, setRunning] = useState(false);
@@ -47,11 +49,11 @@ export default function Ground() {
       const r = await groundVideo(video.id, query.trim());
       setResult(r);
       const found = (r.moments?.length ?? 0) + (r.shots?.length ?? 0);
-      if (found === 0) toast.info("No matching moments found");
+      if (found === 0) toast.info(t("playground.ground.no_moments"));
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        "Ground failed";
+        t("playground.ground.error");
       toast.error(msg);
     } finally {
       setRunning(false);
@@ -61,17 +63,20 @@ export default function Ground() {
   const canRun = !!video && supported && query.trim().length > 0 && !running;
   const seek = (t: number) => player.current?.seekTo(t);
 
+  const momentCount = moments.length;
+  const windowCount = result?.candidate_windows ?? 0;
+
   return (
     <PlaygroundShell
-      title="Ground"
-      subtitle="Locate the exact moment in a video that matches your text query."
+      title={t("playground.ground.title")}
+      subtitle={t("playground.ground.subtitle")}
       formPanel={
         <FormPanel
-          runLabel="Ground"
+          runLabel={t("playground.ground.title")}
           onRun={run}
           running={running}
           canRun={canRun}
-          hint="Uses Lighthouse CG-DETR (visual) or QD-DETR CLAP (audio-only). Returns exact (start, end) moments sorted by score."
+          hint={t("playground.ground.hint")}
         >
           <Field label="video" required>
             <VideoPicker selectedId={video?.id} onSelect={setVideo} />
@@ -81,7 +86,7 @@ export default function Ground() {
             <textarea
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Describe the moment you're looking for"
+              placeholder={t("playground.ground.placeholder")}
               className="min-h-[88px] w-full resize-none rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm focus:border-neutral-400 focus:outline-none"
             />
           </Field>
@@ -98,13 +103,13 @@ export default function Ground() {
         <>
           {video && !supported && (
             <div className="mb-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-              Ground is not available for this video (modality: <code>{video.modality}</code>).
+              {t("playground.ground.unsupported", { modality: video.modality })}
             </div>
           )}
           {result && (
             <ResultsPanel
-              title={`Moment grounding — "${result.query}"`}
-              counter={`${moments.length} moment${moments.length === 1 ? "" : "s"} · ${result.modality_used ?? "visual"} path · ${result.candidate_windows ?? 0} candidate window${(result.candidate_windows ?? 0) === 1 ? "" : "s"}`}
+              title={`${t("playground.ground.ranked_moments")} — "${result.query}"`}
+              counter={`${momentCount} ${momentCount === 1 ? t("playground.ground.results_counter", { count: momentCount, modality: result.modality_used ?? "visual", windows: windowCount }) : t("playground.ground.results_counter_plural", { count: momentCount, modality: result.modality_used ?? "visual", windows: windowCount })}`}
             >
               <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
                 <div className="space-y-3">
@@ -118,10 +123,10 @@ export default function Ground() {
 
                 <div className="space-y-1.5">
                   <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-500">
-                    Ranked moments
+                    {t("playground.ground.ranked_moments")}
                   </h3>
                   {moments.length === 0 && legacyShots.length === 0 ? (
-                    <p className="text-xs text-neutral-500">No moments matched.</p>
+                    <p className="text-xs text-neutral-500">{t("playground.ground.no_moments")}</p>
                   ) : moments.length > 0 ? (
                     <ul className="max-h-[360px] space-y-1 overflow-y-auto pr-2">
                       {moments.map((m, i) => (

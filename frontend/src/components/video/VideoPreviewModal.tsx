@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { getStreamUrl } from "@/apis/videos.api";
 
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function VideoPreviewModal({ open, videoId, startAt, onClose }: Props) {
+  const { t } = useTranslation();
   const [url, setUrl] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -41,7 +43,9 @@ export function VideoPreviewModal({ open, videoId, startAt, onClose }: Props) {
         {url ? (
           <video ref={videoRef} src={url} controls autoPlay className="aspect-video w-full" />
         ) : (
-          <div className="aspect-video w-full grid place-items-center text-neutral-400">Loading…</div>
+          <div className="aspect-video w-full grid place-items-center text-neutral-400">
+            {t("console.preview.loading")}
+          </div>
         )}
       </div>
     </div>
