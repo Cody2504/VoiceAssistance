@@ -1,4 +1,4 @@
-"""Ground tile — InternVideo2 cosine grounding (EXPERIMENTAL, behind a flag).
+"""Ground tile — InternVideo2 cosine grounding (PROD default backend).
 
 Parallel to ``ground_v2`` but simpler: InternVideo2 puts clips and queries in one
 512-d space, and cosine has no 150-second head cap, so we skip the dense-retrieval
@@ -8,8 +8,8 @@ Reads cached IV2 features at ``features/{video_id}/iv2/visual.npy`` (produced at
 ingest by the IV2 path, or by the offline extractor). Returns the same shape as
 ``ground_v2.GroundResult`` so the API/agent can consume either backend.
 
-Selected when ``settings.grounding_backend == "iv2"``. The live CG-DETR path
-(``ground_v2``) is untouched.
+Selected when ``settings.grounding_backend == "iv2"`` (the prod default). The
+``ground_v2`` CG-DETR/lighthouse path remains available as the fallback backend.
 """
 from __future__ import annotations
 

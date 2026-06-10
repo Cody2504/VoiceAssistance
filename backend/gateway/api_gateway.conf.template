@@ -35,6 +35,7 @@ server {
     # ---- IAM ----
     location /api/v1/auth/  { proxy_pass http://iam_upstream;  include /etc/nginx/conf.d/proxy_headers.inc; }
     location /api/v1/users/ { proxy_pass http://iam_upstream;  include /etc/nginx/conf.d/proxy_headers.inc; }
+    location /api/v1/admin/ { proxy_pass http://iam_upstream;  include /etc/nginx/conf.d/proxy_headers.inc; }
 
     # ---- Video service ----
     # Cloudflare-tunneled upstream (video-service on vast). We deliberately

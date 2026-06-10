@@ -18,4 +18,7 @@ class User(Base):
     # Google subject id ("sub"), set when the account is linked to Google.
     google_sub: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True, index=True)
     role: Mapped[str] = mapped_column(String(32), nullable=False, server_default="user")
+    # False = suspended by an admin; rejected at login/renew (existing access
+    # tokens ride out their TTL — acceptable at demo scale).
+    is_active: Mapped[bool] = mapped_column(nullable=False, server_default=text("true"))
     created_at: Mapped[datetime] = mapped_column(server_default=text("now()"), nullable=False)

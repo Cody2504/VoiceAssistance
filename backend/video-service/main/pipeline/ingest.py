@@ -5,9 +5,8 @@ Flow (always, per upload):
   1. ``ffprobe`` modality detection — picks the right branch below.
   2. Visual branch (modality=video_audio or video_only):
        a) Shot detect → 30-second segment grid aligned to scene cuts.
-       b) Per-segment: ViCLIP visual, wav2vec2 audio (skipped if no audio),
-          Whisper ASR (skipped if no audio), OCR, PANN events (skipped),
-          NSFW, VLM caption.
+       b) Per-segment: CLIP-L visual, Whisper ASR (skipped if no audio), OCR,
+          PANN events (skipped if no audio), NSFW, VLM caption.
        c) Whole-file CLIP+SlowFast features via Lighthouse — cached to MinIO
           at ``features/{video_id}/lighthouse/clip_slowfast.npy``.
   3. Audio branch (modality=audio_only OR has_audio=True):
@@ -77,7 +76,6 @@ class IngestArtifacts:
     has_audio: bool
     segments: list[tuple[float, float]]
     visual_embeddings: np.ndarray | None
-    audio_embeddings: np.ndarray | None
     caption_embeddings: np.ndarray | None
     captions: list[str]
     transcripts: list[str]
@@ -87,6 +85,11 @@ class IngestArtifacts:
     toxic_scores: list[float]
     lighthouse_visual_path: str | None
     lighthouse_audio_path: str | None
+    shot_actions: list[dict] | None = None  # VLM timestamped actions (roadmap #3); None when disabled
+    audio_event_embeddings: "np.ndarray | None" = None  # CLAP per-segment (roadmap #2); None when disabled
+    crop_embeddings: "list | None" = None  # (shot_idx, region, vec) image crops (roadmap #6); None when disabled
+    speaker_turns: list[dict] | None = None  # pyannote turns (research F); None when disabled
+    motion_embeddings: "np.ndarray | None" = None  # ViCLIP per-segment (research A); None when disabled
 
 
 def run_indexing(
@@ -131,6 +134,15 @@ def run_indexing(
 
     # --- 4. Qdrant upsert ---
     _upsert_qdrant(s, video_id, artifacts, summary, user_id, original_filename)
+
+    # --- 4a. Standing event timeline (Plan 1) ---
+    # After Qdrant upsert, before KG. Gated + best-effort: a failure here never
+    # blocks searchability or the rest of ingest.
+    if s.timeline_enabled:
+        try:
+            _run_timeline_for_video(video_id, artifacts, summary, s)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("ingest:timeline build failed for video=%s: %s", video_id, exc)
 
     # --- 4b. Knowledge-graph extraction (Phase 2a) ---
     # Runs after Qdrant upsert on purpose: if the LLM step fails halfway, the
@@ -199,24 +211,23 @@ def _ingest_with_video(local_path: str, video_id: UUID, mod, scratch: str) -> In
     segments = _align_segments_to_shots(duration, shots, segment_len=SEGMENT_LEN_SEC)
     log.info("ingest:visual segments=%d duration=%.1fs", len(segments), duration)
 
-    # Per-segment frame batches (used by ViCLIP, captioner, NSFW, OCR).
-    frame_batches = [extract_frames(local_path, s_, e_, max_frames=8) for s_, e_ in segments]
+    # Per-segment frame batches (used by CLIP-L, captioner, NSFW, OCR).
+    frame_batches = [extract_frames(local_path, s_, e_, max_frames=s.clipl_frames_per_segment) for s_, e_ in segments]
 
     visual_feats = _try_encode(
-        "viclip",
-        lambda: _encode_viclip(frame_batches),
+        "clipl",
+        lambda: _encode_clipl(frame_batches),
         fallback=lambda: np.zeros((len(segments), 768), dtype=np.float32),
     )
+    crop_embeddings = _try_encode(
+        "image_crops",
+        lambda: _encode_crop_embeddings(frame_batches, s.image_tile_grid) if s.image_tiling_enabled else None,
+        fallback=lambda: None,
+    )
 
-    audio_feats: np.ndarray | None = None
     transcripts = ["" for _ in segments]
     audio_tags_per_segment: list[list[dict]] = [[] for _ in segments]
     if mod.has_audio:
-        audio_feats = _try_encode(
-            "wav2vec2",
-            lambda: _encode_wav2vec2(local_path, segments),
-            fallback=lambda: np.zeros((len(segments), 768), dtype=np.float32),
-        )
         transcripts = _try_encode(
             "asr",
             lambda: _transcribe_segments(local_path, segments),
@@ -229,7 +240,6 @@ def _ingest_with_video(local_path: str, video_id: UUID, mod, scratch: str) -> In
         )
     else:
         log.info("ingest:audio skipped (modality=video_only)")
-        audio_feats = np.zeros((len(segments), 768), dtype=np.float32)
 
     ocr_texts = _try_encode(
         "ocr",
@@ -246,9 +256,29 @@ def _ingest_with_video(local_path: str, video_id: UUID, mod, scratch: str) -> In
         lambda: _caption_segments(frame_batches),
         fallback=lambda: ["" for _ in segments],
     )
+    shot_actions = _try_encode(
+        "vlm_actions",
+        lambda: _action_caption_segments(local_path, segments, settings=s),
+        fallback=lambda: [],
+    )
+    audio_event_embeddings = _try_encode(
+        "clap_audio_events",
+        lambda: _clap_audio_segments(local_path, segments, settings=s) if mod.has_audio else None,
+        fallback=lambda: None,
+    )
+    speaker_turns = _try_encode(
+        "diarize",
+        lambda: _diarize_speakers(local_path, settings=s) if mod.has_audio else None,
+        fallback=lambda: None,
+    )
+    motion_embeddings = _try_encode(
+        "motion",
+        lambda: _encode_motion(local_path, segments, settings=s),
+        fallback=lambda: None,
+    )
     caption_feats = _try_encode(
         "caption_embed",
-        lambda: _embed_captions(captions, transcripts),
+        lambda: _embed_captions(captions, transcripts, ocr_texts),
         fallback=lambda: np.zeros((len(segments), 3072), dtype=np.float32),
     )
     toxic_scores = _try_encode(
@@ -261,10 +291,19 @@ def _ingest_with_video(local_path: str, video_id: UUID, mod, scratch: str) -> In
     # IV2 path (grounding_backend=iv2): InternVideo2 [n,512] -> SG-DETR head.
     # Legacy path: Lighthouse CLIP+SlowFast -> CG-DETR. Encoded once over the
     # whole file; query time only runs the head on slices.
-    if s.grounding_backend == "iv2":
-        lighthouse_visual_key = _encode_iv2_visual(local_path, video_id, scratch)
-    else:
-        lighthouse_visual_key = _encode_lighthouse_visual(local_path, video_id, scratch)
+    # Best-effort: if the grounding weights aren't present (e.g. a fresh pod
+    # without /models), skip the feature cache rather than failing the whole
+    # ingest — OCR / CLAP / caption / timeline still index; only grounding +
+    # highlights for this video are unavailable until re-indexed with weights.
+    lighthouse_visual_key: str | None = None
+    try:
+        if s.grounding_backend == "iv2":
+            lighthouse_visual_key = _encode_iv2_visual(local_path, video_id, scratch)
+        else:
+            lighthouse_visual_key = _encode_lighthouse_visual(local_path, video_id, scratch)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("ingest:visual grounding-feature cache failed (weights missing?) "
+                    "— grounding/highlights unavailable for video=%s: %s", video_id, exc)
 
     # Audio CLAP features (cached) — only when audio is present. Used by the
     # Ground/Highlights audio fallback. Skipped under grounding_backend=iv2 for
@@ -273,7 +312,10 @@ def _ingest_with_video(local_path: str, video_id: UUID, mod, scratch: str) -> In
     # wasteful (audio-ONLY clips still go through the audio branch / lighthouse).
     lighthouse_audio_key: str | None = None
     if mod.has_audio and s.grounding_backend != "iv2":
-        lighthouse_audio_key = _encode_lighthouse_audio(local_path, video_id, scratch)
+        try:
+            lighthouse_audio_key = _encode_lighthouse_audio(local_path, video_id, scratch)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("ingest:audio CLAP grounding-feature cache failed for video=%s: %s", video_id, exc)
 
     return IngestArtifacts(
         modality=mod.label,
@@ -282,7 +324,6 @@ def _ingest_with_video(local_path: str, video_id: UUID, mod, scratch: str) -> In
         has_audio=mod.has_audio,
         segments=segments,
         visual_embeddings=visual_feats,
-        audio_embeddings=audio_feats,
         caption_embeddings=caption_feats,
         captions=captions,
         transcripts=transcripts,
@@ -292,6 +333,11 @@ def _ingest_with_video(local_path: str, video_id: UUID, mod, scratch: str) -> In
         toxic_scores=toxic_scores,
         lighthouse_visual_path=lighthouse_visual_key,
         lighthouse_audio_path=lighthouse_audio_key,
+        shot_actions=shot_actions,
+        audio_event_embeddings=audio_event_embeddings,
+        crop_embeddings=crop_embeddings,
+        speaker_turns=speaker_turns,
+        motion_embeddings=motion_embeddings,
     )
 
 
@@ -339,10 +385,15 @@ def _ingest_audio_only(local_path: str, video_id: UUID, mod, scratch: str) -> In
 
     lighthouse_audio_key = _encode_lighthouse_audio(local_path, video_id, scratch)
 
+    speaker_turns = _try_encode(
+        "diarize",
+        lambda: _diarize_speakers(local_path),
+        fallback=lambda: None,
+    )
+
     # Visual fields stay None / zeros so downstream code paths don't crash on
-    # missing keys. ViCLIP vector is zero — never matched in Search (intended).
+    # missing keys. CLIP-L vector is zero — never matched in Search (intended).
     visual_feats = np.zeros((len(segments), 768), dtype=np.float32)
-    audio_feats = np.zeros((len(segments), 768), dtype=np.float32)
     return IngestArtifacts(
         modality=mod.label,
         duration_s=duration,
@@ -350,7 +401,6 @@ def _ingest_audio_only(local_path: str, video_id: UUID, mod, scratch: str) -> In
         has_audio=True,
         segments=segments,
         visual_embeddings=visual_feats,
-        audio_embeddings=audio_feats,
         caption_embeddings=caption_feats,
         captions=captions,
         transcripts=transcripts,
@@ -360,6 +410,7 @@ def _ingest_audio_only(local_path: str, video_id: UUID, mod, scratch: str) -> In
         toxic_scores=toxic_scores,
         lighthouse_visual_path=None,
         lighthouse_audio_path=lighthouse_audio_key,
+        speaker_turns=speaker_turns,
     )
 
 
@@ -376,20 +427,32 @@ def _try_encode(stage: str, run, fallback):
         return fallback()
 
 
-def _encode_viclip(frame_batches):
-    from main.encoders.viclip_embedder import ViCLIPEmbedder
-    return ViCLIPEmbedder().encode_video_batch(frame_batches)
+def _encode_clipl(frame_batches):
+    from main.encoders.clipl_embedder import CLIPLEmbedder
+    return CLIPLEmbedder().encode_video_batch(frame_batches)
 
 
-def _encode_wav2vec2(local_path, segments):
-    from main.encoders.audio_encoder import AudioEncoder
-    enc = AudioEncoder()
-    return np.stack([enc.encode_audio(local_path, start_sec=s_, end_sec=e_) for s_, e_ in segments])
+def _encode_crop_embeddings(frame_batches, grid):
+    """Per-shot per-crop CLIP-L embeddings (roadmap #6, index side) for better
+    small-object / logo recall. Returns [(shot_idx, region, vec), ...]."""
+    from main.encoders.clipl_embedder import CLIPLEmbedder
+    from main.pipeline.image_tiling import tile_frames
+    emb = CLIPLEmbedder()
+    out = []
+    for shot_idx, frames in enumerate(frame_batches):
+        for region, crop in tile_frames(frames, grid):
+            if crop is None or len(crop) == 0:
+                continue
+            out.append((shot_idx, region, emb.encode_video(crop)))
+    return out
 
 
 def _transcribe_segments(local_path, segments):
     from main.encoders.asr_whisper import transcribe_segment  # type: ignore
     return [transcribe_segment(local_path, s_, e_) for s_, e_ in segments]
+
+
+_OCR_FRAMES_PER_SEGMENT = 8  # cap; ~1 fps up to this many frames per segment
 
 
 def _ocr_segments(local_path, segments):
@@ -398,9 +461,17 @@ def _ocr_segments(local_path, segments):
     enc = OCREncoder(device=_torch_device())
     out = []
     for s_, e_ in segments:
-        mid = (s_ + e_) / 2
-        frames = extract_frames(local_path, mid, mid + 0.5, max_frames=1)
-        out.append(enc.extract_from_frame(frames[0]) if frames is not None and len(frames) else "")
+        # Sample several frames across the segment and union the unique lines — a
+        # single midpoint frame misses transient overlays (title cards, ingredient
+        # captions, scoreboards). De-dupes text repeated across frames.
+        n = max(1, min(_OCR_FRAMES_PER_SEGMENT, int(round(e_ - s_))))
+        frames = extract_frames(local_path, s_, e_, max_frames=n)
+        seen: list[str] = []
+        for f in (frames if frames is not None else []):
+            t = (enc.extract_from_frame(f) or "").strip()
+            if t and t not in seen:
+                seen.append(t)
+        out.append(" | ".join(seen))
     return out
 
 
@@ -439,6 +510,86 @@ def _caption_segments(frame_batches):
     return cap.caption_batch(frame_batches)
 
 
+def _action_caption_segments(local_path, segments, *, settings=None) -> list[dict]:
+    """Eager VLM action re-caption (roadmap #3). For each segment: sample ~fps
+    frames (capped) and ask the VLM for timestamped actions, mapped to absolute
+    video time. Gated on vlm_actions_enabled; returns [] when off/unavailable."""
+    s = settings or get_settings()
+    if not s.vlm_actions_enabled:
+        return []
+    from main.encoders.indexer import extract_frames  # type: ignore
+    from main.encoders.action_captioner import ActionCaptioner
+    from main.encoders.config import config as _jockey_config
+
+    cap = ActionCaptioner.from_config(_jockey_config)
+    if not cap.is_available():
+        log.info("ingest:action captioner disabled — no action events")
+        return []
+    events: list[dict] = []
+    for (t0, t1) in segments:
+        dur = float(t1) - float(t0)
+        n = max(1, min(s.vlm_actions_max_frames, int(round(dur * s.vlm_actions_fps))))
+        frames = extract_frames(local_path, float(t0), float(t1), max_frames=n)
+        if frames is None or len(frames) == 0:
+            continue
+        events.extend(cap.caption_actions(
+            frames, clip_start=float(t0), clip_dur=dur, span_sec=s.vlm_actions_event_span_sec,
+        ))
+    return events
+
+
+def _clap_audio_segments(local_path, segments, *, settings=None):
+    """Per-segment CLAP audio embeddings (roadmap #2) for the audio-event vector
+    index. Gated on audio_events_enabled; returns None when off/unavailable."""
+    s = settings or get_settings()
+    if not s.audio_events_enabled:
+        return None
+    from main.encoders.clap_encoder import CLAPEncoder
+    enc = CLAPEncoder(use_cuda=(_torch_device() == "cuda"))
+    if not enc.is_available():
+        log.info("ingest:CLAP audio encoder disabled — no audio-event vectors")
+        return None
+    return enc.encode_audio_segments(local_path, segments)
+
+
+def _diarize_speakers(local_path, *, settings=None) -> list[dict] | None:
+    """Full-file pyannote speaker diarization (research F). Gated on
+    diarization_enabled; returns None when off/unavailable."""
+    s = settings or get_settings()
+    if not s.diarization_enabled:
+        return None
+    from main.encoders.config import config as _jockey_config
+    from main.encoders.diarizer import SpeakerDiarizer
+    d = SpeakerDiarizer.from_config(_jockey_config, s)
+    if not d.is_available():
+        log.info("ingest:diarizer disabled — no speaker turns")
+        return None
+    return d.diarize(local_path)
+
+
+def _encode_motion(local_path, segments, *, settings=None):
+    """Per-segment ViCLIP motion embeddings (research A) for the `jockey_motion`
+    index. Gated on motion_enabled; returns None when off/unavailable."""
+    s = settings or get_settings()
+    if not s.motion_enabled:
+        return None
+    from main.encoders.indexer import extract_frames  # type: ignore
+    from main.encoders.motion_encoder import MotionEncoder
+    enc = MotionEncoder.from_settings(s)
+    if not enc.is_available():
+        log.info("ingest:motion encoder disabled — no motion vectors")
+        return None
+    vecs = []
+    for (t0, t1) in segments:
+        frames = extract_frames(local_path, float(t0), float(t1), max_frames=s.motion_frames_per_segment)
+        if frames is None or len(frames) == 0:
+            vecs.append(np.zeros(s.motion_embedding_dim, dtype=np.float32))
+            continue
+        v = enc.encode_video(frames)
+        vecs.append(v if v is not None else np.zeros(s.motion_embedding_dim, dtype=np.float32))
+    return np.stack(vecs) if vecs else None
+
+
 def _caption_from_transcript(transcripts: list[str], audio_tags: list[list[dict]]) -> list[str]:
     """For audio-only inputs there are no frames. We synthesize a per-segment
     "caption-equivalent" from the transcript + top audio tags so the dense
@@ -474,7 +625,8 @@ def _caption_from_transcript(transcripts: list[str], audio_tags: list[list[dict]
     return out
 
 
-def _embed_captions(captions: list[str], transcripts: list[str]) -> np.ndarray:
+def _embed_captions(captions: list[str], transcripts: list[str],
+                    ocr_texts: list[str] | None = None) -> np.ndarray:
     from main.encoders.search import TextEmbedder
     from main.encoders.config import config
     if not config.openrouter_api_key:
@@ -484,13 +636,16 @@ def _embed_captions(captions: list[str], transcripts: list[str]) -> np.ndarray:
         model=config.text_embedding_model,
         base_url=config.openrouter_base_url,
     )
+    # roadmap #1 (semantic OCR): fold on-screen text into the embedded signal so
+    # segments are retrievable by their signage/slide text, not just speech+caption.
+    ocr = ocr_texts if ocr_texts is not None else ["" for _ in captions]
 
-    def _combine(t: str, c: str) -> str:
-        parts = [p for p in (t, c) if p]
+    def _combine(t: str, c: str, o: str) -> str:
+        parts = [p for p in (t, c, o) if p]
         return " | ".join(parts) if parts else " "
 
     return np.stack([
-        embedder.encode(_combine(transcripts[i], captions[i]))
+        embedder.encode(_combine(transcripts[i], captions[i], ocr[i]))
         for i in range(len(captions))
     ])
 
@@ -562,6 +717,24 @@ def _qdrant_point_id_for(video_id: UUID) -> "callable":
     return _impl
 
 
+def _run_timeline_for_video(video_id: UUID, artifacts, summary, settings) -> None:
+    """Build + persist the standing event timeline for one video. Builds its own
+    sync DB session (mirrors _run_kg_for_video_indexes)."""
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    from cm_shared.settings import get_base_settings
+    from main.pipeline.timeline.build import build_timeline
+
+    engine = create_engine(get_base_settings().sync_database_url, pool_pre_ping=True, future=True)
+    Session = sessionmaker(engine, expire_on_commit=False)
+    session = Session()
+    try:
+        build_timeline(video_id, artifacts, summary, settings=settings, db_session=session)
+    finally:
+        session.close()
+
+
 def _run_kg_for_video_indexes(
     *,
     video_id: UUID,
@@ -628,46 +801,31 @@ def _run_kg_for_video_indexes(
 # purpose since the worker is the only caller and a single ingest hits Qdrant
 # 2–3 times at most.
 _QDRANT_TIMEOUT_SEC = 300
-_QDRANT_BATCH = 32
-
-
-def _batched_upsert(client, collection_name: str, points: list) -> None:
-    """Upsert in fixed-size batches so a single oversized request doesn't
-    blow the 4 MiB Cloudflare body limit and so partial failure is recoverable."""
-    for i in range(0, len(points), _QDRANT_BATCH):
-        client.upsert(collection_name=collection_name, points=points[i:i + _QDRANT_BATCH])
 
 
 def _upsert_qdrant(s, video_id: UUID, a: IngestArtifacts, summary, user_id, original_filename) -> None:
-    from qdrant_client import QdrantClient
     from qdrant_client.http import models as qm
 
-    client = QdrantClient(host=s.qdrant_host, port=s.qdrant_port, timeout=_QDRANT_TIMEOUT_SEC)
+    from main.qdrant_util import batched_upsert, ensure_collection, get_qdrant_client, to_vector_list
+
+    client = get_qdrant_client(timeout=_QDRANT_TIMEOUT_SEC)
     existing = {c.name for c in client.get_collections().collections}
 
     if a.visual_embeddings is None or a.visual_embeddings.size == 0:
         log.warning("ingest:qdrant skipped — no visual embeddings (degenerate input)")
         return
     vec_dim = a.visual_embeddings.shape[1]
-    if s.qdrant_collection not in existing:
-        client.create_collection(
-            s.qdrant_collection,
-            vectors_config=qm.VectorParams(size=vec_dim, distance=qm.Distance.COSINE),
-        )
+    ensure_collection(client, s.qdrant_collection, vec_dim, existing=existing)
 
     # Per-segment text collection — used by the Analyze tile for dense
-    # retrieval against caption+transcript. Visual ViCLIP vectors live in
+    # retrieval against caption+transcript. Visual CLIP-L vectors live in
     # `qdrant_collection` (for visual Search); they are too far from text
     # space to give good caption-similarity scores at query time.
     text_collection = "jockey_segments_text"
     have_text_vecs = a.caption_embeddings is not None and a.caption_embeddings.size > 0
     if have_text_vecs:
         text_dim = a.caption_embeddings.shape[1]
-        if text_collection not in existing:
-            client.create_collection(
-                text_collection,
-                vectors_config=qm.VectorParams(size=text_dim, distance=qm.Distance.COSINE),
-            )
+        ensure_collection(client, text_collection, text_dim, existing=existing)
 
     window_size = s.summary_window_size_sec
     window_summary_by_idx = {w.idx: w.summary for w in summary.windows}
@@ -713,20 +871,63 @@ def _upsert_qdrant(s, video_id: UUID, a: IngestArtifacts, summary, user_id, orig
                     payload=payload,
                 )
             )
-    _batched_upsert(client, s.qdrant_collection, visual_points)
+    batched_upsert(client, s.qdrant_collection, visual_points)
     if text_points:
-        _batched_upsert(client, text_collection, text_points)
+        batched_upsert(client, text_collection, text_points)
+
+    # audio-event CLAP vectors (roadmap #2) -> jockey_audio_events (text-queryable)
+    if a.audio_event_embeddings is not None and a.audio_event_embeddings.size:
+        ae_coll = s.audio_events_collection
+        ae_dim = a.audio_event_embeddings.shape[1]
+        ensure_collection(client, ae_coll, ae_dim, existing=existing)
+        ae_points = [
+            qm.PointStruct(
+                id=str(uuid5(NAMESPACE_OID, f"{video_id}:{idx}")),
+                vector=a.audio_event_embeddings[idx].tolist(),
+                payload={"video_id": str(video_id), "t_start": float(t0), "t_end": float(t1),
+                         "audio_tags": a.audio_tags_per_segment[idx]},
+            )
+            for idx, (t0, t1) in enumerate(a.segments)
+        ]
+        batched_upsert(client, ae_coll, ae_points)
+
+    # ViCLIP motion vectors (research A) -> jockey_motion (temporal motion retrieval)
+    if a.motion_embeddings is not None and a.motion_embeddings.size:
+        m_coll = s.motion_collection
+        m_dim = a.motion_embeddings.shape[1]
+        ensure_collection(client, m_coll, m_dim, existing=existing)
+        m_points = [
+            qm.PointStruct(
+                id=str(uuid5(NAMESPACE_OID, f"{video_id}:{idx}:motion")),
+                vector=a.motion_embeddings[idx].tolist(),
+                payload={"video_id": str(video_id), "segment_idx": idx,
+                         "t_start": float(t0), "t_end": float(t1),
+                         "caption": a.captions[idx]},
+            )
+            for idx, (t0, t1) in enumerate(a.segments)
+        ]
+        batched_upsert(client, m_coll, m_points)
+
+    # image crop vectors (roadmap #6) -> jockey_shots (small-object / logo recall)
+    if a.crop_embeddings:
+        crop_points = []
+        for shot_idx, region, vec in a.crop_embeddings:
+            t0, t1 = a.segments[shot_idx]
+            crop_points.append(qm.PointStruct(
+                id=str(uuid5(NAMESPACE_OID, f"{video_id}:{shot_idx}:crop:{region}")),
+                vector=to_vector_list(vec),
+                payload={"video_id": str(video_id), "shot_idx": shot_idx,
+                         "t_start": float(t0), "t_end": float(t1), "crop": region},
+            ))
+        if crop_points:
+            batched_upsert(client, s.qdrant_collection, crop_points)
 
     # Per-video mean-pooled caption embedding for the Recommend tile.
     if a.caption_embeddings is not None and a.caption_embeddings.size > 0:
         try:
             metadata_vec = a.caption_embeddings.mean(axis=0).astype(np.float32)
             meta = "jockey_videos"
-            if meta not in {c.name for c in client.get_collections().collections}:
-                client.create_collection(
-                    meta,
-                    vectors_config=qm.VectorParams(size=int(metadata_vec.shape[0]), distance=qm.Distance.COSINE),
-                )
+            ensure_collection(client, meta, int(metadata_vec.shape[0]))
             client.upsert(
                 collection_name=meta,
                 points=[

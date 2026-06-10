@@ -16,7 +16,7 @@ SIGSEGVs. Concretely that means:
     so it only runs in the forked child.
 
 Cost of this design: every job cold-loads ~14 GB of model weights
-(Whisper distil-large + ViCLIP + CLAP + SlowFast + OCR + PANN + NSFW)
+(Whisper distil-large + CLIP-L + CLAP + SlowFast + OCR + PANN + NSFW)
 which is roughly 30–60 s of startup per video. The benefit is fault
 isolation — a SIGSEGV / OOM in one job no longer takes down the worker —
 and clean compatibility with CUDA MPS, which lets multiple replicas'

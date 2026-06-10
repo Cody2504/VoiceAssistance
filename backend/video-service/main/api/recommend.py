@@ -21,12 +21,9 @@ META_COLLECTION = "jockey_videos"
 
 
 def _qdrant():
-    from qdrant_client import QdrantClient
+    from main.qdrant_util import get_qdrant_client
 
-    from main.settings import get_settings
-
-    s = get_settings()
-    return QdrantClient(host=s.qdrant_host, port=s.qdrant_port)
+    return get_qdrant_client()
 
 
 @router.get("/{video_id}/similar")

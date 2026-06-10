@@ -25,10 +25,11 @@ def _sync_session() -> Session:
 
 
 def _drop_qdrant_shots(video_id: UUID) -> int:
-    from qdrant_client import QdrantClient
     from qdrant_client.http import models as qm
+
+    from main.qdrant_util import get_qdrant_client
     s = get_settings()
-    client = QdrantClient(host=s.qdrant_host, port=s.qdrant_port)
+    client = get_qdrant_client()
     res = client.delete(
         collection_name=s.qdrant_collection,
         points_selector=qm.FilterSelector(

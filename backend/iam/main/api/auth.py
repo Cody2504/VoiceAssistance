@@ -26,6 +26,8 @@ router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 def _token_response(user: User) -> dict:
     """Issue a Jockey access/refresh pair for `user` and shape the response
     exactly like /login and /register so the frontend reuses one handler."""
+    if not user.is_active:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Account suspended")
     tokens = TokenPair(
         access_token=issue_access(user.id, user.email, user.role),
         refresh_token=issue_refresh(user.id, user.email, user.role),
@@ -61,6 +63,8 @@ async def login(body: LoginRequest, session: AsyncSession = Depends(get_session)
     # password_hash is None for social-only (Google) accounts — reject cleanly.
     if not user or not user.password_hash or not pwd.verify(body.password, user.password_hash):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid credentials")
+    if not user.is_active:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Account suspended")
 
     tokens = TokenPair(
         access_token=issue_access(user.id, user.email, user.role),
@@ -76,6 +80,8 @@ async def renew(body: RefreshRequest, session: AsyncSession = Depends(get_sessio
     user = await session.get(User, payload.sub)
     if not user:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User no longer exists")
+    if not user.is_active:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Account suspended")
 
     tokens = TokenPair(
         access_token=issue_access(user.id, user.email, user.role),

@@ -452,33 +452,20 @@ def run_kg_extract(
 def _upsert_entity_points(points: Iterable[dict], settings: Settings) -> None:
     """Upsert entity-level embeddings into jockey_entities. Lazy import keeps
     qdrant-client out of the test harness."""
-    from qdrant_client import QdrantClient
     from qdrant_client.http import models as qm
 
-    client = QdrantClient(
-        host=settings.qdrant_host,
-        port=settings.qdrant_port,
-        timeout=300,  # mirrors ingest.py's defensive timeout
-    )
-    collection = settings.kg_qdrant_collection
-    existing_collections = {c.name for c in client.get_collections().collections}
+    from main.qdrant_util import batched_upsert, ensure_collection, get_qdrant_client
+
     points = list(points)
     if not points:
         return
+    client = get_qdrant_client(timeout=300)  # mirrors ingest.py's defensive timeout
+    collection = settings.kg_qdrant_collection
     dim = len(points[0]["vector"])
-    if collection not in existing_collections:
-        client.create_collection(
-            collection,
-            vectors_config=qm.VectorParams(size=dim, distance=qm.Distance.COSINE),
-        )
+    ensure_collection(client, collection, dim)
+    structs = [
+        qm.PointStruct(id=p["id"], vector=p["vector"], payload=p["payload"])
+        for p in points
+    ]
     # Upsert in modest batches to stay well under any body-size limit.
-    BATCH = 64
-    for i in range(0, len(points), BATCH):
-        chunk = points[i : i + BATCH]
-        client.upsert(
-            collection_name=collection,
-            points=[
-                qm.PointStruct(id=p["id"], vector=p["vector"], payload=p["payload"])
-                for p in chunk
-            ],
-        )
+    batched_upsert(client, collection, structs, batch_size=64)

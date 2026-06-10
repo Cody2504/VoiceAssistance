@@ -6,7 +6,8 @@ import json
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sse_starlette.sse import EventSourceResponse
 
@@ -14,6 +15,8 @@ from cm_shared.auth import TokenPayload, require_user
 from cm_shared.db import get_session
 from cm_shared.internal import current_image, current_jwt
 from cm_shared.schemas import ChatMessageIn
+from cm_shared.settings import get_base_settings
+from main.app.api.v1.persist import attach_tool_result
 from main.app.core.graph.graph import build_graph
 from main.app.db.models.conversation import Conversation, Message
 
@@ -22,12 +25,66 @@ router = APIRouter(prefix="/api/v1/chat", tags=["chat"])
 _AGENT = None
 
 
-def get_agent():
-    """Lazy-init so module import is cheap (Alembic, tests, etc.)."""
+def _checkpoint_conninfo() -> str:
+    """Plain psycopg conninfo for the LangGraph Postgres checkpointer."""
+    s = get_base_settings()
+    return (
+        f"postgresql://{s.postgres_user}:{s.postgres_password}"
+        f"@{s.postgres_host}:{s.postgres_port}/{s.postgres_db}"
+    )
+
+
+async def get_agent():
+    """Lazy-init so module import is cheap (Alembic, tests, etc.).
+
+    Standard LangGraph pattern: psycopg pool -> AsyncPostgresSaver -> setup()
+    (creates the checkpoint tables once) -> compile the graph with it.
+    """
     global _AGENT
     if _AGENT is None:
-        _AGENT = build_graph()
+        from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+        from psycopg_pool import AsyncConnectionPool
+
+        pool = AsyncConnectionPool(
+            _checkpoint_conninfo(),
+            max_size=5,
+            open=False,
+            kwargs={"autocommit": True, "prepare_threshold": 0},
+        )
+        await pool.open()
+        checkpointer = AsyncPostgresSaver(pool)
+        await checkpointer.setup()
+        _AGENT = build_graph(checkpointer)
     return _AGENT
+
+
+def rows_to_messages(rows) -> list:
+    """Our messages table rows -> LangChain messages (for one-time seeding)."""
+    out: list = []
+    for r in rows:
+        if r.role == "user":
+            out.append(HumanMessage(content=r.content or ""))
+        elif r.role == "assistant":
+            out.append(AIMessage(content=r.content or ""))
+    return out
+
+
+async def _seed_legacy_history(agent, config: dict, conversation_id: UUID, session: AsyncSession) -> None:
+    """Conversations older than the checkpointer have no thread state yet —
+    seed it once from our messages table, then the checkpointer owns it."""
+    state = await agent.aget_state(config)
+    if state.values.get("messages"):
+        return  # thread already has checkpointed history
+    rows = (
+        await session.execute(
+            select(Message)
+            .where(Message.conversation_id == conversation_id)
+            .order_by(Message.created_at.asc())
+        )
+    ).scalars().all()
+    prior = rows_to_messages(rows)
+    if prior:
+        await agent.aupdate_state(config, {"messages": prior})
 
 
 async def _event_stream(
@@ -53,6 +110,7 @@ async def _event_stream(
         "router_steps": 0,
     }
     config = {"configurable": {"thread_id": str(conversation_id)}}
+    await _seed_legacy_history(agent, config, conversation_id, session)
 
     async for ev in agent.astream_events(input_state, config=config, version="v2"):
         kind = ev.get("event")
@@ -77,7 +135,9 @@ async def _event_stream(
             yield {"event": "tool_call", "data": json.dumps(tc)}
 
         elif kind == "on_tool_end":
-            payload = {"tool": ev.get("name"), "result": data.get("output")}
+            result = data.get("output")
+            attach_tool_result(tool_calls, ev.get("name"), result)
+            payload = {"tool": ev.get("name"), "result": result}
             yield {"event": "tool_result", "data": json.dumps(payload, default=str)}
 
     msg_user = Message(conversation_id=conversation_id, role="user", content=message)
@@ -124,7 +184,7 @@ async def stream(
         session.add(convo)
         await session.commit()
 
-    agent = get_agent()
+    agent = await get_agent()
     return EventSourceResponse(
         _event_stream(agent, user_id, convo.id, video_ids, body.index_id, body.message, session)
     )

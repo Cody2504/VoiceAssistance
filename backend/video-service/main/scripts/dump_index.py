@@ -34,11 +34,11 @@ async def _videos_by_status() -> list[dict]:
 
 
 def _qdrant_shots_for(video_id: str) -> list[dict]:
-    from qdrant_client import QdrantClient
+    from main.qdrant_util import get_qdrant_client
     from qdrant_client.http import models as qm
 
     s = get_settings()
-    client = QdrantClient(host=s.qdrant_host, port=s.qdrant_port)
+    client = get_qdrant_client()
     points, _ = client.scroll(
         collection_name=s.qdrant_collection,
         scroll_filter=qm.Filter(must=[qm.FieldCondition(key="video_id", match=qm.MatchValue(value=str(video_id)))]),
@@ -59,10 +59,10 @@ def _qdrant_shots_for(video_id: str) -> list[dict]:
 
 
 def _collection_info() -> dict:
-    from qdrant_client import QdrantClient
+    from main.qdrant_util import get_qdrant_client
 
     s = get_settings()
-    client = QdrantClient(host=s.qdrant_host, port=s.qdrant_port)
+    client = get_qdrant_client()
     try:
         info = client.get_collection(s.qdrant_collection)
         # Sum up point count via count API for accuracy.

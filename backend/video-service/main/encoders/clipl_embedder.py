@@ -5,7 +5,7 @@ Uses openai/clip-vit-large-patch14 from HuggingFace transformers.
 For video, extracts frames and averages their CLIP embeddings.
 
 Usage:
-    embedder = ViCLIPEmbedder(device="cpu")
+    embedder = CLIPLEmbedder(device="cpu")
     video_emb = embedder.encode_video(frames)   # np.ndarray [768]
     text_emb = embedder.encode_text("a dog playing fetch")  # np.ndarray [768]
 """
@@ -23,7 +23,7 @@ log = logging.getLogger(__name__)
 DEFAULT_EMBEDDING_DIM = 768
 
 
-class ViCLIPEmbedder:
+class CLIPLEmbedder:
     """Wrapper around OpenAI CLIP ViT-L/14 for video-text embeddings.
 
     Uses the standard CLIP model (768-dim) from HuggingFace transformers.

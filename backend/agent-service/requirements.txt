@@ -5,11 +5,12 @@ langchain==0.3.7
 langchain-core==0.3.18
 langchain-openai==0.2.8
 langgraph==0.2.45
-langgraph-checkpoint-sqlite==2.0.1
+# Postgres checkpointer — durable per-thread state (replaces the in-process
+# MemorySaver + the manual history replay node).
+langgraph-checkpoint-postgres==2.0.2
+psycopg[binary]==3.2.3
+psycopg-pool==3.2.4
 openai>=1.54.0,<2.0.0
 
 # SSE response helper
 sse-starlette==2.1.3
-
-# aiosqlite for LangGraph checkpointer
-aiosqlite==0.20.0

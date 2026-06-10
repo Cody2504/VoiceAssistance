@@ -48,11 +48,12 @@ def _load_video_state(video_id: UUID) -> tuple[list[SegmentRecord], list[WindowS
     """Reconstruct (segments, windows) from this video's Qdrant text-payload
     rows. Returns None if the video has no payloads (not yet ingested or
     visual-only without the text collection)."""
-    from qdrant_client import QdrantClient
     from qdrant_client.http import models as qm
 
+    from main.qdrant_util import get_qdrant_client
+
     s = get_settings()
-    client = QdrantClient(host=s.qdrant_host, port=s.qdrant_port, timeout=120)
+    client = get_qdrant_client(timeout=120)
     try:
         collections = {c.name for c in client.get_collections().collections}
     except Exception as exc:

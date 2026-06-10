@@ -9,12 +9,7 @@ from typing import Any
 from langchain.tools import tool
 
 from cm_shared.internal import post_request
-
-
-def _unwrap(resp: Any) -> Any:
-    if isinstance(resp, dict) and "data" in resp and "success" in resp:
-        return resp.get("data")
-    return resp
+from cm_shared.response import unwrap_response as _unwrap
 
 
 @tool

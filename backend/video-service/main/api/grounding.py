@@ -1,9 +1,9 @@
 """Ground tile — moment retrieval for a specific natural-language query.
 
-Backed by `pipeline.ground_v2`: dense top-K candidate segments are merged into
-≤150-second windows, then Lighthouse CG-DETR (visual) or QD-DETR-CLAP (audio)
-runs on the cached feature slices and returns sub-second `(start, end, score)`
-moments deduped by 1-D IoU.
+Default backend (`grounding_backend="iv2"`): InternVideo2 features + the trained
+SG-DETR head (`pipeline.ground_iv2`). The "lighthouse" fallback merges dense top-K
+candidates into ≤150s windows and runs CG-DETR (visual) / QD-DETR-CLAP (audio)
+(`pipeline.ground_v2`). Both return sub-second `(start, end, score)` moments deduped by 1-D IoU.
 """
 from uuid import UUID
 
@@ -34,8 +34,9 @@ async def ground(
     if v.status != "ready":
         raise HTTPException(409, f"Video is not ready (status={v.status})")
 
-    # Backend dispatch: default CG-DETR/lighthouse, or experimental InternVideo2
-    # cosine grounding when grounding_backend == "iv2". Same response shape.
+    # Backend dispatch: default InternVideo2 + SG-DETR head; the "lighthouse"
+    # CG-DETR/QD-DETR path is the fallback (grounding_backend == "lighthouse").
+    # Same response shape either way.
     if get_settings().grounding_backend == "iv2":
         from main.pipeline.ground_iv2 import run_grounding_iv2
         result = run_grounding_iv2(str(video_id), body.query, modality=v.modality)

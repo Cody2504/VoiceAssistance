@@ -16,10 +16,11 @@ try:  # top-level export in modern stripe; fall back to the legacy module path
     from stripe import SignatureVerificationError
 except ImportError:  # pragma: no cover
     from stripe.error import SignatureVerificationError
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from cm_shared.auth import TokenPayload, require_user
+from cm_shared.auth import TokenPayload, require_admin, require_user
 from cm_shared.db import get_session
 from cm_shared.response import success_response
 from cm_shared.settings import get_base_settings
@@ -221,3 +222,28 @@ async def _resolve_subscription(session: AsyncSession, obj: dict) -> Subscriptio
             if found:
                 return found
     return None
+
+
+# --------------------------------------------------------------------------- #
+# admin: manual plan override (comps/demos). Coexists with Stripe test-mode —
+# stripe ids are left untouched, so a later webhook may overwrite plan/status.
+# --------------------------------------------------------------------------- #
+class AdminPlanPatch(BaseModel):
+    plan_id: str
+
+
+@router.patch("/admin/subscription/{user_id}")
+async def admin_set_plan(
+    user_id: UUID,
+    body: AdminPlanPatch,
+    payload: TokenPayload = Depends(require_admin),
+    session: AsyncSession = Depends(get_session),
+):
+    plan = (await session.execute(select(Plan).where(Plan.id == body.plan_id))).scalar_one_or_none()
+    if not plan:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Unknown plan: {body.plan_id}")
+    sub = await _get_or_create_subscription(session, user_id)
+    sub.plan_id = plan.id
+    sub.status = "active"
+    await session.commit()
+    return success_response({"user_id": str(user_id), "plan_id": sub.plan_id, "status": sub.status})

@@ -1,7 +1,7 @@
 """Shared LLM enrichment step for segmenter outputs.
 
 Each registered segmenter computes BOUNDARIES (its specialty — pyannote
-speaker turns, ViCLIP cosine drops, PANN audio-tag groupings, scene cuts,
+speaker turns, CLIP-L cosine drops, PANN audio-tag groupings, scene cuts,
 …). After boundaries, this helper fills the *user's* `definition.fields`
 schema by prompting an LLM with the cached shot context within each
 segment window. Enum constraints and `description` hints from the schema

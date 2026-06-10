@@ -5,7 +5,7 @@ reads the ordered per-shot captions + transcripts and marks where the activity /
 step / subject changes — so fixed-camera procedural videos (cooking demos,
 lectures, how-tos) split by step even when the picture barely changes. The
 FALLBACK (no API key, no text, single shot, or LLM failure) is the original
-VISUAL signal below: cosine on consecutive shot ViCLIP embeddings (768-d float,
+VISUAL signal below: cosine on consecutive shot CLIP-L embeddings (768-d float,
 CPU, no model load).
 
 Algorithm
@@ -147,7 +147,7 @@ def _segment_from_shots(
 
 
 def _visual_groups(shots: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
-    """Fallback grouping: split where adjacent ViCLIP cosine drops below the
+    """Fallback grouping: split where adjacent CLIP-L cosine drops below the
     threshold (the original visual-only behavior). Used when there is no LLM
     available / no text to read."""
     groups: list[list[dict[str, Any]]] = [[shots[0]]]

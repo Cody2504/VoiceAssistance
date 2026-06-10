@@ -1,6 +1,6 @@
 """Tool: find the scene/highlight in a video that matches an attached image.
 
-The user attaches an image to the chat turn; this tool embeds it (ViCLIP, via
+The user attaches an image to the chat turn; this tool embeds it (CLIP-L, via
 the video-service `/search/image` endpoint) against the video's shots and returns
 the best-matching scene(s) as truncated clips with (t_start, t_end). The image is
 not a tool argument (the LLM can't produce base64) — it's read from the per-request
@@ -11,12 +11,7 @@ from typing import Any, Literal
 from langchain.tools import tool
 
 from cm_shared.internal import current_image, post_request
-
-
-def _unwrap(resp: Any) -> Any:
-    if isinstance(resp, dict) and "data" in resp and "success" in resp:
-        return resp.get("data")
-    return resp
+from cm_shared.response import unwrap_response as _unwrap
 
 
 @tool

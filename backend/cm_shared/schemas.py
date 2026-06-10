@@ -11,6 +11,7 @@ class UserOut(BaseModel):
     id: UUID
     email: EmailStr
     role: Literal["admin", "user"]
+    is_active: bool = True
     created_at: datetime
 
 

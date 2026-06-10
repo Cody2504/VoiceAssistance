@@ -13,17 +13,16 @@ from main.settings import get_settings
 
 
 def _client():
-    from qdrant_client import QdrantClient
+    from main.qdrant_util import get_qdrant_client
 
-    s = get_settings()
-    return QdrantClient(host=s.qdrant_host, port=s.qdrant_port)
+    return get_qdrant_client()
 
 
 def read_shots(video_id: UUID, with_vectors: bool = False) -> list[dict[str, Any]]:
     """Return all per-shot rows for a video, sorted by shot_idx.
 
     Each row contains the payload fields written by `pipeline/ingest.py` plus
-    `vector` (the ViCLIP visual embedding) when `with_vectors=True`. Shots
+    `vector` (the CLIP-L visual embedding) when `with_vectors=True`. Shots
     with missing index or boundaries are filtered out so downstream segmenters
     can iterate without None-checks.
     """

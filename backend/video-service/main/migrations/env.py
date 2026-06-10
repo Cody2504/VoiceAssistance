@@ -12,6 +12,8 @@ from main.models import (  # noqa: F401
     Index,
     IndexingJob,
     IndexVideo,
+    TimelineSegment,
+    TimelineTrack,
     Video,
 )
 

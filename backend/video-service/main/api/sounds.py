@@ -19,10 +19,9 @@ router = APIRouter(prefix="/api/v1/videos", tags=["sounds"])
 
 
 def _qdrant():
-    from qdrant_client import QdrantClient
+    from main.qdrant_util import get_qdrant_client
 
-    s = get_settings()
-    return QdrantClient(host=s.qdrant_host, port=s.qdrant_port)
+    return get_qdrant_client()
 
 
 @router.get("/{video_id}/sounds")

@@ -42,11 +42,12 @@ class Settings(BaseServiceSettings):
     lighthouse_window_overlap_ratio: float = 0.5            # for highlight sliding scan
     lighthouse_highlight_query: str = "an interesting key moment or highlight from the video"
 
-    # InternVideo2 grounding (EXPERIMENTAL, behind a flag) — parallel to the
-    # CG-DETR/lighthouse path. See services/iv2_grounding_service.py +
-    # pipeline/ground_iv2.py. Validated standalone on a 3090; not yet wired into
-    # the default Ground tile. Switch the Ground backend with this flag.
-    grounding_backend: str = "lighthouse"                   # "lighthouse" | "iv2"
+    # Grounding backend for Ground + Highlights. PROD default: InternVideo2 + the
+    # trained SG-DETR head (services/iv2_grounding_service.py + pipeline/ground_iv2.py).
+    # "lighthouse" selects the older CG-DETR(visual)/QD-DETR(audio) fallback
+    # (services/lighthouse_service.py + pipeline/ground_v2.py). Override with the
+    # GROUNDING_BACKEND env var.
+    grounding_backend: str = "iv2"                          # "iv2" | "lighthouse"
     iv2_device: str = "cpu"
     iv2_video_ckpt: str = "/models/iv2/video_encoder.pt"    # SG-DETR FE traced InternVideo2-1b
     iv2_text_ckpt: str = "/models/iv2/text_encoder.pt"      # InternVideo2 text tower (bert-large)
@@ -56,10 +57,81 @@ class Settings(BaseServiceSettings):
     iv2_sgdetr_head_ckpt: str = "/models/iv2/sgdetr_head_state_dict.pt"
     iv2_clip_length_sec: float = 2.0
 
-    # Shot detection backend (ingest segment grid). "scenedetect" (PySceneDetect,
-    # default) | "transnet" (TransNetV2 PyTorch). TransNetV2 gives cleaner cuts on
-    # high-motion footage; falls back to PySceneDetect if weights/deps are missing.
-    shot_detector: str = "scenedetect"
+    # --- VLM action re-caption (roadmap #3): eager per-segment timestamped
+    # action captions, surfaced as the `vlm_actions` timeline track. ---
+    vlm_actions_enabled: bool = False          # build action captions at ingest
+    vlm_actions_fps: float = 1.0               # frame sampling rate per segment
+    vlm_actions_max_frames: int = 32           # hard cap on frames sent to the VLM per segment
+    vlm_actions_event_span_sec: float = 2.0    # synthetic event length around each action timestamp
+
+    # --- Standing event timeline + "when does X happen" fan-out (Plan 1/2/3) ---
+    timeline_enabled: bool = False                          # build the timeline at ingest
+    timeline_events_collection: str = "jockey_timeline_events"
+    timeline_default_tracks: tuple[str, ...] = (
+        "audio_events",
+        "on_screen_text",
+        "shots",
+        "spoken_topics",
+        "highlights",
+        "vlm_actions",
+        "speakers",
+    )
+    timeline_audio_event_min_score: float = 0.15           # min PANN score to count an audio event
+    timeline_highlights_top_k: int = 8                     # DETR highlight events per video
+    when_top_n: int = 10                                   # results returned by the "when" endpoint (Plan 2)
+    when_refine_default: bool = True                       # run DETR refine on moment-like queries (Plan 2)
+
+    # --- Audio-event vector index (roadmap #2): CLAP per-segment embeddings,
+    # text-queryable ("crowd cheer", whistle, music). ---
+    audio_events_enabled: bool = False
+    audio_events_collection: str = "jockey_audio_events"
+
+    # --- Speaker diarization (research F): pyannote speaker turns surfaced as
+    # the `speakers` timeline track ("who said X, when"). Model is HF-gated —
+    # needs HF_TOKEN with the pyannote terms accepted. ---
+    diarization_enabled: bool = False
+    diarization_model: str = "pyannote/speaker-diarization-3.1"
+
+    # --- Query-time object verification (research B): GroundingDINO re-ranks
+    # the top `when` candidates by open-vocab detection confidence for the
+    # query's object phrase. No ingest/index cost; GPU per verified query. ---
+    object_verify_enabled: bool = False
+    object_verify_model: str = "IDEA-Research/grounding-dino-base"
+    object_verify_top_k: int = 5               # candidates to verify per query
+    object_verify_frames: int = 3              # frames sampled per candidate window
+    # 0.35 = the official GroundingDINO repo default. Lower thresholds let the
+    # model hallucinate ~0.4-0.8 boxes on phrase-less frames (verified on-pod),
+    # which compresses the verify/demote gap; at 0.35 a true miss scores 0.0.
+    object_verify_box_threshold: float = 0.35  # min box confidence to count a detection
+    object_verify_boost: float = 0.5           # score multiplier slope on detection conf
+    object_verify_demote: float = 0.6          # floor multiplier when nothing is detected
+
+    # --- Motion retrieval stream (research A): real ViCLIP (temporal) per-segment
+    # video embeddings → `jockey_motion`, queried by the ViCLIP text tower as a
+    # `motion` fan-out stream + the corpus /search/motion endpoint. ---
+    motion_enabled: bool = False
+    motion_collection: str = "jockey_motion"
+    # NB: HF repo OpenGVLab/ViCLIP is gated (auto-approve) and names the file
+    # ViCLIP-L_InternVid-FLT-10M.pth — not the ViClip-InternVid-10M-FLT.pth the
+    # upstream code defaults to.
+    motion_weights: str = "/models/viclip/ViCLIP-L_InternVid-FLT-10M.pth"
+    motion_frames_per_segment: int = 8
+    motion_embedding_dim: int = 768
+
+    # --- Ingest sampling knob (roadmap #7): frames sampled per segment for the
+    # visual (CLIP-L) + caption encoders. More frames = better small-object
+    # / short-action coverage in the visual embedding, at GPU cost. ---
+    clipl_frames_per_segment: int = 8
+
+    # --- Image multi-crop / tiling (roadmap #6): embed grid crops of index
+    # frames + the query image in CLIP-L for better small-object / logo recall. ---
+    image_tiling_enabled: bool = False
+    image_tile_grid: int = 2
+
+    # Shot detection backend (ingest segment grid). PROD default: "transnet"
+    # (TransNetV2 PyTorch — cleaner cuts on high-motion footage; falls back to
+    # PySceneDetect if weights/deps are missing). "scenedetect" forces PySceneDetect.
+    shot_detector: str = "transnet"
     transnet_weights: str = "/models/transnetv2/transnetv2-pytorch-weights.pth"
 
     # Hierarchical summary (Analyze tile long-context Q&A)

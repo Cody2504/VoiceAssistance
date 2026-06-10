@@ -1,7 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cm_shared.auth import TokenPayload, require_user
@@ -48,3 +48,19 @@ async def get_conversation(conversation_id: UUID, payload: TokenPayload = Depend
             for m in msgs
         ],
     })
+
+
+@router.delete("/{conversation_id}")
+async def delete_conversation(
+    conversation_id: UUID,
+    payload: TokenPayload = Depends(require_user),
+    session: AsyncSession = Depends(get_session),
+):
+    convo = await session.get(Conversation, conversation_id)
+    if not convo or convo.user_id != UUID(payload.sub):
+        raise HTTPException(404, "Conversation not found")
+    # messages FK has no ON DELETE CASCADE — remove children explicitly.
+    await session.execute(delete(Message).where(Message.conversation_id == conversation_id))
+    await session.delete(convo)
+    await session.commit()
+    return success_response({"deleted": True})

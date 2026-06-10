@@ -109,19 +109,20 @@ def _dense_candidates(video_id: str, query: str, k: int) -> list[dict]:
     try:
         from main.encoders.search import TextEmbedder
         from main.encoders.config import config
-        from qdrant_client import QdrantClient
         from qdrant_client.http import models as qm
+
+        from main.qdrant_util import get_qdrant_client, to_vector_list
 
         embedder = TextEmbedder(
             api_key=config.openrouter_api_key,
             model=config.text_embedding_model,
             base_url=config.openrouter_base_url,
         )
-        client = QdrantClient(host=s.qdrant_host, port=s.qdrant_port, timeout=60)
+        client = get_qdrant_client(timeout=60)
         q_vec = embedder.encode(query)
         hits = client.search(
             collection_name="jockey_segments_text",
-            query_vector=q_vec.tolist() if hasattr(q_vec, "tolist") else list(q_vec),
+            query_vector=to_vector_list(q_vec),
             query_filter=qm.Filter(must=[
                 qm.FieldCondition(key="video_id", match=qm.MatchValue(value=video_id)),
             ]),

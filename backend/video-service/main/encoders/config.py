@@ -7,8 +7,7 @@ API models (via OpenRouter):
   - Video QA / VLM: qwen/qwen3-vl-8b-instruct
 
 Local models (via HuggingFace):
-  - Video encoder: OpenGVLab/ViCLIP
-  - Audio encoder: facebook/wav2vec2-base-960h
+  - Video encoder: openai/clip-vit-large-patch14 (CLIP-L; frames mean-pooled, NOT temporal ViCLIP)
 """
 import os
 from dataclasses import dataclass
@@ -63,65 +62,18 @@ class PipelineConfig:
     qdrant_port: int = int(os.environ.get("QDRANT_PORT", "6333"))
     qdrant_api_key: Optional[str] = os.environ.get("QDRANT_API_KEY", None)
 
-    # --- ViCLIP (Video Embeddings — Local HuggingFace) ---
-    viclip_model_name: str = os.environ.get("VICLIP_MODEL", "openai/clip-vit-large-patch14")
-    viclip_device: str = os.environ.get("VICLIP_DEVICE", _auto_device())
-    viclip_embedding_dim: int = 768
-
-    # --- Audio Encoder (wav2vec2 — Local HuggingFace) ---
-    audio_encoder_model: str = os.environ.get("AUDIO_ENCODER_MODEL", "facebook/wav2vec2-base-960h")
-    audio_encoder_device: str = os.environ.get("AUDIO_ENCODER_DEVICE", _auto_device())
-    audio_embedding_dim: int = 768
+    # --- CLIP-L visual embeddings (openai/clip-vit-large-patch14, Local HF) ---
+    # NB: env vars stay VICLIP_MODEL / VICLIP_DEVICE for deployment-contract compat.
+    clipl_model_name: str = os.environ.get("VICLIP_MODEL", "openai/clip-vit-large-patch14")
+    clipl_device: str = os.environ.get("VICLIP_DEVICE", _auto_device())
+    clipl_embedding_dim: int = 768
 
     # --- Text Embeddings (via OpenRouter API) ---
     text_embedding_model: str = os.environ.get("TEXT_EMBEDDING_MODEL", "openai/text-embedding-3-large")
     text_embedding_dim: int = 3072  # text-embedding-3-large output dimension
 
-    # --- Marengo mode (single unified encoder, single vector per clip) ---
-    # When True (default), the indexer skips audio + ASR + text-emb-of-ASR
-    # entirely and stores only the visual encoder's 768-d output per shot.
-    # The search side encodes the query through the same encoder's text
-    # tower and cosine-searches in the same 768-d space. This mirrors
-    # Marengo's "one unified frozen video-language encoder" architecture.
-    #
-    # Set False to fall back to the legacy multi-stage concat pipeline
-    # (visual + wav2vec2 + text-emb-3-large concatenated) — useful only
-    # for backward compat with old indexes / ablation experiments.
-    marengo_mode: bool = os.environ.get("MARENGO_MODE", "true").lower() in ("true", "1", "yes")
-
-    # --- ASR transcript indexing (Marengo "conversation" modality) -------
-    # When True, the indexer runs Whisper per shot and stores the transcript
-    # in the Qdrant point payload. Does NOT change the indexed vector — that
-    # stays single-encoder Marengo-shape. Enables the `find-in-transcript`
-    # tool to answer queries like "when does the instructor say X?".
-    # Critical for lecture / podcast / interview content where the audio IS
-    # the meaningful signal.
-    store_transcript: bool = os.environ.get("STORE_TRANSCRIPT", "false").lower() in ("true", "1", "yes")
-
-    # --- Fused Embedding ---
-    @property
-    def fused_embedding_dim(self) -> int:
-        """Stored vector dimension for the Qdrant collection.
-
-        Marengo mode  → 768 (just the visual encoder)
-        Legacy modes  → viclip+audio+text or viclip+text concat (3840 or 4608)
-        """
-        if self.marengo_mode:
-            return self.viclip_embedding_dim
-        if self.mediafm_enabled:
-            return self.viclip_embedding_dim + self.audio_embedding_dim + self.text_embedding_dim
-        return self.viclip_embedding_dim + self.text_embedding_dim
-
     # --- VLM / Video QA (via OpenRouter API) ---
     vlm_model: str = os.environ.get("VLM_MODEL", "qwen/qwen3-vl-8b-instruct")
-
-    # --- MediaFM Context Encoder ---
-    mediafm_enabled: bool = os.environ.get("MEDIAFM_ENABLED", "true").lower() in ("true", "1", "yes")
-    mediafm_hidden_dim: int = int(os.environ.get("MEDIAFM_HIDDEN_DIM", "512"))
-    mediafm_num_layers: int = int(os.environ.get("MEDIAFM_NUM_LAYERS", "3"))
-    mediafm_num_heads: int = int(os.environ.get("MEDIAFM_NUM_HEADS", "8"))
-    mediafm_device: str = os.environ.get("MEDIAFM_DEVICE", _auto_device())
-    mediafm_checkpoint: Optional[str] = os.environ.get("MEDIAFM_CHECKPOINT", None)
 
     # --- ASR ---
     # Backend: "whisperx" (default, faster-whisper CTranslate2) | "zipformer" (sherpa-onnx) | "none"

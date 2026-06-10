@@ -361,9 +361,10 @@ async def delete_video(
     # Qdrant: drop every shot/segment tied to this video_id across the three
     # collections the ingest pipeline writes to.
     try:
-        from qdrant_client import QdrantClient
         from qdrant_client.http import models as qm
-        client = QdrantClient(host=s.qdrant_host, port=s.qdrant_port)
+
+        from main.qdrant_util import get_qdrant_client
+        client = get_qdrant_client()
         selector = qm.FilterSelector(
             filter=qm.Filter(must=[
                 qm.FieldCondition(key="video_id", match=qm.MatchValue(value=str(video_id))),

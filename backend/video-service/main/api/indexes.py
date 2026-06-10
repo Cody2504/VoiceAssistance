@@ -350,7 +350,7 @@ async def search_within_index(
     Searches `jockey_segments_text` (text-embedding-3-large of caption +
     transcript per 30-second segment), filtered to the resolved set of videos
     in the index. For talking-head / lecture content this is a stronger
-    ranking signal than the ViCLIP visual similarity used by the global
+    ranking signal than the CLIP-L visual similarity used by the global
     /api/v1/videos/search endpoint.
 
     **Single-purpose: this endpoint does NOT consult the knowledge graph.**
@@ -382,14 +382,14 @@ async def search_within_index(
         return success_response({"query": body.query, "shots": []})
 
     from main.encoders.search import TextEmbedder
-    from qdrant_client import QdrantClient
+    from main.qdrant_util import get_qdrant_client
     from qdrant_client.http import models as qm
 
     s = get_settings()
     embedder = TextEmbedder(api_key=s.openrouter_api_key)
     qvec = embedder.encode(body.query).tolist()
 
-    client = QdrantClient(host=s.qdrant_host, port=s.qdrant_port, timeout=30)
+    client = get_qdrant_client(timeout=30)
     video_id_filter = qm.Filter(
         must=[qm.FieldCondition(key="video_id", match=qm.MatchAny(any=list(video_meta.keys())))]
     )
@@ -481,11 +481,11 @@ async def search_concepts(
     await _load_owned(session, index_id, user_id)
 
     from main.encoders.search import TextEmbedder
-    from qdrant_client import QdrantClient
+    from main.qdrant_util import get_qdrant_client
     from qdrant_client.http import models as qm
 
     s = get_settings()
-    client = QdrantClient(host=s.qdrant_host, port=s.qdrant_port, timeout=30)
+    client = get_qdrant_client(timeout=30)
     try:
         existing = {c.name for c in client.get_collections().collections}
     except Exception:
@@ -632,9 +632,9 @@ async def list_entity_mentions(
 
     # Pull per-segment transcript+caption from Qdrant payloads for the
     # segments we actually return. Single batched retrieve call.
-    from qdrant_client import QdrantClient
+    from main.qdrant_util import get_qdrant_client
     s = get_settings()
-    client = QdrantClient(host=s.qdrant_host, port=s.qdrant_port, timeout=30)
+    client = get_qdrant_client(timeout=30)
     point_ids = [str(r.EntityMention.qdrant_point_id) for r in rows]
     payload_by_id: dict[str, dict] = {}
     if point_ids:

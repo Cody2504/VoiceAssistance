@@ -29,7 +29,7 @@ Public API:
 
 ``caption_shot(frames)`` and ``caption_batch(frame_batches)`` accept the
 output of ``indexer.extract_frames`` directly (uint8 RGB [N, H, W, 3]).
-The caller is expected to have already sampled frames for ViCLIP — we
+The caller is expected to have already sampled frames for CLIP-L — we
 reuse the same batch rather than re-extracting.
 """
 import logging

@@ -15,6 +15,7 @@ from main.api.search import router as search_router
 from main.api.sounds import router as sounds_router
 from main.api.segments import router as segments_router
 from main.api.videos import router as videos_router
+from main.api.when import router as when_router
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(name)s | %(message)s")
 settings = get_base_settings()
@@ -40,6 +41,7 @@ app.include_router(moderate_router)
 app.include_router(sounds_router)
 app.include_router(qa_router)
 app.include_router(edit_router)
+app.include_router(when_router)
 
 
 @app.on_event("startup")
