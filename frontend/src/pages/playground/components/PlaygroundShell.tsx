@@ -12,12 +12,16 @@ export function PlaygroundShell({
   subtitle,
   formPanel,
   examplesPanel,
+  browsePanel,
   resultsPanel,
 }: {
   title: string;
   subtitle: string;
   formPanel: ReactNode;
   examplesPanel: ReactNode;
+  /** When provided, the right column renders this full-bleed (no headline /
+   *  "start with an example") — used to browse a selected index's videos. */
+  browsePanel?: ReactNode;
   resultsPanel?: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -36,13 +40,17 @@ export function PlaygroundShell({
 
         <div className="grid gap-8 lg:grid-cols-[minmax(0,460px)_minmax(0,1fr)]">
           <section>{formPanel}</section>
-          <section className="flex flex-col items-center pt-4">
-            <h2 className="max-w-[640px] text-center text-[24px] font-normal tracking-[-0.3px] text-[var(--color-obsidian)]">
-              {subtitle}
-            </h2>
-            <p className="mt-3 text-[13px] text-[var(--color-gravel)]">{t("pgkit.shell.start_with_example")}</p>
-            <div className="mt-6 w-full">{examplesPanel}</div>
-          </section>
+          {browsePanel ? (
+            <section className="pt-1">{browsePanel}</section>
+          ) : (
+            <section className="flex flex-col items-center pt-4">
+              <h2 className="max-w-[640px] text-center text-[24px] font-normal tracking-[-0.3px] text-[var(--color-obsidian)]">
+                {subtitle}
+              </h2>
+              <p className="mt-3 text-[13px] text-[var(--color-gravel)]">{t("pgkit.shell.start_with_example")}</p>
+              <div className="mt-6 w-full">{examplesPanel}</div>
+            </section>
+          )}
         </div>
 
         {resultsPanel && <section className="mt-10">{resultsPanel}</section>}

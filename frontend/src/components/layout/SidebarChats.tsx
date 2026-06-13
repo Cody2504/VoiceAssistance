@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
-import { MoreHorizontal, Trash2 } from "lucide-react";
+import { ChevronDown, MoreHorizontal, Trash2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { deleteConversation } from "@/apis/chat.api";
@@ -24,7 +24,17 @@ export function SidebarChats() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [menuFor, setMenuFor] = useState<string | null>(null);
+  // Collapsible section — remembered across sessions so users who don't chat
+  // much can keep the sidebar compact.
+  const [open, setOpen] = useState(() => localStorage.getItem("sidebar-chats-open") !== "0");
   const menuRef = useRef<HTMLDivElement | null>(null);
+
+  function toggleOpen() {
+    setOpen((v) => {
+      localStorage.setItem("sidebar-chats-open", v ? "0" : "1");
+      return !v;
+    });
+  }
 
   // Close the row menu on outside click / Escape.
   useEffect(() => {
@@ -57,12 +67,22 @@ export function SidebarChats() {
 
   return (
     <div className="mb-6 min-h-0">
-      <p className="px-1 pb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-slate)]">
+      <button
+        type="button"
+        onClick={toggleOpen}
+        aria-expanded={open}
+        className="flex w-full cursor-pointer items-center justify-between rounded-lg px-1 pb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-slate)] transition hover:text-[var(--color-obsidian)]"
+      >
         {t("chat.sidebar.chats_heading")}
-      </p>
-      {isError && (
+        <ChevronDown
+          size={13}
+          className={cn("transition-transform duration-200", !open && "-rotate-90")}
+        />
+      </button>
+      {open && isError && (
         <p className="px-1 text-[12px] text-[var(--color-gravel)]">{t("chat.sidebar.load_failed")}</p>
       )}
+      {open && (
       <div className="max-h-[30vh] space-y-0.5 overflow-y-auto">
         {(conversations ?? []).map((c) => (
           <div key={c.id} className="group relative">
@@ -103,6 +123,7 @@ export function SidebarChats() {
           </div>
         ))}
       </div>
+      )}
     </div>
   );
 }

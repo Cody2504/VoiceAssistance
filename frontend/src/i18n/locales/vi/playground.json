@@ -23,7 +23,8 @@
       "no_matches_library": "Thư viện",
       "no_matches_found": "Không tìm thấy kết quả phù hợp",
       "see_full_video": "Xem video đầy đủ",
-      "entity_alt": "thực thể truy vấn"
+      "entity_alt": "thực thể truy vấn",
+      "back_to_videos": "Xem danh sách video"
     },
     "ground": {
       "title": "Định vị",
@@ -47,7 +48,12 @@
       "citations": "Trích dẫn",
       "no_citations": "Không có mốc thời gian nào được trích dẫn.",
       "unsupported": "Video này không có nội dung hình ảnh hoặc âm thanh khả dụng cho tile Phân tích (phương thức: {{modality}}).",
-      "error": "Phân tích thất bại"
+      "error": "Phân tích thất bại",
+      "view_visual": "Hình ảnh",
+      "view_json": "JSON",
+      "model_name": "Stride",
+      "generated_at": "tạo lúc {{time}}",
+      "meta": "{{windows}} cửa sổ · {{segments}} đoạn"
     },
     "highlights": {
       "title": "Điểm nhấn",
@@ -100,14 +106,14 @@
       "advanced_settings": "Cài đặt nâng cao",
       "reset": "Đặt lại",
       "with_pipeline": "với",
-      "pipeline_name": "pipeline tl-jockey",
+      "pipeline_name": "Stride",
       "run_label": "Phân đoạn",
       "running_label": "Đang phân đoạn…",
       "run_shortcut": "Ctrl+↵",
       "empty_state": "Chọn video và nhấn Phân đoạn để xem dòng thời gian đa kênh + metadata.",
       "view_visual": "Hình ảnh",
       "view_json": "JSON",
-      "generated_label": "pipeline tl-jockey · vừa tạo xong",
+      "generated_label": "Stride · vừa tạo xong",
       "segments_count": "{{count}} phân đoạn",
       "save": "Lưu",
       "save_placeholder": "Tên cài đặt trước (VD: 'NBA highlights v2')",

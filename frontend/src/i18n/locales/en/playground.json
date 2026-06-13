@@ -23,7 +23,8 @@
       "no_matches_library": "Library",
       "no_matches_found": "No matches found",
       "see_full_video": "See full video",
-      "entity_alt": "query entity"
+      "entity_alt": "query entity",
+      "back_to_videos": "See video list"
     },
     "ground": {
       "title": "Ground",
@@ -47,7 +48,12 @@
       "citations": "Citations",
       "no_citations": "No timestamps cited.",
       "unsupported": "This video has no usable visual or audio content for the Analyze tile (modality: {{modality}}).",
-      "error": "Analyze failed"
+      "error": "Analyze failed",
+      "view_visual": "Visual",
+      "view_json": "JSON",
+      "model_name": "Stride",
+      "generated_at": "generated {{time}}",
+      "meta": "{{windows}} windows · {{segments}} segments"
     },
     "highlights": {
       "title": "Highlights",
@@ -100,14 +106,14 @@
       "advanced_settings": "Advanced Settings",
       "reset": "Reset",
       "with_pipeline": "with",
-      "pipeline_name": "tl-jockey pipeline",
+      "pipeline_name": "Stride",
       "run_label": "Segment",
       "running_label": "Segmenting…",
       "run_shortcut": "Ctrl+↵",
       "empty_state": "Pick a video and hit Segment to see the multi-track timeline + metadata.",
       "view_visual": "Visual",
       "view_json": "JSON",
-      "generated_label": "tl-jockey pipeline · generated just now",
+      "generated_label": "Stride · generated just now",
       "segments_count": "{{count}} segments",
       "save": "Save",
       "save_placeholder": "Preset name (e.g. 'NBA highlights v2')",

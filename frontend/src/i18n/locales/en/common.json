@@ -104,10 +104,7 @@
       "analyze": "Analyze",
       "segment": "Segment",
       "examples": "Examples",
-      "api_keys": "API Keys",
       "settings": "Settings",
-      "api_docs": "API Docs",
-      "help": "Help",
       "collapse": "Collapse",
       "collapse_tooltip": "Collapse sidebar",
       "expand_tooltip": "Expand sidebar"

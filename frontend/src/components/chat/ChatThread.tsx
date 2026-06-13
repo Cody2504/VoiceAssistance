@@ -309,12 +309,31 @@ function extractClips(tool: string, result: unknown): ClipResult[] {
   if (!result || typeof result !== "object") return [];
   const r = result as Record<string, unknown>;
   const videoId = (r.video_id as string) ?? "";
-  if (!(tool.includes("ground") || tool.includes("search"))) return [];
+  if (!(tool.includes("ground") || tool.includes("search") || tool.includes("highlight") || tool.includes("similar")))
+    return [];
 
-  // ground_video returns time-range `moments` (no shots). Surface the TOP-3 as
-  // clickable clip cards — the top-1 isn't always the right moment, so the user
-  // can scan candidates. Each plays from its t_start; score shown as a %.
-  if (tool.includes("ground")) {
+  // find_similar returns whole-video `results` — render each as a parent-video
+  // tile (plays from t=0, shows full duration), top-5, ranked by score.
+  if (tool.includes("similar")) {
+    const results = (r.results as Array<Record<string, unknown>>) ?? [];
+    return results
+      .filter((v) => typeof v.video_id === "string")
+      .slice(0, 5)
+      .map((v) => ({
+        video_id: v.video_id as string,
+        t_start: 0,
+        t_end: typeof v.duration_s === "number" ? (v.duration_s as number) : 0,
+        video_duration_s: typeof v.duration_s === "number" ? (v.duration_s as number) : undefined,
+        original_filename: typeof v.original_filename === "string" ? (v.original_filename as string) : undefined,
+        score: typeof v.score === "number" ? (v.score as number) : undefined,
+        display_mode: "parent_video" as const,
+      }));
+  }
+
+  // ground_video + get_highlights both return time-range `moments`. Surface the
+  // TOP-3 as clickable clip cards — the top-1 isn't always the right moment, so
+  // the user can scan candidates. Each plays from its t_start; score shown as %.
+  if (tool.includes("ground") || tool.includes("highlight")) {
     const moments = (r.moments as Array<Record<string, unknown>>) ?? [];
     return moments
       .filter((m) => typeof m.t_start === "number" && typeof m.t_end === "number")

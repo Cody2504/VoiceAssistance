@@ -1,12 +1,14 @@
 import { useCallback, useMemo, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { Info, ArrowRight, Search as SearchIcon, ChevronDown, X, Play, MoreVertical } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { PillButton } from "@/components/ui/PillButton";
-import { createIndex, deleteIndex, type IndexSummary } from "@/apis/indexes.api";
+import { deleteIndex, listIndexVideos } from "@/apis/indexes.api";
+import { CreateIndexWizard } from "./CreateIndexWizard";
 import { useVideosQuery, useIndexesQuery, qk } from "@/apis/queries";
 import { useAuth } from "@/contexts/AuthContext";
+import { VideoThumb } from "@/components/video/VideoThumb";
 import { cn } from "@/lib/utils";
 
 type SortKey = "recent" | "name" | "duration";
@@ -21,6 +23,8 @@ interface IndexCardData {
   href?: string;
   sortableTime: number;
   isReal: boolean;
+  /** Cover video ids for the default (library) card — real indexes fetch their own. */
+  previewIds?: string[];
 }
 
 function fmtDuration(totalSec: number): string {
@@ -43,6 +47,19 @@ function IndexCard({ data, onDelete }: { data: IndexCardData; onDelete?: (id: st
     "real-e": "bg-gradient-to-br from-lime-100 via-emerald-100 to-orange-100",
   }[data.variant];
 
+  // TwelveLabs-style 2×2 cover mosaic. Real indexes fetch their first videos;
+  // the default (library) card gets ids passed in. Unfilled cells keep the
+  // gradient backdrop.
+  const { data: entries } = useQuery({
+    queryKey: ["index-videos-preview", data.id],
+    queryFn: () => listIndexVideos(data.id),
+    enabled: data.isReal && data.videos > 0,
+    staleTime: 60_000,
+  });
+  const previewIds = data.isReal
+    ? (entries ?? []).slice(0, 4).map((e) => e.video_id)
+    : (data.previewIds ?? []).slice(0, 4);
+
   const body = (
     <div className="group cursor-pointer">
       <div
@@ -52,7 +69,19 @@ function IndexCard({ data, onDelete }: { data: IndexCardData; onDelete?: (id: st
           tile,
         )}
       >
-        <div className="absolute bottom-3 left-3 inline-flex items-center gap-2 rounded-md bg-black/55 px-2 py-1 text-[11px] text-white">
+        {previewIds.length > 0 && (
+          <div
+            className={cn(
+              "absolute inset-0 grid gap-px",
+              previewIds.length === 1 ? "grid-cols-1 grid-rows-1" : "grid-cols-2 grid-rows-2",
+            )}
+          >
+            {previewIds.map((vid) => (
+              <VideoThumb key={vid} videoId={vid} className="h-full w-full rounded-none bg-transparent ring-0" />
+            ))}
+          </div>
+        )}
+        <div className="absolute bottom-3 left-3 z-10 inline-flex items-center gap-2 rounded-md bg-black/55 px-2 py-1 text-[11px] text-white">
           <Play size={11} fill="currentColor" />
           {data.videos === 1
             ? t("console.indexes.video_count_one", { count: data.videos })
@@ -109,108 +138,6 @@ function IndexCard({ data, onDelete }: { data: IndexCardData; onDelete?: (id: st
   );
 }
 
-function CreateIndexModal({
-  open,
-  onClose,
-  onCreated,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onCreated: (summary: IndexSummary) => void;
-}) {
-  const { t } = useTranslation();
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  if (!open) return null;
-
-  const submit = async () => {
-    if (!title.trim()) {
-      setError(t("console.create_index_modal.error_title_required"));
-      return;
-    }
-    setSubmitting(true);
-    setError(null);
-    try {
-      const created = await createIndex({
-        title: title.trim(),
-        description: description.trim() || undefined,
-      });
-      onCreated(created);
-      setTitle("");
-      setDescription("");
-      onClose();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t("console.create_index_modal.error_create_failed"));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 p-6" onClick={onClose}>
-      <div
-        className="w-full max-w-[440px] rounded-2xl bg-white p-6 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-[16px] font-semibold text-[var(--color-obsidian)]">
-            {t("console.create_index_modal.title")}
-          </h2>
-          <button onClick={onClose} className="rounded p-1 text-[var(--color-gravel)] hover:bg-[var(--color-powder)]">
-            <X size={16} />
-          </button>
-        </div>
-        <p className="mb-4 text-[12px] text-[var(--color-gravel)]">
-          {t("console.create_index_modal.description")}
-        </p>
-        <label className="mb-3 block">
-          <span className="mb-1 block text-[12px] font-medium text-[var(--color-obsidian)]">
-            {t("console.create_index_modal.label_title")}
-          </span>
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder={t("console.create_index_modal.placeholder_title")}
-            className="h-9 w-full rounded-md border border-[var(--color-chalk)] bg-white px-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-[var(--color-obsidian)]/10"
-            autoFocus
-          />
-        </label>
-        <label className="mb-4 block">
-          <span className="mb-1 block text-[12px] font-medium text-[var(--color-obsidian)]">
-            {t("console.create_index_modal.label_description")}{" "}
-            <span className="text-[var(--color-gravel)]">{t("console.create_index_modal.optional")}</span>
-          </span>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={3}
-            className="w-full rounded-md border border-[var(--color-chalk)] bg-white px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-[var(--color-obsidian)]/10"
-          />
-        </label>
-        {error && <p className="mb-3 text-[12px] text-rose-600">{error}</p>}
-        <div className="flex justify-end gap-2">
-          <button
-            onClick={onClose}
-            className="rounded-full px-4 py-1.5 text-[13px] text-[var(--color-gravel)] hover:bg-[var(--color-powder)]"
-          >
-            {t("actions.cancel")}
-          </button>
-          <button
-            onClick={submit}
-            disabled={submitting}
-            className="rounded-full bg-[var(--color-obsidian)] px-4 py-1.5 text-[13px] text-white transition duration-150 ease-out hover:bg-neutral-800 active:scale-[0.97] disabled:opacity-50 disabled:active:scale-100"
-          >
-            {submitting ? t("console.create_index_modal.btn_creating") : t("console.create_index_modal.btn_create")}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 const VARIANT_ROTATION: IndexCardData["variant"][] = [
   "real-c", "real-a", "real-d", "real-b", "real-e",
 ];
@@ -260,9 +187,10 @@ export default function Indexes() {
         date: new Date().toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }),
       }),
       variant: "default",
-      href: "/playground/library",
+      href: "/indexes/default",
       sortableTime: Date.now(),
       isReal: false,
+      previewIds: videos.slice(0, 4).map((v) => v.id),
     };
     const realCards: IndexCardData[] = indexes.map((idx, n) => ({
       id: idx.id,
@@ -380,7 +308,7 @@ export default function Indexes() {
         ))}
       </div>
 
-      <CreateIndexModal
+      <CreateIndexWizard
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         onCreated={() => reloadIndexes()}

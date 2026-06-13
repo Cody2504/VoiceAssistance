@@ -13,10 +13,7 @@ import {
   AnalyzeDefault, AnalyzeFilled,
   SegmentDefault, SegmentFilled,
   ExamplesDefault, ExamplesFilled,
-  APIKeysDefault,
   SettingsDefault,
-  APIDocsDefault,
-  HelpDefault,
   CollapseDefault,
 } from "@/components/brand/SidebarIcons";
 import { SidebarChats } from "@/components/layout/SidebarChats";
@@ -49,7 +46,8 @@ function WorkspaceButton() {
         <Plus size={16} strokeWidth={2.25} />
       ) : (
         <>
-          <span>{t("chat.sidebar.new_chat")}</span>
+          {/* pr clears the absolutely-positioned + icon so long labels (vi) truncate instead of running under it */}
+          <span className="truncate pr-7">{t("chat.sidebar.new_chat")}</span>
           <span className="absolute right-2 flex items-center justify-center">
             <Plus size={16} strokeWidth={2.25} />
           </span>
@@ -66,10 +64,8 @@ function SidebarFooter() {
   return (
     <div className="flex flex-col">
       <div className="mt-auto flex flex-col gap-y-1">
-        <SidebarItem to="/settings/api-keys" icon={<APIKeysDefault />} label={t("layout.sidebar.api_keys")} />
+        {/* API keys / API docs / Help live as tabs inside Settings — one entry here is enough. */}
         <SidebarItem to="/settings/billing" icon={<SettingsDefault />} label={t("layout.sidebar.settings")} />
-        <SidebarItem to="/settings/api-keys" icon={<APIDocsDefault />} label={t("layout.sidebar.api_docs")} />
-        <SidebarItem to="/settings/profile" icon={<HelpDefault />} label={t("layout.sidebar.help")} />
       </div>
 
       <div className="mt-6 flex flex-col gap-y-1">

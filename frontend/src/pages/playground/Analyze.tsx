@@ -1,12 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
+import { Check, Copy, Sparkles } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
-import { VideoPlayer, type VideoPlayerHandle } from "@/components/video/VideoPlayer";
 import {
   askVideo,
-  getStreamUrl,
+  listVideos,
   tileSupportsModality,
   type AnalyzeResponse,
   type VideoSummary,
@@ -15,9 +16,9 @@ import {
 import { PlaygroundShell } from "./components/PlaygroundShell";
 import { FormPanel, Field } from "./components/FormPanel";
 import { ExamplesPanel } from "./components/ExamplesPanel";
-import { ResultsPanel } from "./components/ResultsPanel";
 import { AdvancedSettings } from "./components/AdvancedSettings";
 import { VideoPicker } from "./components/VideoPicker";
+import { cn } from "@/lib/utils";
 import { ANALYZE_EXAMPLES, type AnalyzePreset } from "./data/examples";
 
 interface FormState extends AnalyzePreset {
@@ -29,23 +30,28 @@ const DEFAULT_FORM: FormState = { prompt: "", use_range: false };
 export default function Analyze() {
   const { t } = useTranslation();
   const [video, setVideo] = useState<VideoSummary | null>(null);
+  const [searchParams] = useSearchParams();
+
+  // Deep-link support: /playground/analyze?video_id=<id> auto-selects the video
+  // (used by the index-detail Analyze buttons). index_id is accepted but unused.
+  useEffect(() => {
+    const vid = searchParams.get("video_id");
+    if (!vid) return;
+    listVideos()
+      .then((vs) => {
+        const found = vs.find((v) => v.id === vid);
+        if (found) setVideo(found);
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<AnalyzeResponse | null>(null);
-  const [streamUrl, setStreamUrl] = useState<string>("");
+  const [view, setView] = useState<"visual" | "json">("visual");
+  const [generatedAt, setGeneratedAt] = useState<string>("");
+  const [copied, setCopied] = useState(false);
   const supported = tileSupportsModality("analyze", video?.modality ?? null);
-  const player = useRef<VideoPlayerHandle>(null);
-
-  useEffect(() => {
-    if (!video) { setStreamUrl(""); return; }
-    let alive = true;
-    getStreamUrl(video.id)
-      .then((u) => { if (alive) setStreamUrl(u); })
-      .catch(() => setStreamUrl(""));
-    return () => { alive = false; };
-  }, [video?.id]);
-
-  const seek = (time: number) => player.current?.seekTo(time);
 
   const run = async () => {
     if (!video || !form.prompt.trim()) return;
@@ -58,6 +64,8 @@ export default function Analyze() {
         form.use_range ? form.t_end : undefined,
       );
       setResult(r);
+      setView("visual");
+      setGeneratedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
@@ -134,69 +142,87 @@ export default function Analyze() {
           kind="analyze"
         />
       }
-      resultsPanel={
-        <>
-          {video && !supported && (
-            <div className="mb-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-              {t("playground.analyze.unsupported", { modality: video.modality })}
-            </div>
-          )}
-          {result && (
-            <ResultsPanel
-              title={t("playground.analyze.result_title")}
-              counter={`prompt: "${truncate(result.question, 80)}" · used ${result.used_windows} windows, ${result.used_segments} segments`}
-            >
-              <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
-                <div className="space-y-3">
-                  {streamUrl && <VideoPlayer ref={player} src={streamUrl} />}
-                  <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-neutral-800">
-                    {result.answer}
-                  </pre>
-                </div>
-
-                <div className="space-y-1.5">
-                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-500">
-                    {t("playground.analyze.citations")}
-                  </h3>
-                  {result.citations.length === 0 ? (
-                    <p className="text-xs text-neutral-500">{t("playground.analyze.no_citations")}</p>
-                  ) : (
-                    <ul className="max-h-[360px] space-y-1 overflow-y-auto pr-2">
-                      {result.citations.map((c, i) => (
-                        <li key={i}>
-                          <button
-                            type="button"
-                            onClick={() => seek(c.t_start)}
-                            className="w-full rounded border border-neutral-100 bg-white p-2 text-left text-xs transition hover:border-neutral-300 hover:bg-neutral-50"
-                          >
-                            <div className="flex items-baseline justify-between gap-2">
-                              <span className="font-mono text-[11px] text-neutral-700">
-                                {formatTime(c.t_start)}–{formatTime(c.t_end)}
-                              </span>
-                              <span className="font-mono text-[10px] text-neutral-500">
-                                seg {c.segment_idx}
-                              </span>
-                            </div>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
+      browsePanel={
+        result ? (
+          <div className="flex h-full flex-col">
+            {/* header — Visual/JSON toggle + status */}
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex h-8 overflow-hidden rounded-[9.6px] border border-[var(--color-obsidian)]">
+                {(["visual", "json"] as const).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setView(v)}
+                    className={cn(
+                      "min-w-[72px] px-3 text-[13px] transition",
+                      view === v
+                        ? "bg-[var(--color-obsidian)] text-white"
+                        : "bg-white text-[var(--color-obsidian)] hover:bg-[var(--color-powder)]",
+                    )}
+                  >
+                    {t(v === "visual" ? "playground.analyze.view_visual" : "playground.analyze.view_json")}
+                  </button>
+                ))}
               </div>
-            </ResultsPanel>
-          )}
-        </>
+              <span className="rounded-lg bg-emerald-600 px-2 py-0.5 font-mono text-[12px] font-medium text-white">
+                200 OK
+              </span>
+            </div>
+
+            {/* body */}
+            <div className="min-h-[200px] flex-1 overflow-auto rounded-t-[20px] border border-b-0 border-[var(--color-chalk)] bg-white p-5">
+              {view === "visual" ? (
+                <div className="whitespace-pre-wrap text-[13px] leading-relaxed text-[var(--color-obsidian)]">
+                  {result.answer}
+                </div>
+              ) : (
+                <pre className="whitespace-pre-wrap font-mono text-[12px] leading-relaxed text-[var(--color-obsidian)]">
+                  {JSON.stringify(result, null, 2)}
+                </pre>
+              )}
+            </div>
+
+            {/* footer — model · time · meta · copy */}
+            <div className="flex items-center gap-2 rounded-b-[20px] border border-[var(--color-chalk)] bg-[var(--color-powder)] px-5 py-2 text-[12px]">
+              <Sparkles size={15} className="shrink-0 text-[var(--color-gravel)]" />
+              <span className="shrink-0 font-semibold text-[var(--color-obsidian)]">
+                {t("playground.analyze.model_name")}
+              </span>
+              {generatedAt && (
+                <span className="truncate text-[var(--color-gravel)]">
+                  {t("playground.analyze.generated_at", { time: generatedAt })}
+                </span>
+              )}
+              <span className="ml-auto shrink-0 text-[var(--color-gravel)]">
+                {t("playground.analyze.meta", {
+                  windows: result.used_windows,
+                  segments: result.used_segments,
+                })}
+              </span>
+              <button
+                type="button"
+                aria-label={t("actions.copy")}
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(result.answer);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 1500);
+                  } catch {
+                    /* clipboard unavailable — ignore */
+                  }
+                }}
+                className="grid h-7 w-7 shrink-0 place-items-center rounded-[8px] text-[var(--color-obsidian)] transition hover:bg-black/10"
+              >
+                {copied ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
+              </button>
+            </div>
+          </div>
+        ) : video && !supported ? (
+          <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            {t("playground.analyze.unsupported", { modality: video.modality })}
+          </div>
+        ) : undefined
       }
     />
   );
-}
-
-function truncate(s: string, n: number) {
-  return s.length > n ? s.slice(0, n - 1) + "…" : s;
-}
-
-function formatTime(t: number) {
-  const s = Math.max(0, Math.round(t));
-  return `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
 }

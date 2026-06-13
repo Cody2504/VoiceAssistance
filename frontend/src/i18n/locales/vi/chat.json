@@ -1,11 +1,11 @@
 {
   "chat": {
     "sidebar": {
-      "new_chat": "Cuộc trò chuyện mới",
+      "new_chat": "Trò chuyện mới",
       "chats_heading": "Trò chuyện",
       "delete": "Xóa",
       "delete_confirm": "Xóa cuộc trò chuyện này? Hành động này không thể hoàn tác.",
-      "untitled": "Cuộc trò chuyện mới",
+      "untitled": "Trò chuyện mới",
       "load_failed": "Không thể tải danh sách trò chuyện"
     },
     "thread": {

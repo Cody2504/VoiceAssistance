@@ -3,7 +3,8 @@ import { Link } from "react-router";
 import { Check, RefreshCw, UploadCloud, Video as VideoIcon, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { listVideos, type VideoSummary } from "@/apis/videos.api";
+import { getStreamUrl, listVideos, type VideoSummary } from "@/apis/videos.api";
+import { VideoThumb } from "@/components/video/VideoThumb";
 import { cn, formatSeconds } from "@/lib/utils";
 
 interface Props {
@@ -59,8 +60,26 @@ export function VideoPicker({
   const resolvedEmptyLabel = emptyLabel ?? t("pgkit.video_picker.select_label");
   const { videos, loading, error } = useVideoLibrary();
   const [open, setOpen] = useState(false);
+  const [streamUrl, setStreamUrl] = useState("");
 
   const selected = videos.find((v) => v.id === selectedId) ?? null;
+
+  // Panel variant previews the selected video with a real player (same as the
+  // Segment page's form card), so fetch its stream URL when selection changes.
+  useEffect(() => {
+    setStreamUrl("");
+    if (!selected || variant !== "panel") return;
+    let alive = true;
+    getStreamUrl(selected.id)
+      .then((u) => {
+        if (alive) setStreamUrl(u);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.id, variant]);
 
   if (variant === "compact") {
     return (
@@ -94,7 +113,54 @@ export function VideoPicker({
     );
   }
 
-  // panel variant
+  // panel variant — selected state previews the video with a real player,
+  // matching the Segment page's form card.
+  if (selected) {
+    return (
+      <>
+        <div className="overflow-hidden rounded-[14px] border border-[var(--color-chalk)] bg-black">
+          {streamUrl ? (
+            <video src={streamUrl} controls preload="metadata" className="aspect-video w-full bg-black" />
+          ) : (
+            <div className="aspect-video w-full bg-black">
+              <VideoThumb videoId={selected.id} className="h-full w-full rounded-none bg-transparent ring-0" />
+            </div>
+          )}
+        </div>
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="truncate text-[13px] text-[var(--color-obsidian)]" title={selected.original_filename}>
+              {selected.original_filename}
+            </p>
+            <p className="text-[11px] text-[var(--color-gravel)]">
+              {selected.duration_s != null ? formatSeconds(selected.duration_s) : "—"} ·{" "}
+              {selected.shot_count ?? 0} shots
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="shrink-0 rounded-full bg-[var(--color-obsidian)] px-3 py-1 text-[12px] text-white transition hover:bg-neutral-800"
+          >
+            {t("pgkit.video_picker.change")}
+          </button>
+        </div>
+        <VideoPickerModal
+          open={open}
+          onClose={() => setOpen(false)}
+          videos={videos}
+          loading={loading}
+          error={error}
+          selectedId={selectedId}
+          onSelect={(v) => {
+            onSelect(v);
+            setOpen(false);
+          }}
+        />
+      </>
+    );
+  }
+
   return (
     <>
       <button
@@ -102,23 +168,10 @@ export function VideoPicker({
         onClick={() => setOpen(true)}
         className="relative flex h-[230px] w-full items-center justify-center overflow-hidden rounded-[14px] border border-[var(--color-chalk)] bg-gradient-warm transition hover:shadow-hairline"
       >
-        {selected ? (
-          <div className="flex flex-col items-center gap-2 text-[var(--color-obsidian)]">
-            <span className="text-[15px] font-medium">{selected.original_filename}</span>
-            <span className="text-[12px] text-[var(--color-gravel)]">
-              {selected.duration_s != null ? formatSeconds(selected.duration_s) : "—"} ·{" "}
-              {selected.shot_count ?? 0} shots
-            </span>
-            <span className="mt-2 rounded-full bg-[var(--color-obsidian)] px-3 py-1 text-[12px] text-white">
-              {t("pgkit.video_picker.change")}
-            </span>
-          </div>
-        ) : (
-          <span className="inline-flex items-center gap-2 rounded-md bg-[var(--color-obsidian)] px-3 py-1.5 text-[13px] text-white">
-            <VideoIcon size={13} />
-            {loading ? t("actions.loading") : resolvedEmptyLabel}
-          </span>
-        )}
+        <span className="inline-flex items-center gap-2 rounded-md bg-[var(--color-obsidian)] px-3 py-1.5 text-[13px] text-white">
+          <VideoIcon size={13} />
+          {loading ? t("actions.loading") : resolvedEmptyLabel}
+        </span>
       </button>
       <VideoPickerModal
         open={open}

@@ -1,11 +1,12 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Link } from "react-router";
-import { Captions, ImageIcon, SquareArrowOutUpRight, UserCircle2, X } from "lucide-react";
+import { Link, useSearchParams } from "react-router";
+import { Captions, ChevronLeft, ImageIcon, SquareArrowOutUpRight, UserCircle2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Input } from "@/components/ui/input";
 import { searchCorpus, searchCorpusByImage, type CorpusSearchResponse, type CorpusShot } from "@/apis/videos.api";
+import { getIndex } from "@/apis/indexes.api";
 import { VideoThumb } from "@/components/video/VideoThumb";
 import { VideoPreviewModal } from "@/components/video/VideoPreviewModal";
 import { formatSeconds } from "@/lib/utils";
@@ -13,9 +14,9 @@ import { formatSeconds } from "@/lib/utils";
 import { PlaygroundShell } from "./components/PlaygroundShell";
 import { FormPanel, Field, CheckOption } from "./components/FormPanel";
 import { ExamplesPanel } from "./components/ExamplesPanel";
-import { ResultsPanel } from "./components/ResultsPanel";
 import { AdvancedSettings } from "./components/AdvancedSettings";
 import { IndexPicker } from "./components/IndexPicker";
+import { IndexVideoBrowser } from "@/pages/indexes/IndexVideoBrowser";
 import { SEARCH_EXAMPLES, type SearchPreset } from "./data/examples";
 
 const DEFAULT_FORM: SearchPreset = { query: "", group_by: "clip", top_n: 10 };
@@ -37,6 +38,23 @@ export default function Search() {
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<CorpusSearchResponse | null>(null);
   const [indexSelection, setIndexSelection] = useState<{ id: string; title: string } | null>(null);
+  const [searchParams] = useSearchParams();
+
+  // Deep-link support: /playground/search?index_id=<id> preselects the index
+  // (used by the index-detail tab bar).
+  useEffect(() => {
+    const id = searchParams.get("index_id");
+    if (!id) return;
+    if (id === "default") {
+      // The virtual library index has no backend row.
+      setIndexSelection({ id: "default", title: t("console.indexes.default_title") });
+      return;
+    }
+    getIndex(id)
+      .then((s) => setIndexSelection({ id: s.id, title: s.title || t("pgkit.index_picker.untitled") }))
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [searchOpts, setSearchOpts] = useState<SearchOptions>({ visual: true, audio: true, transcription: true });
   const [transcriptOpts, setTranscriptOpts] = useState<TranscriptionOptions>({ lexical: true, semantic: true });
   // @Entity: an attached image used as the query (base64 data URL).
@@ -219,39 +237,64 @@ export default function Search() {
           kind="search"
         />
       }
-      resultsPanel={
-        result && (
-          <>
-            <ResultsPanel
-              title={t("playground.search.results_title")}
-              counter={`${result.shots.length} ${t(result.shots.length === 1 ? "playground.search.results_counter_one" : "playground.search.results_counter_other", { count: result.shots.length, videos: videoCount })}`}
+      browsePanel={
+        // Right pane has three states, all in-place (TwelveLabs-style):
+        //   1. a search has run    → result grid (with a "See video list" back link)
+        //   2. an index is picked  → browse that index's videos
+        //   3. nothing yet         → fall back to the examples panel (undefined)
+        result ? (
+          <div>
+            <button
+              type="button"
+              onClick={() => setResult(null)}
+              className="mb-3 inline-flex items-center gap-x-1 text-[13px] text-[var(--color-gravel)] transition hover:text-[var(--color-obsidian)] hover:underline"
             >
-              {result.shots.length === 0 ? (
-                <p className="text-sm text-neutral-500">
-                  {t("playground.search.no_matches")}{" "}
-                  <Link className="underline" to="/playground/library">{t("playground.search.no_matches_library")}</Link>.
-                </p>
-              ) : (
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                  {result.shots.map((s, i) => (
-                    <ShotCard
-                      key={`${s.video_id}-${s.idx}`}
-                      rank={i + 1}
-                      shot={s}
-                      onPreview={() => setPreview({ videoId: s.video_id, t: s.t_start })}
-                    />
-                  ))}
-                </div>
-              )}
-            </ResultsPanel>
+              <ChevronLeft size={16} />
+              {t("playground.search.back_to_videos")}
+            </button>
+            <div className="mb-4 flex flex-wrap items-center gap-x-1.5">
+              <p className="text-[15px] font-medium text-[var(--color-obsidian)]">
+                {t("playground.search.results_title")}
+              </p>
+              <p className="text-[13px] text-[var(--color-gravel)]">
+                {t(
+                  result.shots.length === 1
+                    ? "playground.search.results_counter_one"
+                    : "playground.search.results_counter_other",
+                  { count: result.shots.length, videos: videoCount },
+                )}
+              </p>
+            </div>
+            {result.shots.length === 0 ? (
+              <p className="text-sm text-neutral-500">
+                {t("playground.search.no_matches")}{" "}
+                <Link className="underline" to="/playground/library">
+                  {t("playground.search.no_matches_library")}
+                </Link>
+                .
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                {result.shots.map((s, i) => (
+                  <ShotCard
+                    key={`${s.video_id}-${s.idx}-${i}`}
+                    rank={i + 1}
+                    shot={s}
+                    onPreview={() => setPreview({ videoId: s.video_id, t: s.t_start })}
+                  />
+                ))}
+              </div>
+            )}
             <VideoPreviewModal
               open={preview != null}
               videoId={preview?.videoId ?? null}
               startAt={preview?.t}
               onClose={() => setPreview(null)}
             />
-          </>
-        )
+          </div>
+        ) : indexSelection ? (
+          <IndexVideoBrowser indexId={indexSelection.id} />
+        ) : undefined
       }
     />
   );
