@@ -43,8 +43,21 @@ def _scope_note(state: AgentState) -> str:
             all_vids.append(vid)
         if not all_vids:
             return ""
-        lines.append("Attached video IDs (in scope for this turn):")
-        lines.extend(f"- {v}" for v in all_vids)
+        if len(all_vids) == 1:
+            lines.append(
+                f"THIS TURN's attached video (the subject of 'this video'): {all_vids[0]}\n"
+                f"→ Use THIS video_id for every per-video tool by default. Do NOT substitute a "
+                f"video_id seen only in an earlier tool result or message unless the user explicitly "
+                f"refers to that earlier/previous video."
+            )
+        else:
+            lines.append("THIS TURN's attached videos (all in scope — act on the one(s) the user means):")
+            lines.extend(f"- {v}" for v in all_vids)
+            lines.append(
+                "→ For 'this video' use the most recently attached; for 'compare/both' act on all of "
+                "them; do NOT pull in a video_id from earlier in the conversation unless the user "
+                "explicitly refers to it."
+            )
     return "\n".join(lines)
 
 

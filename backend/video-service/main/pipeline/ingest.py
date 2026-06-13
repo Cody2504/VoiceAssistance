@@ -974,8 +974,10 @@ def _write_thumbnails(local_path: str, video_id: UUID, segments, scratch) -> Non
 def _save_thumbnail(video_path: str, t_mid: float, dest_path: str) -> bool:
     try:
         subprocess.run(
+            # 480w: library cards render ~420px wide, so 160w thumbs were ~3x
+            # upscaled and visibly blurry. ~30-60KB/jpg at 480w is still cheap.
             ["ffmpeg", "-y", "-ss", f"{t_mid:.2f}", "-i", video_path,
-             "-frames:v", "1", "-vf", "scale=160:-1", "-loglevel", "quiet", dest_path],
+             "-frames:v", "1", "-vf", "scale=480:-1", "-loglevel", "quiet", dest_path],
             check=True, capture_output=True,
         )
     except subprocess.CalledProcessError:

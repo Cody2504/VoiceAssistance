@@ -69,3 +69,15 @@ log/
 .claude/
 # SSH / TLS private keys — never commit
 *.pem
+# tests & scratch
+**/tests/
+pytest.ini
+backend/video-service/main/scripts/regen_thumbs.py
+
+# large artifacts / dumps / logs
+checkpoints/
+*.tgz
+*.dump
+*.snapshot
+*.tar
+*.zip

@@ -54,11 +54,19 @@ def run_analyze(video_id: UUID, question: str, global_summary: str | None = None
     windows = _fetch_window_summaries(vid)
     log.info("analyze:windows=%d", len(windows))
 
+    # --- 2b. Fine-grained action timeline (vlm_actions + on-screen text) ---
+    # Precise per-action [t_start, t_end] moments so the LLM can cite the exact
+    # instant an action happens (e.g. "tomato sauce poured" at 1:02) instead of
+    # the coarse ~30s segment that merely contains it.
+    actions = _fetch_action_events(vid)
+    log.info("analyze:actions=%d", len(actions))
+
     # --- 3. Global summary (passed in by caller from videos.global_summary). ---
     global_text = (global_summary or "").strip() or _fetch_global_summary_from_qdrant(vid)
 
     # --- 4. Build the LLM prompt with token-budget guard ---
-    prompt = _build_prompt(question, global_text, windows, retrieved, token_budget=s.analyze_token_budget)
+    prompt = _build_prompt(question, global_text, windows, retrieved, actions,
+                           token_budget=s.analyze_token_budget)
 
     # --- 5. Call the LLM ---
     answer = _call_llm(prompt)
@@ -153,6 +161,44 @@ def _fetch_window_summaries(video_id: str) -> list[dict]:
         return []
 
 
+def _fetch_action_events(video_id: str, limit: int = 80) -> list[dict]:
+    """Fine-grained `vlm_actions` + `on_screen_text` moments with PRECISE
+    [t_start, t_end] from the timeline-events collection. These let the LLM cite
+    the exact instant an action occurs rather than the coarse segment span."""
+    s = get_settings()
+    try:
+        from main.qdrant_util import get_qdrant_client
+        from qdrant_client.http import models as qm
+        client = get_qdrant_client(timeout=60)
+        points, _ = client.scroll(
+            collection_name=s.timeline_events_collection,
+            scroll_filter=qm.Filter(must=[
+                qm.FieldCondition(key="video_id", match=qm.MatchValue(value=video_id)),
+            ]),
+            with_payload=True,
+            with_vectors=False,
+            limit=4096,
+        )
+        out: list[dict] = []
+        for p in points:
+            pl = p.payload or {}
+            if pl.get("track_kind") not in ("vlm_actions", "on_screen_text"):
+                continue
+            label = (pl.get("label") or "").strip()
+            if not label:
+                continue
+            out.append({
+                "t_start": float(pl.get("t_start", 0.0)),
+                "t_end": float(pl.get("t_end", 0.0)),
+                "label": label,
+            })
+        out.sort(key=lambda x: x["t_start"])
+        return out[:limit]
+    except Exception as exc:
+        log.warning("analyze:fetch_actions failed: %s", exc)
+        return []
+
+
 def _fetch_global_summary_from_qdrant(video_id: str) -> str:
     s = get_settings()
     try:
@@ -183,10 +229,15 @@ def _build_prompt(
     global_summary: str,
     windows: list[dict],
     retrieved: list[dict],
+    actions: list[dict],
     token_budget: int,
 ) -> str:
     skeleton_lines = "\n".join(
         f"- [{_fmt(w['t_start'])}] {w['summary']}" for w in windows
+    )
+    # Fine-grained action timeline — small + high value, kept in every fallback.
+    action_lines = "\n".join(
+        f"- [{_fmt(a['t_start'])}-{_fmt(a['t_end'])}] {a['label']}" for a in actions
     )
     seg_lines_full = "\n".join(
         f"- [{_fmt(p.get('t_start', 0))}-{_fmt(p.get('t_end', 0))}] "
@@ -194,7 +245,7 @@ def _build_prompt(
         f"transcript: {(p.get('transcript') or '').strip()}"
         for p in retrieved
     )
-    prompt = _assemble(question, global_summary, skeleton_lines, seg_lines_full)
+    prompt = _assemble(question, global_summary, skeleton_lines, action_lines, seg_lines_full)
     if _approx_tokens(prompt) <= token_budget:
         return prompt
 
@@ -203,7 +254,7 @@ def _build_prompt(
         f"- [{_fmt(p.get('t_start', 0))}-{_fmt(p.get('t_end', 0))}] {(p.get('caption') or '').strip()}"
         for p in retrieved
     )
-    prompt = _assemble(question, global_summary, skeleton_lines, seg_lines_short)
+    prompt = _assemble(question, global_summary, skeleton_lines, action_lines, seg_lines_short)
     log.warning("analyze:prompt over budget — dropped transcripts from retrieved segments")
     if _approx_tokens(prompt) <= token_budget:
         return prompt
@@ -214,28 +265,35 @@ def _build_prompt(
     skeleton_short = "\n".join(
         f"- [{_fmt(w['t_start'])}] {w['summary']}" for w in sparse
     )
-    prompt = _assemble(question, global_summary, skeleton_short, seg_lines_short)
+    prompt = _assemble(question, global_summary, skeleton_short, action_lines, seg_lines_short)
     log.warning("analyze:prompt still over budget — dropping every-other window summary")
     return prompt
 
 
-def _assemble(question: str, global_summary: str, skeleton_lines: str, seg_lines: str) -> str:
+def _assemble(question: str, global_summary: str, skeleton_lines: str,
+              action_lines: str, seg_lines: str) -> str:
     return (
-        "You are answering a question about a video by reading three layers "
+        "You are answering a question about a video by reading layers "
         "of context that have already been precomputed for you. "
         "Cite timestamps inline as [mm:ss-mm:ss]. If the answer requires "
         "connecting multiple parts of the video, name the parts by their "
         "timestamps explicitly. Do not invent timestamps that aren't in the "
-        "context below.\n\n"
+        "context below.\n"
+        "IMPORTANT: when the question asks WHEN something happens or about a "
+        "specific action/moment, cite the precise [mm:ss-mm:ss] from the ACTION "
+        "TIMELINE (fine-grained) rather than the coarser segment span — the "
+        "action timeline pinpoints the exact instant.\n\n"
         f"── GLOBAL SUMMARY ──\n{global_summary or '(none)'}\n\n"
         "── VIDEO SKELETON (in order, one bullet per ~2 minutes) ──\n"
         f"{skeleton_lines or '(none)'}\n\n"
+        "── ACTION TIMELINE (fine-grained moments, precise timestamps) ──\n"
+        f"{action_lines or '(none)'}\n\n"
         "── RELEVANT SEGMENTS (retrieved by similarity to the question) ──\n"
         f"{seg_lines or '(none)'}\n\n"
         f"── QUESTION ──\n{question}\n\n"
         "Answer concisely. Use inline [mm:ss-mm:ss] citations when grounding "
-        "a claim in the video. If the video does not contain the answer, "
-        "say so plainly."
+        "a claim in the video — the most specific moment that answers the "
+        "question. If the video does not contain the answer, say so plainly."
     )
 
 
