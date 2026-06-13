@@ -1,0 +1,4 @@
+Model,R1@0.5,R1@0.7,mAP@0.5,mAP@0.75,mAP avg,HD HIT@1 (VG)
+Charades-init (zero-shot),46.52,21.94,48.85,18.32,22.24,46.39
+"Ours (fine-tuned, ep11)",74.77,61.42,76.85,60.32,58.23,74.06
+Released qvh_pt (ceiling),75.81,62.45,76.9,60.22,58.93,74.45

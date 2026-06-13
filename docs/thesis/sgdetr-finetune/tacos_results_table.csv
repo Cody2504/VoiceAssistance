@@ -1,0 +1,5 @@
+Model,R1@0.3,R1@0.5,R1@0.7,mAP avg,mAP Short
+QVH-init zero-shot,14.05,6.35,2.9,4.31,0.92
+Fine-tuned (baseline),50.16,34.55,17.19,18.62,13.32
+Fine-tuned + MomentMix (ours),46.24,35.2,21.8,21.96,23.96
+Released tacos_pt (ceiling),58.11,46.47,33.75,31.09,34.86

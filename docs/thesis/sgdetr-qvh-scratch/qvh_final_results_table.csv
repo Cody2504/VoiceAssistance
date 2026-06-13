@@ -1,0 +1,5 @@
+"Model (QVH val, 1549 queries)",mAP avg,mAP Short,mAP Middle,mAP Long,R1@0.5,R1@0.7,HIT@1 (VG)
+Released plain ckpt (reference),53.95,20.27,54.98,58.99,72.97,58.77,71.03
+Arm A: from scratch (baseline),53.4,19.01,54.85,58.09,72.32,58.32,70.71
+Arm B: from scratch + MomentMix,54.17,21.38,54.55,58.6,72.52,59.42,72.19
+Δ (B − A),0.77,2.37,-0.3,0.51,0.2,1.1,1.48
