@@ -110,9 +110,15 @@
       "expand_tooltip": "Mở rộng thanh bên"
     },
     "topbar": {
-      "used": "Đã dùng",
-      "book_demo": "Đặt lịch demo",
-      "invite": "Mời"
+      "used": "Đã dùng"
+    },
+    "monitor": {
+      "title": "Trình theo dõi lập chỉ mục",
+      "window": "Trong vòng 24 giờ",
+      "indexing": "Đang lập chỉ mục",
+      "indexed": "Đã lập chỉ mục",
+      "failed": "Thất bại",
+      "go_to_indexes": "Đến trang chỉ mục"
     },
     "usermenu": {
       "user_fallback": "Người dùng",

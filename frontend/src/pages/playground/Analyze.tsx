@@ -82,6 +82,7 @@ export default function Analyze() {
     <PlaygroundShell
       title={t("playground.analyze.title")}
       subtitle={t("playground.analyze.subtitle")}
+      wide
       formPanel={
         <FormPanel runLabel={t("playground.analyze.title")} onRun={run} running={running} canRun={canRun}>
           <Field label="video" required>

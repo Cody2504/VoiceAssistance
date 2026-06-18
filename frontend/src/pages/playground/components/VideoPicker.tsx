@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { Check, RefreshCw, UploadCloud, Video as VideoIcon, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { getStreamUrl, listVideos, type VideoSummary } from "@/apis/videos.api";
+import { getPosterUrl, getStreamUrl, listVideos, type VideoSummary } from "@/apis/videos.api";
 import { VideoThumb } from "@/components/video/VideoThumb";
 import { cn, formatSeconds } from "@/lib/utils";
 
@@ -61,18 +61,27 @@ export function VideoPicker({
   const { videos, loading, error } = useVideoLibrary();
   const [open, setOpen] = useState(false);
   const [streamUrl, setStreamUrl] = useState("");
+  const [posterUrl, setPosterUrl] = useState("");
 
   const selected = videos.find((v) => v.id === selectedId) ?? null;
 
   // Panel variant previews the selected video with a real player (same as the
-  // Segment page's form card), so fetch its stream URL when selection changes.
+  // Segment page's form card). Fetch the stream URL AND the poster: the poster
+  // (generated at upload) is the reliable thumbnail — used as the <video>'s
+  // poster frame and as the fallback image when the stream isn't available.
   useEffect(() => {
     setStreamUrl("");
+    setPosterUrl("");
     if (!selected || variant !== "panel") return;
     let alive = true;
     getStreamUrl(selected.id)
       .then((u) => {
         if (alive) setStreamUrl(u);
+      })
+      .catch(() => {});
+    getPosterUrl(selected.id)
+      .then((u) => {
+        if (alive) setPosterUrl(u);
       })
       .catch(() => {});
     return () => {
@@ -120,7 +129,19 @@ export function VideoPicker({
       <>
         <div className="overflow-hidden rounded-[14px] border border-[var(--color-chalk)] bg-black">
           {streamUrl ? (
-            <video src={streamUrl} controls preload="metadata" className="aspect-video w-full bg-black" />
+            <video
+              src={streamUrl}
+              controls
+              preload="metadata"
+              poster={posterUrl || undefined}
+              className="aspect-video w-full bg-black"
+            />
+          ) : posterUrl ? (
+            <img
+              src={posterUrl}
+              alt={selected.original_filename}
+              className="aspect-video w-full bg-black object-cover"
+            />
           ) : (
             <div className="aspect-video w-full bg-black">
               <VideoThumb videoId={selected.id} className="h-full w-full rounded-none bg-transparent ring-0" />
@@ -215,11 +236,27 @@ export function VideoPickerModal({
   onRefresh?: () => void;
 }) {
   const { t } = useTranslation();
+  const [posters, setPosters] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (open) onRefresh?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  // Poster thumbnails for the list rows (same source the Assets grid uses).
+  // Posters are generated at upload, so they're reliably present for ready videos.
+  useEffect(() => {
+    if (!open) return;
+    videos.forEach(async (v) => {
+      if (posters[v.id]) return;
+      try {
+        const url = await getPosterUrl(v.id);
+        setPosters((p) => ({ ...p, [v.id]: url }));
+      } catch {
+        /* no poster yet */
+      }
+    });
+  }, [open, videos, posters]);
 
   if (!open) return null;
   const isEmpty = !loading && !error && videos.length === 0;
@@ -302,8 +339,12 @@ export function VideoPickerModal({
               )}
             >
               <span className="flex min-w-0 flex-1 items-center gap-3">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-neutral-100 text-neutral-500">
-                  <VideoIcon size={14} />
+                <span className="relative grid h-12 w-[88px] shrink-0 place-items-center overflow-hidden rounded-md bg-neutral-100 text-neutral-500">
+                  {posters[v.id] ? (
+                    <img src={posters[v.id]} alt="" loading="lazy" className="h-full w-full object-cover" />
+                  ) : (
+                    <VideoIcon size={18} />
+                  )}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-neutral-900">{v.original_filename}</span>

@@ -21,18 +21,24 @@ export default function Workspace() {
   const [scope, setScope] = useState<ChatScopeValue>({ mode: "single", videoIds: [] });
 
   return (
-    <div className="grid h-full grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] gap-0 divide-x divide-neutral-200">
+    <div className="grid h-full min-h-0 grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] gap-0 divide-x divide-neutral-200 overflow-hidden">
       <section className="flex min-h-0 flex-col px-8 py-6">
-        <ChatScopeBar value={scope} onChange={setScope} />
-        <ChatThread scope={scope} conversationId={conversationId} />
+        <div className="shrink-0">
+          <ChatScopeBar value={scope} onChange={setScope} />
+        </div>
+        <div className="min-h-0 flex-1">
+          <ChatThread scope={scope} conversationId={conversationId} />
+        </div>
       </section>
 
       <aside className="flex min-h-0 flex-col bg-neutral-50/40 p-4">
-        <header className="mb-3">
+        <header className="mb-3 shrink-0">
           <h2 className="text-sm font-semibold">{t("console.workspace.library_title")}</h2>
           <p className="text-xs text-neutral-500">{t("console.workspace.library_hint")}</p>
         </header>
-        <LibraryGrid onPreview={(v) => setPreview(v)} />
+        <div className="min-h-0 flex-1">
+          <LibraryGrid onPreview={(v) => setPreview(v)} />
+        </div>
       </aside>
 
       <VideoPreviewModal

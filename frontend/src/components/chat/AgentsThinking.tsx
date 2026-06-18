@@ -141,8 +141,14 @@ export function AgentsThinking({ steps, assistantHasContent, complete }: Props) 
         className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium text-neutral-900 hover:bg-neutral-50"
       >
         <span className="flex items-center gap-2">
-          <ListChecks size={16} className="text-neutral-600" />
+          <ListChecks size={16} className={cn("transition-colors", complete ? "text-neutral-600" : "text-emerald-600")} />
           {complete ? t("chat.thinking.header") : t("chat.thinking.header_active")}
+          {!complete && (
+            <span className="relative ml-0.5 flex h-2 w-2" aria-hidden>
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500/60" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+            </span>
+          )}
         </span>
         <span className="flex items-center gap-2 text-xs text-neutral-500">
           {t(count === 1 ? "chat.thinking.step_count_one" : "chat.thinking.step_count_other", { count })}
@@ -181,12 +187,13 @@ export function AgentsThinking({ steps, assistantHasContent, complete }: Props) 
 
 function StatusDot({ status }: { status: StepStatus }) {
   if (status === "active") {
-    // Subtle: a small solid dot with a faint static halo (no loud ping).
+    // Blinking green circle: an expanding ping ring behind a solid dot signals
+    // the system is actively working on this step.
     return (
-      <span
-        className="block h-2 w-2 rounded-full bg-emerald-500 ring-[3px] ring-emerald-500/15"
-        data-testid="dot-active"
-      />
+      <span className="relative block h-2 w-2" data-testid="dot-active">
+        <span className="absolute inset-0 animate-ping rounded-full bg-emerald-500/60" />
+        <span className="relative block h-2 w-2 rounded-full bg-emerald-500" />
+      </span>
     );
   }
   if (status === "error") {
@@ -218,7 +225,7 @@ function StepRow({
 }) {
   const hasBody = step.kind === "phase" ? Boolean(step.body) : true;
   return (
-    <li className="relative pl-7">
+    <li className="relative pl-7 animate-[fade-rise_0.3s_ease-out]">
       <div className="absolute left-[10px] top-2.5 -translate-x-1/2">
         <StatusDot status={step.status} />
       </div>
@@ -233,8 +240,8 @@ function StepRow({
       >
         <span
           className={cn(
-            "truncate text-neutral-700",
-            step.status === "active" && "text-neutral-900",
+            "truncate text-neutral-700 transition-colors duration-300",
+            step.status === "active" && "font-medium text-neutral-900",
           )}
         >
           {step.label}

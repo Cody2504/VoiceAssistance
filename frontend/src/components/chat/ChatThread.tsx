@@ -50,9 +50,15 @@ export function ChatThread({ initialAttached = [], scope, conversationId }: Prop
   // reads it per send, and updating it must not re-render mid-stream.
   const convIdRef = useRef<string | undefined>(undefined);
   const [historyState, setHistoryState] = useState<"idle" | "loading" | "error">("idle");
-  const bottom = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { bottom.current?.scrollIntoView({ behavior: "smooth" }); }, [turns]);
+  // Pin to the latest turn by scrolling the message CONTAINER — not
+  // scrollIntoView, which scrolls the nearest scrollable ancestor (the page),
+  // yanking the whole layout down on a new conversation.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [turns]);
 
   // Load persisted history when the URL points at a conversation we don't
   // already hold (thread switch / deep link). The navigate-after-first-reply
@@ -191,8 +197,8 @@ export function ChatThread({ initialAttached = [], scope, conversationId }: Prop
   const removeAttachment = (id: string) => setAttached((cur) => cur.filter((v) => v.id !== id));
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex-1 space-y-8 overflow-auto px-1 py-4">
+    <div className="flex h-full min-h-0 flex-col">
+      <div ref={scrollRef} className="flex-1 space-y-8 overflow-auto px-1 py-4">
         {historyState === "loading" && (
           <div className="grid h-full place-items-center text-sm text-neutral-400">
             {t("chat.thread.history_loading")}
@@ -282,10 +288,9 @@ export function ChatThread({ initialAttached = [], scope, conversationId }: Prop
           </div>
         );
         })}
-        <div ref={bottom} />
       </div>
 
-      <div className="border-t border-neutral-100 pt-3">
+      <div className="shrink-0 border-t border-neutral-100 pt-3">
         <ChatComposer
           attached={attached}
           onRemove={removeAttachment}

@@ -109,7 +109,7 @@ function SidebarShell() {
       style={collapsed ? undefined : { width: 204 }}
       id="page-layout-side"
     >
-      <div>
+      <div className="min-h-0 flex-1 overflow-y-auto">
         <Link to="/overview" className={cn("inline-block transition-all duration-300", collapsed && "flex justify-center")} aria-label="Jockey">
           {collapsed ? (
             <span
@@ -150,8 +150,6 @@ function SidebarShell() {
         )}
       </div>
 
-      <div className="flex-1" />
-
       <SidebarFooter />
     </nav>
   );
@@ -160,7 +158,7 @@ function SidebarShell() {
 export default function MainLayout() {
   return (
     <SidebarProvider>
-      <div className="flex h-screen w-full bg-[var(--color-eggshell)] text-[var(--color-obsidian)]">
+      <div className="flex h-screen w-full overflow-hidden bg-[var(--color-eggshell)] text-[var(--color-obsidian)]">
         <SidebarShell />
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <TopBar />

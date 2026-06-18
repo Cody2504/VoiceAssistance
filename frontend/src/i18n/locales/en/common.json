@@ -110,9 +110,15 @@
       "expand_tooltip": "Expand sidebar"
     },
     "topbar": {
-      "used": "Used",
-      "book_demo": "Book a Demo",
-      "invite": "Invite"
+      "used": "Used"
+    },
+    "monitor": {
+      "title": "Indexing monitor",
+      "window": "Within 24 hours",
+      "indexing": "Indexing",
+      "indexed": "Indexed",
+      "failed": "Failed",
+      "go_to_indexes": "Go to indexes"
     },
     "usermenu": {
       "user_fallback": "User",

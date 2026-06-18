@@ -3,9 +3,12 @@ import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Info, ArrowUpRight } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { usageLabel } from "@/hooks/useIndexUsage";
 
 interface Props {
   initials: string;
+  usedMin: number;
+  capMin: number | null;
   onClose: () => void;
 }
 
@@ -14,7 +17,7 @@ interface Props {
  * playground user menu: avatar, name/email, plan with usage bar, two stat
  * rows, Upgrade pill, Pricing link, Sign out.
  */
-export function UserMenu({ initials, onClose }: Props) {
+export function UserMenu({ initials, usedMin, capMin, onClose }: Props) {
   const { user, logout } = useAuth();
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement | null>(null);
@@ -34,9 +37,8 @@ export function UserMenu({ initials, onClose }: Props) {
     };
   }, [onClose]);
 
-  const usedMin = 0;
-  const cap = 300; // 5 hr in minutes (free monthly indexing allowance)
-  const pct = Math.min(100, (usedMin / cap) * 100);
+  const unlimited = t("settings.billing.unlimited");
+  const pct = capMin ? Math.min(100, (usedMin / capMin) * 100) : 0;
   const indexingPct = pct * 0.6;
   const analyzePct = pct * 0.4;
 
@@ -64,7 +66,9 @@ export function UserMenu({ initials, onClose }: Props) {
             <Info size={12} className="text-[var(--color-slate)]" />
           </div>
           <div className="text-[13px] text-[var(--color-gravel)]">
-            {t("layout.usermenu.used")} <span className="text-[var(--color-obsidian)]">{usedMin} min</span> / 5 hr
+            {t("layout.usermenu.used")}{" "}
+            <span className="text-[var(--color-obsidian)]">{usageLabel(usedMin, unlimited)}</span> /{" "}
+            {usageLabel(capMin, unlimited)}
           </div>
         </div>
         <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-chalk)]">

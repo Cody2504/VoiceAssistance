@@ -9,7 +9,7 @@ export interface VideoSummary {
   original_filename: string;
   duration_s: number | null;
   size_bytes: number | null;
-  status: "queued" | "processing" | "ready" | "error";
+  status: "stored" | "queued" | "processing" | "ready" | "error";
   shot_count: number | null;
   error: string | null;
   created_at: string;

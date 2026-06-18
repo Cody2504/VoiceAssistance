@@ -1,20 +1,22 @@
 import { useState } from "react";
-import { UserPlus } from "lucide-react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
-import { cn } from "@/lib/utils";
+import { useIndexUsage, usageLabel } from "@/hooks/useIndexUsage";
 import { UserMenu } from "./UserMenu";
+import { IndexingMonitor } from "./IndexingMonitor";
 
 /**
  * Top app bar shown above main content on every authenticated page.
- * Mirrors the TwelveLabs playground topbar: Used X min / Y hr, Book a Demo,
- * Invite, and a peach avatar pill that opens the user menu.
+ * Shows Used X / Y, the indexing monitor, and a peach avatar pill that opens
+ * the user menu.
  */
 export function TopBar() {
   const { user } = useAuth();
   const { t } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const { usedMinutes, capMinutes } = useIndexUsage();
+  const unlimited = t("settings.billing.unlimited");
 
   const initials = (() => {
     const email = user?.email ?? "";
@@ -31,11 +33,12 @@ export function TopBar() {
         to="/pricing"
         className="hidden text-[13px] text-[var(--color-gravel)] hover:text-[var(--color-obsidian)] md:inline mr-2"
       >
-        {t("layout.usermenu.used")} <span className="text-[var(--color-obsidian)]">0 min</span> / 5 hr
+        {t("layout.usermenu.used")}{" "}
+        <span className="text-[var(--color-obsidian)]">{usageLabel(usedMinutes, unlimited)}</span> /{" "}
+        {usageLabel(capMinutes, unlimited)}
       </Link>
 
-      <TopBarButton>{t("layout.topbar.book_demo")}</TopBarButton>
-      <TopBarButton rightIcon={<UserPlus size={14} />}>{t("layout.topbar.invite")}</TopBarButton>
+      <IndexingMonitor />
 
       <div className="relative">
         <button
@@ -46,29 +49,15 @@ export function TopBar() {
         >
           {initials}
         </button>
-        {menuOpen && <UserMenu initials={initials} onClose={() => setMenuOpen(false)} />}
+        {menuOpen && (
+          <UserMenu
+            initials={initials}
+            usedMin={usedMinutes}
+            capMin={capMinutes}
+            onClose={() => setMenuOpen(false)}
+          />
+        )}
       </div>
     </div>
-  );
-}
-
-function TopBarButton({
-  children,
-  rightIcon,
-}: {
-  children: React.ReactNode;
-  rightIcon?: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      className={cn(
-        "relative inline-flex h-8 items-center gap-x-1 px-3 text-[13px] text-[var(--color-obsidian)] transition-all duration-200",
-        "rounded-[10px] shadow-[0_0_0_1px_var(--color-chalk)_inset] hover:bg-black/5 hover:rounded-[12px]",
-      )}
-    >
-      <span>{children}</span>
-      {rightIcon}
-    </button>
   );
 }

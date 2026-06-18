@@ -14,10 +14,14 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
+  HardDrive,
+  Trash2,
+  X,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { PillButton } from "@/components/ui/PillButton";
-import { uploadVideo, getPosterUrl, type VideoSummary } from "@/apis/videos.api";
+import { uploadVideo, deleteVideo, getPosterUrl, type VideoSummary } from "@/apis/videos.api";
+import { AddToIndexModal } from "./AddToIndexModal";
 import { useVideosQuery, useS3ObjectsQuery, qk } from "@/apis/queries";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
@@ -44,6 +48,7 @@ function StatusBadge({ status }: { status?: VideoSummary["status"] }) {
   const { t } = useTranslation();
   if (!status) return <span className="text-[var(--color-slate)]">—</span>;
   const map = {
+    stored: { labelKey: "console.assets.status_stored", cls: "bg-[var(--color-powder)] text-[var(--color-gravel)]", Icon: HardDrive, spin: false },
     queued: { labelKey: "console.assets.status_queued", cls: "bg-[var(--color-powder)] text-[var(--color-gravel)]", Icon: Clock, spin: false },
     processing: { labelKey: "console.assets.status_indexing", cls: "bg-amber-50 text-amber-700", Icon: Loader2, spin: true },
     ready: { labelKey: "console.assets.status_ready", cls: "bg-emerald-50 text-emerald-700", Icon: CheckCircle2, spin: false },
@@ -107,6 +112,8 @@ export default function Assets() {
   } | null>(null);
   const uploading = upload != null;
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const refresh = useCallback(async () => {
     await Promise.allSettled([
@@ -187,6 +194,26 @@ export default function Assets() {
       : filtered;
     return queried;
   }, [videos, s3Items, thumbs, filter, query]);
+
+  // Only real video assets (not raw S3 objects) can be added to an index.
+  const selectableIds = useMemo(
+    () => rows.filter((r) => r.kind === "video" && !r.id.startsWith("s3:")).map((r) => r.id),
+    [rows],
+  );
+  const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selectedIds.has(id));
+  const toggleOne = (id: string) =>
+    setSelectedIds((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  const toggleAll = () => setSelectedIds(() => (allSelected ? new Set() : new Set(selectableIds)));
+  const bulkDelete = async () => {
+    await Promise.allSettled([...selectedIds].map((id) => deleteVideo(id)));
+    setSelectedIds(new Set());
+    await refresh();
+  };
 
   const counts = useMemo(() => {
     const v = videos.length + s3Items.filter((i) => s3Kind(i.name) === "video").length;
@@ -324,6 +351,23 @@ export default function Assets() {
         </span>
       </div>
 
+      {selectedIds.size > 0 && (
+        <div className="mb-3 flex items-center gap-4 rounded-[12px] border border-[var(--color-chalk)] bg-white px-4 py-2 text-[13px]">
+          <button onClick={() => setSelectedIds(new Set())} aria-label="clear-selection" className="text-[var(--color-gravel)] hover:text-[var(--color-obsidian)]">
+            <X size={14} />
+          </button>
+          <span className="text-[var(--color-obsidian)]">
+            {t("console.assets.n_selected", { count: selectedIds.size })}
+          </span>
+          <button onClick={bulkDelete} className="inline-flex items-center gap-1 text-[var(--color-gravel)] hover:text-[var(--color-obsidian)]">
+            <Trash2 size={14} /> {t("console.assets.delete")}
+          </button>
+          <button onClick={() => setShowAddModal(true)} className="inline-flex items-center gap-1 text-[var(--color-gravel)] hover:text-[var(--color-obsidian)]">
+            <Play size={14} /> {t("console.assets.add_to_index")}
+          </button>
+        </div>
+      )}
+
       {videosLoading && rows.length === 0 ? (
         <div className="flex items-center justify-center gap-2 py-24 text-sm text-[var(--color-gravel)]">
           <Loader2 size={16} className="animate-spin" /> {t("console.assets.loading")}
@@ -371,6 +415,15 @@ export default function Assets() {
           <table className="w-full text-[13px]">
             <thead className="bg-[var(--color-powder)] text-left text-[11px] uppercase tracking-[0.1em] text-[var(--color-gravel)]">
               <tr>
+                <th className="w-[40px] px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={toggleAll}
+                    aria-label="select-all"
+                    className="cursor-pointer"
+                  />
+                </th>
                 <th className="w-[68px] px-4 py-3"></th>
                 <th className="px-4 py-3">{t("console.assets.col_name")}</th>
                 <th className="w-[100px] px-4 py-3">{t("console.assets.col_type")}</th>
@@ -386,6 +439,17 @@ export default function Assets() {
                   key={r.id}
                   className="border-t border-[var(--color-chalk)] transition hover:bg-[var(--color-powder)]/60"
                 >
+                  <td className="px-4 py-2.5">
+                    {r.kind === "video" && !r.id.startsWith("s3:") ? (
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(r.id)}
+                        onChange={() => toggleOne(r.id)}
+                        aria-label={`select-${r.name}`}
+                        className="cursor-pointer"
+                      />
+                    ) : null}
+                  </td>
                   <td className="px-4 py-2.5">
                     <div className="relative grid h-9 w-12 place-items-center overflow-hidden rounded-md bg-[var(--color-powder)] text-[var(--color-slate)]">
                       {r.thumbUrl ? (
@@ -480,6 +544,18 @@ export default function Assets() {
             {t("console.assets.upload_background")}
           </p>
         </div>
+      )}
+
+      {showAddModal && (
+        <AddToIndexModal
+          assetIds={[...selectedIds]}
+          onClose={() => setShowAddModal(false)}
+          onDone={() => {
+            setShowAddModal(false);
+            setSelectedIds(new Set());
+            refresh();
+          }}
+        />
       )}
     </div>
   );

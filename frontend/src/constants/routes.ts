@@ -46,6 +46,7 @@ export const ROUTES = {
 
   // Usage
   USAGE_ME: "/usage/me",
+  INDEX_USAGE: "/videos/index-usage",
 
   // Billing
   BILLING_PLANS: "/billing/plans",

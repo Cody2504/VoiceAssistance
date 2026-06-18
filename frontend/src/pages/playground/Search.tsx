@@ -19,7 +19,7 @@ import { IndexPicker } from "./components/IndexPicker";
 import { IndexVideoBrowser } from "@/pages/indexes/IndexVideoBrowser";
 import { SEARCH_EXAMPLES, type SearchPreset } from "./data/examples";
 
-const DEFAULT_FORM: SearchPreset = { query: "", group_by: "clip", top_n: 10 };
+const DEFAULT_FORM: SearchPreset = { query: "", group_by: "video", top_n: 10 };
 
 interface SearchOptions {
   visual: boolean;
@@ -207,7 +207,7 @@ export default function Search() {
             </Field>
           )}
 
-          <AdvancedSettings onReset={() => setForm({ ...form, top_n: 10, group_by: "clip" })}>
+          <AdvancedSettings onReset={() => setForm({ ...form, top_n: 10, group_by: "video" })}>
             <Field label="group_by" type="ENUM" hint={t("playground.search.hint_group_by")}>
               <select
                 value={form.group_by}

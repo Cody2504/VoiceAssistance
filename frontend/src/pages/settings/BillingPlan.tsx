@@ -4,7 +4,7 @@ import { Info, ArrowUpRight, MessageSquare, Check, Loader2, AlertCircle } from "
 import { useTranslation } from "react-i18next";
 
 import { getSubscription, startCheckout, type Subscription } from "@/apis/billing.api";
-import { getMyUsage } from "@/apis/usage.api";
+import { getMyUsage, getIndexUsage } from "@/apis/usage.api";
 import { formatUSD } from "@/pages/pricing/pricingData";
 
 /**
@@ -36,6 +36,7 @@ export default function BillingPlan() {
   const [params, setParams] = useSearchParams();
   const [sub, setSub] = useState<Subscription | null>(null);
   const [usageCost, setUsageCost] = useState<number>(0);
+  const [usedMinutes, setUsedMinutes] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [redirecting, setRedirecting] = useState(false);
@@ -46,12 +47,13 @@ export default function BillingPlan() {
     setLoading(true);
     setError(null);
     try {
-      const [s, u] = await Promise.allSettled([getSubscription(), getMyUsage()]);
+      const [s, u, iu] = await Promise.allSettled([getSubscription(), getMyUsage(), getIndexUsage()]);
       if (s.status === "fulfilled") setSub(s.value);
       else throw s.reason;
       if (u.status === "fulfilled") {
         setUsageCost(u.value.days.reduce((acc, d) => acc + (d.cost_usd || 0), 0));
       }
+      if (iu.status === "fulfilled") setUsedMinutes(iu.value.used_minutes || 0);
     } catch {
       setError(t("settings.billing.error_load"));
     } finally {
@@ -154,13 +156,16 @@ export default function BillingPlan() {
 
         <Label label={t("settings.billing.video_usage")} />
         <p className="text-[24px] font-light tracking-[-0.4px] text-[var(--color-obsidian)]">
-          0 min
+          {capLabel(usedMinutes, unlimited)}
           <span className="text-[var(--color-slate)]"> / {capLabel(indexCap, unlimited)}</span>
         </p>
 
         <div className="flex w-[550px] max-w-full flex-col gap-2">
           <div className="relative flex h-3 w-full items-center overflow-hidden rounded border border-[var(--color-obsidian)]">
-            <span className="inline-block h-full" style={{ width: "0%" }}>
+            <span
+              className="inline-block h-full"
+              style={{ width: `${indexCap ? Math.min(100, (usedMinutes / indexCap) * 100) : 0}%` }}
+            >
               <div className="h-full w-full bg-[#5fb364]" />
             </span>
           </div>
