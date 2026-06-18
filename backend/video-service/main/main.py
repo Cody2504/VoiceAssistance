@@ -14,6 +14,7 @@ from main.api.recommend import router as recommend_router
 from main.api.search import router as search_router
 from main.api.sounds import router as sounds_router
 from main.api.segments import router as segments_router
+from main.api.usage import router as usage_router
 from main.api.videos import router as videos_router
 from main.api.when import router as when_router
 
@@ -30,6 +31,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(usage_router)   # MUST be before videos_router (literal /index-usage vs /{video_id})
 app.include_router(videos_router)
 app.include_router(indexes_router)
 app.include_router(grounding_router)

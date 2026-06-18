@@ -8,19 +8,22 @@ from main.app.core.constants.prompts import reflect_prompt
 from main.app.core.state import AgentState
 
 
+# Trailing anchor: conversations that predate the Postgres checkpointer can
+# contain duplicated assistant turns (the old history_node bug). That repetition
+# pulls the model into replaying the previous answer, so pin it to the latest
+# question. "result(s)" (plural-aware) lets multi-video turns — where scope_guard
+# fetched several attached videos — synthesize across ALL of this turn's results.
+REFLECT_ANCHOR = (
+    "Answer ONLY the user's most recent question, using the tool result(s) "
+    "produced for the current question. When several videos were fetched this "
+    "turn, synthesize across ALL of their results. Do NOT repeat or rephrase an "
+    "earlier assistant answer unless the latest question asks for it."
+)
+
+
 async def reflect_node(state: AgentState) -> dict[str, Any]:
     llm = get_llm_client("reflect")
-    # Trailing anchor: conversations that predate the Postgres checkpointer can
-    # contain duplicated assistant turns (the old history_node bug). That
-    # repetition pattern pulls the model into replaying the previous answer, so
-    # explicitly pin it to the latest question + tool result.
-    anchor = SystemMessage(
-        content=(
-            "Answer ONLY the user's most recent question, using the most recent "
-            "tool result. Do NOT repeat or rephrase an earlier assistant answer "
-            "unless the latest question asks for it."
-        )
-    )
+    anchor = SystemMessage(content=REFLECT_ANCHOR)
     inputs = [SystemMessage(content=reflect_prompt())] + list(state.get("messages") or []) + [anchor]
     response = await llm.ainvoke(inputs)
     return {"messages": [response]}

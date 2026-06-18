@@ -4,6 +4,7 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
+from cm_shared.queue import VIDEO_INDEX_QUEUE, get_queue
 from sqlalchemy import delete as sa_delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -260,9 +261,14 @@ async def add_video_to_index(
     if video is None or video.user_id != user_id:
         raise HTTPException(404, "Video not found")
 
-    existing = await session.get(IndexVideo, (index_id, body.video_id))
-    if existing is not None:
-        raise HTTPException(409, "Video already in this index")
+    # 1 video = 1 index: reject if the video already belongs to ANY index.
+    already = (
+        await session.execute(
+            select(IndexVideo.index_id).where(IndexVideo.video_id == body.video_id).limit(1)
+        )
+    ).first()
+    if already is not None:
+        raise HTTPException(409, "Video already belongs to an index")
 
     if body.position is None:
         next_pos = (
@@ -278,7 +284,25 @@ async def add_video_to_index(
 
     link = IndexVideo(index_id=index_id, video_id=body.video_id, position=pos)
     session.add(link)
+
+    # Add-to-index is the processing trigger. A still-stored video gets the full
+    # IV2/TransNet/SG-DETR/KG pipeline now; the worker self-discovers this (single)
+    # index membership via IndexVideo (ingest._run_kg_for_video_indexes) and builds
+    # KG for it. An already-processed video would only re-associate — but the 1:1
+    # guard above means that path can't be reached.
+    if video.status == "stored":
+        video.status = "queued"
+        session.add(video)
+
     await session.commit()
+
+    if video.status == "queued":
+        get_queue(VIDEO_INDEX_QUEUE).enqueue(
+            "main.workers.queue_worker.index_video",
+            str(body.video_id),
+            job_timeout=3600,
+        )
+
     return success_response(
         IndexVideoOut(
             video_id=body.video_id,

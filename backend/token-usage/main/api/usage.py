@@ -33,7 +33,9 @@ async def log_usage(body: TokenUsageLog, session: AsyncSession = Depends(get_ses
 @router.get("/me")
 async def my_usage(payload: TokenPayload = Depends(require_user), session: AsyncSession = Depends(get_session)):
     user_id = UUID(payload.sub)
-    since = datetime.now(timezone.utc) - timedelta(days=30)
+    # Naive UTC: token_usage.created_at is TIMESTAMP WITHOUT TIME ZONE; asyncpg
+    # rejects comparing a naive column to a tz-aware param.
+    since = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=30)
 
     daily = (await session.execute(
         select(

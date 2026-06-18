@@ -6,7 +6,7 @@ from typing import Any
 from langchain_core.messages import AIMessage, ToolMessage
 
 from main.app.core.state import AgentState
-from main.app.core.tools import TOOLS_BY_NAME
+from main.app.core.tools import TOOLS_BY_NAME, PER_VIDEO_TOOLS
 
 log = logging.getLogger(__name__)
 
@@ -20,11 +20,14 @@ async def tool_executor_node(state: AgentState) -> dict[str, Any]:
     tool_msgs: list = []
     last_name: str | None = None
     last_result: Any = None
+    acted: list[str] = []
 
     for call in last.tool_calls:
         name = call.get("name") or ""
         args = call.get("args") or {}
         call_id = call.get("id") or name
+        if name in PER_VIDEO_TOOLS and args.get("video_id"):
+            acted.append(str(args["video_id"]))
         tool_obj = TOOLS_BY_NAME.get(name)
         if tool_obj is None:
             err = f"Unknown tool: {name}"
@@ -51,4 +54,5 @@ async def tool_executor_node(state: AgentState) -> dict[str, Any]:
         "last_tool_name": last_name,
         "last_tool_result": last_result,
         "router_steps": (state.get("router_steps") or 0) + 1,
+        "acted_video_ids": acted,
     }

@@ -13,6 +13,29 @@ from langchain.tools import tool
 from cm_shared.internal import current_image, post_request
 from cm_shared.response import unwrap_response as _unwrap
 
+# An arbitrary query image usually matches only the one video it actually came
+# from. The backend returns a fixed top_n by cosine score, so the tail pads the
+# answer with unrelated videos (whatever vectors rank next). Keep the top match
+# plus any results close to it and stop at the first big score drop — this is
+# self-calibrating (no absolute threshold): a lone strong match returns 1 result,
+# several genuine matches all survive.
+_KEEP_RATIO = 0.85
+
+
+def _relevance_gate(shots: list[dict]) -> list[dict]:
+    if not shots:
+        return shots
+    top = shots[0].get("score") or 0
+    if top <= 0:
+        return shots[:1]
+    kept = [shots[0]]
+    for sh in shots[1:]:
+        if (sh.get("score") or 0) >= top * _KEEP_RATIO:
+            kept.append(sh)
+        else:
+            break  # shots are ranked desc — the first big drop ends the relevant cluster
+    return kept
+
 
 @tool
 async def find_scene_by_image(video_id: str) -> dict[str, Any]:
@@ -33,7 +56,7 @@ async def find_scene_by_image(video_id: str) -> dict[str, Any]:
         f"/api/v1/videos/{video_id}/search/image",
         json={"image": image},
     ))
-    shots = (resp or {}).get("shots", []) if isinstance(resp, dict) else []
+    shots = _relevance_gate((resp or {}).get("shots", []) if isinstance(resp, dict) else [])
     top = shots[0] if shots else None
     return {
         "video_id": video_id,
@@ -67,8 +90,11 @@ async def search_scene_by_image(
     # Returns {"query": "(image)", "group_by": ..., "shots": [...]} — the top-level
     # `shots` array (each with video_id + t_start/t_end) is what the frontend clip
     # extractor and reflect both consume.
-    return _unwrap(await post_request(
+    resp = _unwrap(await post_request(
         "video-service",
         "/api/v1/videos/search/image",
         json={"image": image, "top_n": top_n, "group_by": group_by},
     ))
+    if isinstance(resp, dict):
+        resp["shots"] = _relevance_gate(resp.get("shots", []) or [])
+    return resp

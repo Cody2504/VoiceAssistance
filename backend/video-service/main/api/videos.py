@@ -78,7 +78,7 @@ async def upload_video(
     video = Video(
         id=video_id, user_id=user_id,
         original_filename=file.filename or f"upload{ext}",
-        minio_key=key, status="queued",
+        minio_key=key, status="stored",
         duration_s=round(duration, 3) or None,
         size_bytes=size_bytes,
     )
@@ -86,14 +86,8 @@ async def upload_video(
     await session.commit()
     await session.refresh(video)
 
-    # STEP 2 (indexing): the worker runs the full IV2/TransNet/SG-DETR pipeline
-    # and updates only `status` (plus shot_count/modality/summary it derives).
-    get_queue(VIDEO_INDEX_QUEUE).enqueue(
-        "main.workers.queue_worker.index_video",
-        str(video_id),
-        job_timeout=3600,
-    )
-
+    # Upload = storage only. The IV2/TransNet/SG-DETR/KG pipeline is triggered by
+    # add-to-index (POST /indexes/{id}/videos), not here. (1 video = 1 index.)
     return success_response(VideoOut.model_validate(video, from_attributes=True).model_dump(mode="json"))
 
 

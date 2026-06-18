@@ -19,6 +19,7 @@ def get_llm_client(role: Role) -> Union[ChatOpenAI, AzureChatOpenAI]:
             streaming=True,
             temperature=0,
             tags=[role],
+            stream_usage=True,
         )
 
     model = s.openai_planner_model if role == "router" else s.openai_worker_model
@@ -28,4 +29,5 @@ def get_llm_client(role: Role) -> Union[ChatOpenAI, AzureChatOpenAI]:
         temperature=0,
         tags=[role],
         api_key=s.openai_api_key,
+        stream_usage=True,
     )

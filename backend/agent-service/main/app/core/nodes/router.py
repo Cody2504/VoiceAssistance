@@ -9,6 +9,18 @@ from main.app.core.constants.prompts import router_prompt
 from main.app.core.state import AgentState
 from main.app.core.tools import TOOLS
 
+_IMAGE_NOTE = (
+    "The user has ATTACHED AN IMAGE to this turn. To find the scene/moment "
+    "that matches or looks like the image, you MUST use an image tool (text "
+    "search ignores the image). The image is supplied automatically — never "
+    "put it in the arguments.\n"
+    "- If NO single video is pinned (corpus / 'from my videos' / 'which video "
+    "is this from') → call `search_scene_by_image` (searches all videos, "
+    "returns the matching video(s) + timestamps).\n"
+    "- If exactly one video is pinned and the user wants the moment in THAT "
+    "video → call `find_scene_by_image` with that video_id."
+)
+
 
 def _scope_note(state: AgentState) -> str:
     """Inject attached IDs as a system message so the router has them in scope.
@@ -61,26 +73,23 @@ def _scope_note(state: AgentState) -> str:
     return "\n".join(lines)
 
 
-async def router_node(state: AgentState) -> dict[str, Any]:
-    llm = get_llm_client("router").bind_tools(TOOLS)
+def build_router_inputs(state: AgentState) -> list:
+    """Router prompt first, conversation history next, per-turn attachment scope LAST.
 
-    sys_msgs = [SystemMessage(content=router_prompt())]
+    Placing the attached-video scope after the history beats recency/lost-in-the-middle
+    bias: the model reads the current attachment immediately before deciding."""
+    messages = list(state.get("messages") or [])
+    trailing: list = []
     scope = _scope_note(state)
     if scope:
-        sys_msgs.append(SystemMessage(content=scope))
+        trailing.append(SystemMessage(content=scope))
     if current_image.get():
-        sys_msgs.append(SystemMessage(content=(
-            "The user has ATTACHED AN IMAGE to this turn. To find the scene/moment "
-            "that matches or looks like the image, you MUST use an image tool (text "
-            "search ignores the image). The image is supplied automatically — never "
-            "put it in the arguments.\n"
-            "- If NO single video is pinned (corpus / 'from my videos' / 'which video "
-            "is this from') → call `search_scene_by_image` (searches all videos, "
-            "returns the matching video(s) + timestamps).\n"
-            "- If exactly one video is pinned and the user wants the moment in THAT "
-            "video → call `find_scene_by_image` with that video_id."
-        )))
+        trailing.append(SystemMessage(content=_IMAGE_NOTE))
+    return [SystemMessage(content=router_prompt())] + messages + trailing
 
-    inputs = sys_msgs + list(state.get("messages") or [])
+
+async def router_node(state: AgentState) -> dict[str, Any]:
+    llm = get_llm_client("router").bind_tools(TOOLS)
+    inputs = build_router_inputs(state)
     response = await llm.ainvoke(inputs)
     return {"messages": [response]}

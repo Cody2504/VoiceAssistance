@@ -17,6 +17,7 @@ from cm_shared.internal import current_image, current_jwt
 from cm_shared.schemas import ChatMessageIn
 from cm_shared.settings import get_base_settings
 from main.app.api.v1.persist import attach_tool_result
+from main.app.common.service.usage import UsageAccumulator, extract_usage, post_usage
 from main.app.core.graph.graph import build_graph
 from main.app.db.models.conversation import Conversation, Message
 
@@ -99,6 +100,7 @@ async def _event_stream(
     final_text_parts: list[str] = []
     thoughts: list[dict] = []
     tool_calls: list[dict] = []
+    usage = UsageAccumulator()
 
     input_state = {
         "messages": [HumanMessage(content=message)],
@@ -140,6 +142,11 @@ async def _event_stream(
             payload = {"tool": ev.get("name"), "result": result}
             yield {"event": "tool_result", "data": json.dumps(payload, default=str)}
 
+        elif kind == "on_chat_model_end":
+            u = extract_usage(ev)
+            if u:
+                usage.add(*u)
+
     msg_user = Message(conversation_id=conversation_id, role="user", content=message)
     msg_assistant = Message(
         conversation_id=conversation_id,
@@ -150,6 +157,8 @@ async def _event_stream(
     )
     session.add_all([msg_user, msg_assistant])
     await session.commit()
+
+    await post_usage(user_id, conversation_id, usage)
 
     yield {
         "event": "end",

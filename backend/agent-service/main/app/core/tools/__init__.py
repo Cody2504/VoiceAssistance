@@ -36,3 +36,19 @@ TOOLS = [
 ]
 
 TOOLS_BY_NAME = {t.name: t for t in TOOLS}
+
+# Tools that act on exactly one video (take a single `video_id` arg). Used by the
+# scope guard / tool executor to track which attached videos have been acted on.
+PER_VIDEO_TOOLS: set[str] = {
+    "ground_video",
+    "get_highlights",
+    "find_similar",
+    "ask_video_local",
+    "find_sequence",
+    "search_motion",
+    "search_video_local",
+    "combine_clips",
+    "moderate_video",
+    "find_scene_by_image",
+    "find_sounds",
+}

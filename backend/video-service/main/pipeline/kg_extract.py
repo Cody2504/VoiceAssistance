@@ -211,8 +211,12 @@ def _fmt(seconds: float) -> str:
 # -------------------------------------------------------- canonicalisation ---
 
 def _normalise(name: str) -> str:
-    """Lowercase + collapse whitespace; what we hash for exact-match lookups."""
-    return " ".join(name.lower().split())
+    """Lowercase, fold punctuation (hyphens/slashes/etc.) to spaces, collapse
+    whitespace — the exact-match key. Punctuation folding merges variants that
+    differ only by hyphenation ("matrix-vector" == "matrix vector"), which were
+    otherwise creating duplicate entities."""
+    import re
+    return " ".join(re.sub(r"[^\w\s]", " ", name.lower()).split())
 
 
 def _embed_entity_text(embedder: TextEmbedder, name: str, description: str) -> np.ndarray:
