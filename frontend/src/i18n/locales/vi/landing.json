@@ -111,7 +111,7 @@
       "analyze_card2_title": "Công cụ tạo điểm nổi bật video",
       "analyze_card2_body": "Ứng dụng này tự động phân tích nội dung video để tạo chương và điểm nổi bật, tối ưu hóa quy trình sản xuất video cho người sáng tạo nội dung.",
       "analyze_card3_title": "Công cụ phân tích phỏng vấn",
-      "analyze_card3_body": "Ứng dụng đánh giá hiệu suất phỏng vấn xin việc bằng khả năng tạo văn bản từ nội dung video của Qwen3-VL.",
+      "analyze_card3_body": "Ứng dụng đánh giá hiệu suất phỏng vấn xin việc bằng khả năng tạo văn bản có căn cứ từ nội dung video của Stride.",
       "segment_card1_title": "Quảng cáo theo ngữ cảnh và cá nhân hóa",
       "segment_card1_body": "Công cụ phân tích cảnh quay nguồn, tóm tắt nội dung và đề xuất quảng cáo dựa trên ngữ cảnh và sắc thái cảm xúc của cảnh quay.",
       "segment_card2_title": "Đề xuất sử dụng Multimodal Embeddings",
@@ -152,10 +152,10 @@
     "models": {
       "h2": "Các mô hình của chúng tôi.",
       "sub": "Trọng số mở, benchmark minh bạch, không hộp đen. Kiểm tra, thay thế hoặc ghim một phiên bản.",
-      "viclip_role": "Nền tảng truy xuất hình ảnh",
-      "viclip_blurb": "CLIP ViT-L/14 đông cứng — các khung hình được nhúng và gộp trung bình để truy xuất kho dữ liệu và phân loại zero-shot.",
-      "qddetr_role": "Đầu định vị thời gian",
-      "qddetr_blurb": "Đầu dự đoán khoảng SG-DETR được huấn luyện trên đặc trưng InternVideo2 đông cứng để truy xuất khoảnh khắc và điểm nhấn."
+      "viclip_role": "Truy xuất đa phương thức",
+      "viclip_blurb": "Khung hình và đoạn clip được nhúng vào một không gian chung để truy xuất kho dữ liệu và phân loại zero-shot — lớp nhận thức đằng sau mọi tìm kiếm.",
+      "qddetr_role": "Định vị thời gian & phân tích",
+      "qddetr_blurb": "Xác định chính xác các khoảnh khắc (bắt đầu, kết thúc) và điểm nhấn, rồi suy luận trên toàn bộ trục thời gian của video."
     },
     "tutorials": {
       "h2": "Làm chủ với các hướng dẫn khởi động nhanh.",

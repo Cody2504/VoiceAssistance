@@ -15,7 +15,7 @@ export function TopBar() {
   const { user } = useAuth();
   const { t } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
-  const { usedMinutes, capMinutes } = useIndexUsage();
+  const { usedMinutes, capMinutes, planName } = useIndexUsage();
   const unlimited = t("settings.billing.unlimited");
 
   const initials = (() => {
@@ -54,6 +54,7 @@ export function TopBar() {
             initials={initials}
             usedMin={usedMinutes}
             capMin={capMinutes}
+            planName={planName}
             onClose={() => setMenuOpen(false)}
           />
         )}

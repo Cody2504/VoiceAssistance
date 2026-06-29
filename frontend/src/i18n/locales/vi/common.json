@@ -68,7 +68,7 @@
     }
   },
   "footer": {
-    "tagline": "AI thuần video cho tìm kiếm, phân tích và phân đoạn — xây dựng trên các mô hình mở CLIP, InternVideo2 và SG-DETR.",
+    "tagline": "AI thuần video cho tìm kiếm, phân tích và phân đoạn — được vận hành bởi hai mô hình Sprint và Stride của chúng tôi.",
     "copyright": "© {{year}} Jockey. Xây dựng trên các mô hình mở.",
     "col": {
       "platform": "Nền tảng",

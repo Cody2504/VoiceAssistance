@@ -101,6 +101,8 @@ export interface PersistedMessage {
   content: string;
   thoughts: { agent?: string; delta?: string }[] | null;
   tool_calls: { tool?: string; args?: unknown; result?: unknown }[] | null;
+  /** Base64 data-URL of an image attached to this user turn (null otherwise). */
+  image?: string | null;
   created_at: string;
 }
 

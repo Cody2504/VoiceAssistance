@@ -14,6 +14,9 @@
       "empty_state": "Hỏi Jockey bất cứ điều gì về video của bạn.",
       "you": "Bạn",
       "attached_label": "Đã đính kèm: {{names}}",
+      "attached_image_alt": "Hình ảnh đính kèm",
+      "open_image_aria": "Mở xem trước hình ảnh",
+      "play_video_aria": "Phát {{name}}",
       "history_loading": "Đang tải cuộc trò chuyện…",
       "history_load_failed": "Không thể tải cuộc trò chuyện này."
     },
@@ -28,12 +31,12 @@
     },
     "scope": {
       "label": "Phạm vi",
-      "mode_single_label": "Một video",
-      "mode_single_hint": "Hỏi về một video — sử dụng video đã đính kèm bên dưới.",
+      "mode_single_label": "Tổng quát",
+      "mode_single_hint": "Hỏi về bất kỳ video nào bạn đính kèm bên dưới.",
       "mode_subset_label": "Video đã chọn",
       "mode_subset_hint": "Chọn một Index, rồi chọn video nào trong đó.",
-      "mode_whole_label": "Toàn bộ index",
-      "mode_whole_hint": "Tìm kiếm mọi video trong một Index — phù hợp nhất cho câu hỏi liên quan nhiều video."
+      "mode_whole_label": "Chỉ mục đã chọn",
+      "mode_whole_hint": "Chọn một chỉ mục để hỏi (dùng knowledge graph)."
     },
     "index_picker": {
       "untitled": "Index chưa đặt tên",

@@ -43,7 +43,7 @@
       "models_heading": "Bộ mô hình của chúng tôi",
       "models": {
         "viclip_kind": "NỀN TẢNG NHẬN THỨC",
-        "viclip_body": "Bộ mã hóa CLIP-L đông cứng cho truy xuất kho dữ liệu, cùng đặc trưng InternVideo2 cung cấp năng lực định vị thời gian.",
+        "viclip_body": "Nền tảng nhận thức của chúng tôi cho truy xuất kho dữ liệu và định vị thời gian — mọi khung hình và đoạn clip được nhúng vào một không gian có thể tìm kiếm duy nhất.",
         "qwen_kind": "MÔ HÌNH NGÔN NGỮ VIDEO",
         "qwen_body": "Tạo phụ đề, câu trả lời và phân tích dựa trên toàn bộ nội dung video."
       },
@@ -120,11 +120,11 @@
       "models_heading": "Nhận thức và lý luận thuần video.",
       "models": {
         "marengo_kind": "BỘ MÃ HÓA TRUY XUẤT ĐA PHƯƠNG THỨC",
-        "marengo_name": "Truy xuất CLIP-L",
-        "marengo_body": "Nhúng khung hình bằng CLIP-L và đoạn clip bằng InternVideo2, để mọi khoảnh khắc đều có thể tìm thấy theo nội dung thực tế qua lời nói, âm thanh và hình ảnh.",
+        "marengo_name": "Sprint",
+        "marengo_body": "Nhúng mọi khung hình và đoạn clip vào một không gian chung, để mọi khoảnh khắc đều có thể tìm thấy theo nội dung thực tế qua lời nói, âm thanh và hình ảnh.",
         "pegasus_kind": "MÔ HÌNH NGÔN NGỮ VIDEO",
-        "pegasus_name": "Suy luận Qwen3-VL",
-        "pegasus_body": "Suy luận trên toàn bộ trục thời gian của video bằng Qwen3-VL, theo dõi thực thể, quan hệ nhân quả và mạch truyện thay vì chỉ lấy mẫu vài khung hình."
+        "pegasus_name": "Stride",
+        "pegasus_body": "Suy luận trên toàn bộ trục thời gian của video, theo dõi thực thể, quan hệ nhân quả và mạch truyện thay vì chỉ lấy mẫu vài khung hình."
       },
       "cta_heading": "Sẵn sàng xem kho lưu trữ của bạn thực sự biết gì?",
       "cta_sub": "Thử trong Playground hoặc nói chuyện với đội ngũ của chúng tôi. Không cần thẻ tín dụng.",
@@ -450,11 +450,11 @@
         "q3": "Việc định vị khoảnh khắc được tính phí như thế nào?",
         "a3": "Mỗi lần gọi endpoint Định vị Khoảnh khắc — truy vấn văn bản → (start_sec, end_sec) — được tính là một lần gọi. Gói Miễn phí bao gồm 100 lần gọi mỗi tháng; ngoài ra mức giá Nhà phát triển là $0.002 mỗi lần gọi.",
         "q4": "Tôi có thể tinh chỉnh các mô hình không?",
-        "a4": "Đầu định vị của Eclipse có thể được tinh chỉnh trên dữ liệu (truy vấn, video, khoảng thời gian) của riêng bạn trên các gói Doanh nghiệp. Liên hệ bộ phận bán hàng để biết quy trình tinh chỉnh.",
+        "a4": "Đầu định vị của Sprint có thể được tinh chỉnh trên dữ liệu (truy vấn, video, khoảng thời gian) của riêng bạn trên các gói Doanh nghiệp. Liên hệ bộ phận bán hàng để biết quy trình tinh chỉnh.",
         "q5": "Thời lượng lập chỉ mục video được đo như thế nào?",
         "a5": "Phút lập chỉ mục được tính dựa trên tổng thời lượng video đã gửi, không phải thời gian thực để xử lý. Video 10 phút luôn được tính là 10 phút bất kể tình trạng GPU.",
-        "q6": "Sự khác biệt giữa Eclipse và Secretariat là gì?",
-        "a6": "Eclipse xử lý truy xuất (tìm video và khoảnh khắc). Secretariat xử lý tạo nội dung (trả lời câu hỏi và viết tóm tắt). Hầu hết sản phẩm sử dụng cả hai: Eclipse để định vị, Secretariat để mô tả."
+        "q6": "Sự khác biệt giữa Sprint và Stride là gì?",
+        "a6": "Sprint xử lý truy xuất (tìm video và khoảnh khắc). Stride xử lý tạo nội dung (trả lời câu hỏi và viết tóm tắt). Hầu hết sản phẩm sử dụng cả hai: Sprint để định vị, Stride để mô tả."
       }
     },
     "pricing_calc": {
@@ -483,8 +483,8 @@
       "month_plural": "tháng",
       "cost_summary": "Tóm tắt chi phí",
       "cost_summary_sub": "Nhà phát triển (trả theo mức dùng) — cập nhật trực tiếp.",
-      "eclipse_subtotal": "Tổng phụ Eclipse",
-      "secretariat_subtotal": "Tổng phụ Secretariat",
+      "eclipse_subtotal": "Tổng phụ Sprint",
+      "secretariat_subtotal": "Tổng phụ Stride",
       "monthly_total": "Tổng hàng tháng",
       "projected": "Dự báo ({{months}} tháng)",
       "start_free_heading": "Bắt đầu miễn phí",

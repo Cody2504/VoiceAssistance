@@ -1,6 +1,6 @@
 import { Link, NavLink, Outlet } from "react-router";
 import { useTranslation } from "react-i18next";
-import { Plus, PanelLeftOpen, ShieldCheck, Users as UsersIcon, CreditCard } from "lucide-react";
+import { Plus, PanelLeftOpen, ShieldCheck, Users as UsersIcon, CreditCard, ClipboardCheck } from "lucide-react";
 
 import { Logo } from "@/components/brand/Logo";
 import { TopBar } from "@/components/layout/TopBar";
@@ -146,6 +146,7 @@ function SidebarShell() {
             <SidebarItem to="/admin" end icon={<ShieldCheck size={22} strokeWidth={1.75} />} label={t("admin.nav.overview")} />
             <SidebarItem to="/admin/users" icon={<UsersIcon size={22} strokeWidth={1.75} />} label={t("admin.nav.users")} />
             <SidebarItem to="/admin/billing" icon={<CreditCard size={22} strokeWidth={1.75} />} label={t("admin.nav.billing")} />
+            <SidebarItem to="/admin/evaluation" icon={<ClipboardCheck size={22} strokeWidth={1.75} />} label={t("admin.nav.evaluation")} />
           </div>
         )}
       </div>

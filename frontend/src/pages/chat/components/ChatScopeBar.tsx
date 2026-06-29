@@ -3,9 +3,8 @@ import { useTranslation } from "react-i18next";
 
 import { listIndexes, type IndexSummary } from "@/apis/indexes.api";
 import { cn } from "@/lib/utils";
-import { VideoMultiPicker } from "@/pages/playground/components/VideoMultiPicker";
 
-export type ChatScopeMode = "single" | "subset" | "whole";
+export type ChatScopeMode = "single" | "whole";
 
 export interface ChatScopeValue {
   mode: ChatScopeMode;
@@ -27,16 +26,14 @@ interface ModeItem {
 
 const MODES: ModeItem[] = [
   { id: "single", labelKey: "chat.scope.mode_single_label", hintKey: "chat.scope.mode_single_hint" },
-  { id: "subset", labelKey: "chat.scope.mode_subset_label", hintKey: "chat.scope.mode_subset_hint" },
   { id: "whole",  labelKey: "chat.scope.mode_whole_label",  hintKey: "chat.scope.mode_whole_hint"  },
 ];
 
 /**
- * Three-mode scope selector for the chat. Controls what gets sent alongside the
+ * Two-mode scope selector for the chat. Controls what gets sent alongside the
  * user's message:
- *  - "single" → no index_id; the existing drag-attached videos in the composer drive scope.
- *  - "subset" → index_id + a hand-picked subset of its videos.
- *  - "whole"  → index_id only (the backend resolves all videos in the index).
+ *  - "single" (General) → no index_id; ask about whatever video(s) you drag into the composer.
+ *  - "whole" (Selected index) → index_id only; ask across a chosen index (knowledge graph).
  */
 export function ChatScopeBar({ value, onChange }: Props) {
   const { t } = useTranslation();
@@ -44,8 +41,7 @@ export function ChatScopeBar({ value, onChange }: Props) {
   // When mode changes, reset id/video_ids to keep the state consistent with the mode.
   const setMode = (mode: ChatScopeMode) => {
     if (mode === "single") onChange({ mode, indexId: undefined, indexTitle: undefined, videoIds: [] });
-    else if (mode === "whole") onChange({ mode, indexId: value.indexId, indexTitle: value.indexTitle, videoIds: [] });
-    else onChange({ mode, indexId: value.indexId, indexTitle: value.indexTitle, videoIds: value.videoIds });
+    else onChange({ mode, indexId: value.indexId, indexTitle: value.indexTitle, videoIds: [] });
   };
 
   const activeHintKey = MODES.find((m) => m.id === value.mode)?.hintKey ?? "";
@@ -76,17 +72,8 @@ export function ChatScopeBar({ value, onChange }: Props) {
         <div className="mt-3 space-y-2">
           <InlineIndexPicker
             selectedIndexId={value.indexId}
-            onSelect={(idx) =>
-              onChange({ ...value, indexId: idx.id, indexTitle: idx.title, videoIds: value.mode === "whole" ? [] : value.videoIds })
-            }
+            onSelect={(idx) => onChange({ ...value, indexId: idx.id, indexTitle: idx.title, videoIds: [] })}
           />
-          {value.mode === "subset" && value.indexId && (
-            <VideoMultiPicker
-              indexId={value.indexId}
-              selectedIds={value.videoIds}
-              onChange={(ids) => onChange({ ...value, videoIds: ids })}
-            />
-          )}
         </div>
       )}
     </div>

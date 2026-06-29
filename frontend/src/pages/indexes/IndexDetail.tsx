@@ -14,6 +14,7 @@ import {
   Sparkles,
   SquareArrowRight,
   Trash2,
+  Waypoints,
   X,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -333,6 +334,15 @@ export default function IndexDetail() {
                 e.target.value = "";
               }}
             />
+            {!isDefault && (
+              <button
+                onClick={() => navigate(`/indexes/${indexId}/graph`)}
+                className="inline-flex items-center gap-1.5 rounded-[12px] border border-[var(--color-chalk)] px-4 py-2 text-[13px] text-[var(--color-obsidian)] transition-all hover:rounded-[16px] hover:bg-[var(--color-powder)]"
+              >
+                <Waypoints size={14} />
+                {t("console.index_detail.knowledge_graph_btn")}
+              </button>
+            )}
             <div className="relative">
               <button
                 onClick={() => setAddMenuOpen((o) => !o)}

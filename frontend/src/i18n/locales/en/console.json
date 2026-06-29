@@ -104,7 +104,26 @@
       "error_remove": "Failed to remove video",
       "error_video_only": "Only video files are accepted.",
       "upload_failed": "Upload failed for {{name}}: {{message}}",
-      "upload_failed_short": "Upload failed for {{name}}"
+      "upload_failed_short": "Upload failed for {{name}}",
+      "knowledge_graph_btn": "Knowledge Graph",
+      "kg_page_title": "Knowledge graph",
+      "kg_back": "Back to index",
+      "kg_loading": "Loading knowledge graph…",
+      "kg_empty": "No knowledge graph for this index yet — add and index videos first.",
+      "kg_error": "Failed to load the knowledge graph.",
+      "kg_retry": "Retry",
+      "kg_truncated": "Showing {{shown}} of {{total}} nodes (most-connected).",
+      "kg_legend": "Entity types",
+      "kg_types": {
+        "concept": "Concept",
+        "method": "Method",
+        "person": "Person",
+        "organization": "Organization",
+        "tool": "Tool",
+        "event": "Event",
+        "location": "Location",
+        "object": "Object"
+      }
     },
     "add_videos_modal": {
       "title": "Add videos to this index",
@@ -146,8 +165,11 @@
       "status_indexing": "Indexing",
       "status_ready": "Ready",
       "status_error": "Error",
+      "status_flagged": "Flagged",
+      "status_rejected": "Rejected",
       "delete": "Delete",
       "n_selected": "{{count}} assets selected",
+      "bulk_delete_confirm": "Delete {{count}} selected asset(s)? This removes the files, their indexes, and any derived artifacts. This cannot be undone.",
       "add_to_index": "Add to index",
       "add_n_to_index": "Add {{count}} assets to an index",
       "select_an_index": "Select an index",
@@ -158,7 +180,7 @@
       "upload_done_other": "Uploaded {{total}} files",
       "upload_progress": "Uploading {{current}} of {{total}}",
       "upload_failed": "{{count}} failed — skipped",
-      "upload_background": "Indexing continues in the background — watch the Status column."
+      "upload_background": "Saved to storage. Add a video to an Index to process it for search and chat."
     },
     "video": {
       "status_label": "Status:",

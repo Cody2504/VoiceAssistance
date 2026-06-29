@@ -111,7 +111,7 @@
       "analyze_card2_title": "Video Highlight Generator",
       "analyze_card2_body": "This application automatically analyzes video content to create chapters and highlights, streamlining the video production workflow for content creators.",
       "analyze_card3_title": "Interview Analyzer",
-      "analyze_card3_body": "This application evaluates job interview performances using the ability of the Qwen3-VL video understanding engine to generate text based on video content.",
+      "analyze_card3_body": "This application evaluates job interview performances using Stride's ability to generate grounded text from video content.",
       "segment_card1_title": "Contextual and Personalized Ads",
       "segment_card1_body": "A tool for analyzing source footage, summarizing content, and recommending ads based on the footage's context and emotional tone.",
       "segment_card2_title": "Recommendations using Multimodal Embeddings",
@@ -152,10 +152,10 @@
     "models": {
       "h2": "Our stable of models.",
       "sub": "Open weights, audited benchmarks, no black boxes. Inspect, swap, or pin a version.",
-      "viclip_role": "Visual retrieval backbone",
-      "viclip_blurb": "Frozen CLIP ViT-L/14 — frames are embedded and mean-pooled for corpus retrieval and zero-shot classification.",
-      "qddetr_role": "Temporal grounding head",
-      "qddetr_blurb": "Trained SG-DETR span head over frozen InternVideo2 features for moment retrieval and highlights."
+      "viclip_role": "Multimodal retrieval",
+      "viclip_blurb": "Frames and clips are embedded into a shared space for corpus retrieval and zero-shot classification — the perception layer behind every search.",
+      "qddetr_role": "Temporal localization & analysis",
+      "qddetr_blurb": "Pinpoints exact (start, end) moments and highlights, then reasons over the full timeline of a video."
     },
     "tutorials": {
       "h2": "Take the reins with our quick-start tutorials.",

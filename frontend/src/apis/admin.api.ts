@@ -88,3 +88,83 @@ export async function listPlans(): Promise<AdminPlan[]> {
   const r = await axios.get("/billing/plans");
   return r.data?.data?.plans ?? [];
 }
+
+export type PlanUpdate = Partial<Omit<AdminPlan, "id">>;
+
+export async function updatePlan(planId: string, body: PlanUpdate): Promise<AdminPlan> {
+  const r = await axios.patch(`/billing/admin/plans/${planId}`, body);
+  return r.data?.data;
+}
+
+// ---- Chatbot evaluation dashboard (agent-service /admin/eval/*) ----
+
+export interface EvalRunSummary {
+  n: number;
+  routing_f1_macro: number;
+  arg_correctness_rate: number | null;
+  mean_task_completion: number | null;
+  mean_answer_relevancy: number | null;
+  passed: number;
+  thresholds_pass: boolean;
+  breaches: string[];
+}
+
+export interface EvalRunRow {
+  id: string;
+  kind: string;
+  mode: string;
+  judge_on: boolean;
+  status: "running" | "done" | "failed";
+  created_at: string | null;
+  finished_at: string | null;
+  error: string | null;
+  summary: EvalRunSummary | null;
+}
+
+export interface EvalCaseRow {
+  id: string;
+  golden_id: string | null;
+  query: string;
+  source: string;
+  expected_tool: string | null;
+  expected_args: Record<string, unknown> | null;
+  reference_answer: string | null;
+  predicted_tool: string | null;
+  tool_correct: boolean | null;
+  arg_ok: boolean | null;
+  task_completion: number | null;
+  answer_relevancy: number | null;
+}
+
+export interface EvalRunDetail {
+  run: EvalRunRow;
+  cases: EvalCaseRow[];
+}
+
+export async function listEvalRuns(): Promise<EvalRunRow[]> {
+  const r = await axios.get("/admin/eval/runs");
+  return r.data?.data;
+}
+
+export async function getEvalRun(id: string): Promise<EvalRunDetail> {
+  const r = await axios.get(`/admin/eval/runs/${id}`);
+  return r.data?.data;
+}
+
+export async function createEvalRun(body: {
+  kind?: string;
+  mode?: string;
+  judge?: boolean;
+  golden_ids?: string[];
+}): Promise<EvalRunRow> {
+  const r = await axios.post("/admin/eval/runs", body);
+  return r.data?.data;
+}
+
+export async function editEvalCase(
+  caseId: string,
+  body: { expected_tool?: string; expected_args?: Record<string, unknown> | null; reference_answer?: string | null },
+): Promise<EvalCaseRow> {
+  const r = await axios.patch(`/admin/eval/cases/${caseId}`, body);
+  return r.data?.data;
+}

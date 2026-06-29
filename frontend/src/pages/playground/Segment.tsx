@@ -651,27 +651,30 @@ export default function Segment() {
 
           {result && view === "Visual" && (
             <div className="flex min-h-0 flex-1 gap-6">
-              <div className="flex min-w-0 flex-1 flex-col gap-3 overflow-y-auto">
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden">
                 {streamUrl && (
-                  <div className="overflow-hidden rounded-[20px] bg-neutral-200">
+                  <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-[20px] bg-neutral-200">
                     <VideoPlayer
                       ref={player}
                       src={streamUrl}
                       onTimeUpdate={(time) => setPlayhead(time)}
+                      className="h-full max-h-full w-full rounded-[14px] bg-black object-contain"
                     />
                   </div>
                 )}
-                <MultiTrackTimeline
-                  duration={duration}
-                  tracks={timelineTracks}
-                  playhead={playhead}
-                  onSeek={(time) => {
-                    player.current?.seekTo(time);
-                    setPlayhead(time);
-                  }}
-                  activePerTrack={activeStartByTrack}
-                />
-                <div className="flex items-center justify-between rounded-[12px] bg-neutral-300 px-5 py-2 text-[13px]">
+                <div className="shrink-0">
+                  <MultiTrackTimeline
+                    duration={duration}
+                    tracks={timelineTracks}
+                    playhead={playhead}
+                    onSeek={(time) => {
+                      player.current?.seekTo(time);
+                      setPlayhead(time);
+                    }}
+                    activePerTrack={activeStartByTrack}
+                  />
+                </div>
+                <div className="flex shrink-0 items-center justify-between rounded-[12px] bg-neutral-300 px-5 py-2 text-[13px]">
                   <span className="text-neutral-700">{t("playground.segment.generated_label")}</span>
                   <span className="text-neutral-700">
                     {t("playground.segment.segments_count", { count: result.tracks.reduce((s, tr) => s + tr.segments.length, 0) })}

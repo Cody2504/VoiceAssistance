@@ -11,7 +11,7 @@ interface Model {
 
 const MODELS: Model[] = [
   {
-    name: "CLIP-L/14",
+    name: "Sprint",
     roleKey: "landing.models.viclip_role",
     metric: "768-d",
     metricLabel: "image-text embedding",
@@ -19,7 +19,7 @@ const MODELS: Model[] = [
     dotClass: "bg-[#0447ff]",
   },
   {
-    name: "SG-DETR",
+    name: "Stride",
     roleKey: "landing.models.qddetr_role",
     metric: "58.9",
     metricLabel: "QVHighlights mAP",

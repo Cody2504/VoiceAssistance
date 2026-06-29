@@ -1,9 +1,10 @@
 /**
  * Pricing source of truth for tl-jockey.
  *
- * Two capability families:
- *   - Eclipse:     retrieval — indexing, search, moment grounding
- *   - Secretariat: generation — time-range Q&A, whole-video summary
+ * Two capability families (internal ids kept as `eclipse`/`secretariat`;
+ * customer-facing brand names are Sprint / Stride):
+ *   - Sprint (id `eclipse`):      retrieval — indexing, search, moment grounding
+ *   - Stride (id `secretariat`):  generation — time-range Q&A, whole-video summary
  *
  * Developer (pay-as-you-go) rates = real per-unit pipeline cost × ~10× to cover
  * idle GPU, storage, egress, ops and margin. Raw cost basis (2026-06): the
@@ -26,7 +27,7 @@ export type TierId = "free" | "developer" | "enterprise";
 
 export interface ModelFamily {
   id: FamilyId;
-  name: string;          // brand name — NOT translated (Eclipse / Secretariat)
+  name: string;          // brand name — NOT translated (Sprint / Stride)
   taglineKey: string;    // i18n key
   gradientClass: string; // tailwind gradient utility
 }
@@ -61,13 +62,13 @@ export interface ComparisonRow {
 export const FAMILIES: Record<FamilyId, ModelFamily> = {
   eclipse: {
     id: "eclipse",
-    name: "Eclipse",
+    name: "Sprint",
     taglineKey: "marketing.pricing.families.eclipse_tagline",
     gradientClass: "from-emerald-200/80 via-yellow-100/70 to-rose-200/80",
   },
   secretariat: {
     id: "secretariat",
-    name: "Secretariat",
+    name: "Stride",
     taglineKey: "marketing.pricing.families.secretariat_tagline",
     gradientClass: "from-rose-200/80 via-amber-200/80 to-yellow-300/80",
   },

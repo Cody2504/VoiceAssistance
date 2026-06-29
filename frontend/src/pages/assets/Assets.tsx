@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { PillButton } from "@/components/ui/PillButton";
-import { uploadVideo, deleteVideo, getPosterUrl, type VideoSummary } from "@/apis/videos.api";
+import { uploadVideoDirect, deleteVideo, getPosterUrl, type VideoSummary } from "@/apis/videos.api";
 import { AddToIndexModal } from "./AddToIndexModal";
 import { useVideosQuery, useS3ObjectsQuery, qk } from "@/apis/queries";
 import { useAuth } from "@/contexts/AuthContext";
@@ -53,8 +53,13 @@ function StatusBadge({ status }: { status?: VideoSummary["status"] }) {
     processing: { labelKey: "console.assets.status_indexing", cls: "bg-amber-50 text-amber-700", Icon: Loader2, spin: true },
     ready: { labelKey: "console.assets.status_ready", cls: "bg-emerald-50 text-emerald-700", Icon: CheckCircle2, spin: false },
     error: { labelKey: "console.assets.status_error", cls: "bg-red-50 text-red-700", Icon: AlertCircle, spin: false },
+    flagged: { labelKey: "console.assets.status_flagged", cls: "bg-orange-50 text-orange-700", Icon: AlertCircle, spin: false },
+    rejected: { labelKey: "console.assets.status_rejected", cls: "bg-red-50 text-red-700", Icon: AlertCircle, spin: false },
   } as const;
-  const { labelKey, cls, Icon, spin } = map[status];
+  // Defensive: an unknown/future status (e.g. moderation 'flagged'/'rejected')
+  // must never crash the page — fall back to a neutral pill.
+  const cfg = map[status as keyof typeof map] ?? map.stored;
+  const { labelKey, cls, Icon, spin } = cfg;
   return (
     <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium", cls)}>
       <Icon size={12} className={cn(spin && "animate-spin")} />
@@ -98,6 +103,11 @@ export default function Assets() {
   const { data: videos = [], isPending: videosLoading } = useVideosQuery();
   const { data: s3Items = [] } = useS3ObjectsQuery();
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
+  // Ids whose poster has already been requested (in-flight or done). Lets the
+  // effect below fire exactly one request per video instead of re-firing every
+  // unresolved poster on each resolution — the old `thumbs`-in-deps version was
+  // O(N²) and flooded the connection pool (hundreds of pending /poster XHRs).
+  const requestedThumbs = useRef<Set<string>>(new Set());
   const [filter, setFilter] = useState<Filter>("all");
   const [filterOpen, setFilterOpen] = useState(false);
   const [view, setView] = useState<ViewMode>("list");
@@ -124,17 +134,22 @@ export default function Assets() {
 
   // Poster thumbnail is written at upload, so fetch one for every video (not
   // just ready ones). A 404 (no frame yet) just leaves the placeholder icon.
+  // Guarded by `requestedThumbs` (set BEFORE the await) so each poster is
+  // requested once; depends only on `videos` so it doesn't re-run per resolved
+  // poster. On failure the id is released so a later refetch (e.g. once a
+  // queued video is indexed) can retry.
   useEffect(() => {
     videos.slice(0, 48).forEach(async (v) => {
-      if (thumbs[v.id]) return;
+      if (requestedThumbs.current.has(v.id)) return;
+      requestedThumbs.current.add(v.id);
       try {
         const url = await getPosterUrl(v.id);
         setThumbs((t) => ({ ...t, [v.id]: url }));
       } catch {
-        /* no frame yet */
+        requestedThumbs.current.delete(v.id); // no frame yet — allow retry on next videos change
       }
     });
-  }, [videos, thumbs]);
+  }, [videos]);
 
   const handleFiles = useCallback(
     async (files: FileList | null) => {
@@ -147,7 +162,7 @@ export default function Assets() {
         const f = vids[i];
         setUpload((u) => (u ? { ...u, name: f.name, pct: 0 } : u));
         try {
-          await uploadVideo(f, (pct) => setUpload((u) => (u ? { ...u, pct } : u)));
+          await uploadVideoDirect(f, (pct) => setUpload((u) => (u ? { ...u, pct } : u)));
         } catch {
           failed += 1;
         }
@@ -210,6 +225,7 @@ export default function Assets() {
     });
   const toggleAll = () => setSelectedIds(() => (allSelected ? new Set() : new Set(selectableIds)));
   const bulkDelete = async () => {
+    if (!window.confirm(t("console.assets.bulk_delete_confirm", { count: selectedIds.size }))) return;
     await Promise.allSettled([...selectedIds].map((id) => deleteVideo(id)));
     setSelectedIds(new Set());
     await refresh();

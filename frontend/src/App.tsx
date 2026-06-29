@@ -31,6 +31,7 @@ import S3TestPage from "@/pages/s3-test/S3TestPage";
 import Overview from "@/pages/overview/Overview";
 import Indexes from "@/pages/indexes/Indexes";
 import IndexDetail from "@/pages/indexes/IndexDetail";
+import IndexKnowledgeGraph from "@/pages/indexes/IndexKnowledgeGraph";
 import Assets from "@/pages/assets/Assets";
 import Entities from "@/pages/entities/Entities";
 import Examples from "@/pages/examples/Examples";
@@ -42,6 +43,7 @@ import AdminOverview from "@/pages/admin/AdminOverview";
 import AdminUsers from "@/pages/admin/AdminUsers";
 import AdminUserDetail from "@/pages/admin/AdminUserDetail";
 import AdminBilling from "@/pages/admin/AdminBilling";
+import AdminEvaluation from "@/pages/admin/AdminEvaluation";
 
 /**
  * Smoothly scroll to the #anchor in the URL after navigation. react-router does
@@ -100,6 +102,7 @@ export default function App() {
           <Route path="/overview" element={<Overview />} />
           <Route path="/indexes" element={<Indexes />} />
           <Route path="/indexes/:indexId" element={<IndexDetail />} />
+          <Route path="/indexes/:indexId/graph" element={<IndexKnowledgeGraph />} />
           <Route path="/assets" element={<Assets />} />
           <Route path="/entities" element={<Entities />} />
           <Route path="/examples" element={<Examples />} />
@@ -136,6 +139,7 @@ export default function App() {
             <Route path="/admin/users" element={<AdminUsers />} />
             <Route path="/admin/users/:userId" element={<AdminUserDetail />} />
             <Route path="/admin/billing" element={<AdminBilling />} />
+            <Route path="/admin/evaluation" element={<AdminEvaluation />} />
           </Route>
 
           <Route path="/api-keys" element={<Navigate to="/settings/api-keys" replace />} />

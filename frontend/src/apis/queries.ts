@@ -17,10 +17,14 @@ import {
   getAdminUser,
   listAdminUsers,
   listPlans,
+  listEvalRuns,
+  getEvalRun,
   type AdminPlan,
   type AdminStats,
   type AdminUserDetail,
   type AdminUsersPage,
+  type EvalRunRow,
+  type EvalRunDetail,
 } from "./admin.api";
 
 const POLL_MS = 3500;
@@ -35,6 +39,8 @@ export const qk = {
   adminUsers: (search: string, page: number) => ["admin-users", search, page] as const,
   adminUser: (id?: string) => ["admin-user", id] as const,
   adminPlans: () => ["admin-plans"] as const,
+  evalRuns: () => ["admin-eval-runs"] as const,
+  evalRun: (id?: string) => ["admin-eval-run", id] as const,
 };
 
 export function useVideosQuery() {
@@ -116,5 +122,23 @@ export function useAdminPlansQuery() {
     queryFn: listPlans,
     enabled: user?.role === "admin",
     staleTime: 300_000,
+  });
+}
+
+export function useEvalRunsQuery() {
+  const { user } = useAuth();
+  return useQuery<EvalRunRow[]>({
+    queryKey: qk.evalRuns(),
+    queryFn: listEvalRuns,
+    enabled: user?.role === "admin",
+  });
+}
+
+export function useEvalRunQuery(id?: string) {
+  const { user } = useAuth();
+  return useQuery<EvalRunDetail>({
+    queryKey: qk.evalRun(id),
+    queryFn: () => getEvalRun(id as string),
+    enabled: !!id && user?.role === "admin",
   });
 }

@@ -23,6 +23,9 @@ export interface ClipResult {
   /** Relevance score 0..1 (grounding moments) — shown as a % beneath the clip
    *  so the user can compare the top-k candidates (top-1 isn't always right). */
   score?: number;
+  /** Descriptive text for the clip (VLM caption / ASR snippet / audio tags),
+   *  rendered to the RIGHT of the thumbnail in the summary-style moment card. */
+  caption?: string;
 }
 
 interface Props {
@@ -31,62 +34,133 @@ interface Props {
   onPreview: (videoId: string, t: number) => void;
 }
 
+// Above this many moments in ONE video, the per-moment thumbnail cards become a
+// wall of near-identical frames — switch to a compact click-to-seek citation list.
+const COMPACT_MOMENTS_THRESHOLD = 3;
+
 /**
- * Renders the row of clickable thumbnails the agent returns from search/grounding tools.
- * Parent-video results render with the full video duration and play from t=0; clip
- * results render with the shot window and play from t_start.
+ * Renders the results the agent returns from search / grounding / sounds tools.
+ *
+ * Three layouts:
+ *  - Many "clip" moments in ONE video → a compact **citation list** (click-to-seek
+ *    timestamp chip + snippet text, no per-row thumbnails) — easy to scan.
+ *  - A few "clip" moments, or moments spanning multiple videos → summary-style
+ *    cards (thumbnail left, caption + click-to-seek timestamp right).
+ *  - "parent_video" results ("find videos like this") → the 3-column thumbnail grid.
  */
 export function VideoSearchResults({ clips, visible = 3, onPreview }: Props) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   if (clips.length === 0) return null;
 
-  const shown = expanded ? clips : clips.slice(0, visible);
-  const extra = clips.length - visible;
+  const moments = clips.filter((c) => c.display_mode !== "parent_video");
+  const tiles = clips.filter((c) => c.display_mode === "parent_video");
+  const compact =
+    moments.length > COMPACT_MOMENTS_THRESHOLD &&
+    new Set(moments.map((c) => c.video_id)).size === 1;
+
+  const sliceWithMore = <T,>(arr: T[], limit: number) => {
+    const shown = expanded ? arr : arr.slice(0, limit);
+    return { shown, extra: arr.length - shown.length };
+  };
+
+  const moreButton = (extra: number) =>
+    !expanded && extra > 0 ? (
+      <button
+        onClick={() => setExpanded(true)}
+        className="inline-flex items-center gap-1 text-sm font-medium text-emerald-600 hover:text-emerald-700"
+      >
+        {t(extra === 1 ? "chat.search_results.see_more_one" : "chat.search_results.see_more_other", { count: extra })}
+        <ChevronDown size={14} />
+      </button>
+    ) : null;
+
+  const timestampChip = (c: ClipResult) => (
+    <button
+      onClick={() => onPreview(c.video_id, c.t_start)}
+      className="shrink-0 rounded bg-emerald-50 px-1.5 py-0.5 text-xs font-medium tabular-nums text-emerald-700 hover:bg-emerald-100"
+    >
+      {formatSeconds(c.t_start)}–{formatSeconds(c.t_end)}
+    </button>
+  );
+
+  // compact moments shown a bit denser than card moments
+  const momentSlice = sliceWithMore(moments, compact ? Math.max(visible, 5) : visible);
+  const tileSlice = sliceWithMore(tiles, visible);
 
   return (
-    <div className="space-y-2">
-      <div className="grid grid-cols-3 gap-3">
-        {shown.map((c, i) => {
-          const isParent = c.display_mode === "parent_video";
-          const badge = isParent ? c.video_duration_s : c.t_end - c.t_start;
-          const playAt = isParent ? 0 : c.t_start;
-          return (
-            <div key={`${c.video_id}:${c.shot_idx ?? i}`} className="space-y-1">
-              <VideoThumb
-                videoId={c.video_id}
-                shotIdx={c.shot_idx}
-                duration={typeof badge === "number" ? badge : undefined}
-                onClick={() => onPreview(c.video_id, playAt)}
-                className="aspect-video"
-              />
-              {isParent && c.original_filename && (
-                <p className="truncate text-xs text-neutral-700" title={c.original_filename}>
-                  {c.original_filename}
-                </p>
-              )}
-              {!isParent && c.score !== undefined && (
-                <div className="flex items-center justify-between gap-1 px-0.5 text-xs">
-                  <span className="tabular-nums text-neutral-700">
-                    {formatSeconds(c.t_start)}–{formatSeconds(c.t_end)}
-                  </span>
-                  <span className="shrink-0 font-medium text-emerald-600">
-                    {Math.round(c.score * 100)}%
-                  </span>
-                </div>
-              )}
+    <div className="space-y-3">
+      {moments.length > 0 && compact && (
+        <div className="space-y-1.5 border-l-2 border-neutral-200 pl-3">
+          {momentSlice.shown.map((c, i) => (
+            <div key={`${c.video_id}:${c.shot_idx ?? i}`} className="flex items-start gap-2 text-sm leading-relaxed">
+              {timestampChip(c)}
+              {c.caption ? (
+                <span className="text-neutral-700">{c.caption}</span>
+              ) : c.score !== undefined ? (
+                <span className="pt-0.5 text-xs text-neutral-400">{Math.round(c.score * 100)}%</span>
+              ) : null}
             </div>
-          );
-        })}
-      </div>
-      {!expanded && extra > 0 && (
-        <button
-          onClick={() => setExpanded(true)}
-          className="inline-flex items-center gap-1 text-sm font-medium text-emerald-600 hover:text-emerald-700"
-        >
-          {t(extra === 1 ? "chat.search_results.see_more_one" : "chat.search_results.see_more_other", { count: extra })}
-          <ChevronDown size={14} />
-        </button>
+          ))}
+          {moreButton(momentSlice.extra)}
+        </div>
+      )}
+
+      {moments.length > 0 && !compact && (
+        <div className="divide-y divide-neutral-100">
+          {momentSlice.shown.map((c, i) => (
+            <div key={`${c.video_id}:${c.shot_idx ?? i}`} className="grid grid-cols-[200px_1fr] items-start gap-4 py-2">
+              <div className="space-y-1">
+                <VideoThumb
+                  videoId={c.video_id}
+                  shotIdx={c.shot_idx}
+                  duration={c.t_end - c.t_start}
+                  onClick={() => onPreview(c.video_id, c.t_start)}
+                  className="aspect-video"
+                />
+                {c.original_filename && (
+                  <p className="truncate text-xs text-neutral-500" title={c.original_filename}>
+                    {c.original_filename}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-1.5 text-sm leading-relaxed text-neutral-800">
+                {c.caption && <p className="[&_p]:my-0">{c.caption}</p>}
+                <div className="flex items-center gap-2 text-xs">
+                  {timestampChip(c)}
+                  {c.score !== undefined && (
+                    <span className="font-medium text-neutral-500">{Math.round(c.score * 100)}%</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+          {moreButton(momentSlice.extra)}
+        </div>
+      )}
+
+      {tiles.length > 0 && (
+        <div className="space-y-2">
+          <div className="grid grid-cols-3 gap-3">
+            {tileSlice.shown.map((c, i) => (
+              <div key={`${c.video_id}:${c.shot_idx ?? i}`} className="space-y-1">
+                <VideoThumb
+                  videoId={c.video_id}
+                  shotIdx={c.shot_idx}
+                  duration={typeof c.video_duration_s === "number" ? c.video_duration_s : undefined}
+                  onClick={() => onPreview(c.video_id, 0)}
+                  className="aspect-video"
+                />
+                {c.original_filename && (
+                  <p className="truncate text-xs text-neutral-700" title={c.original_filename}>
+                    {c.original_filename}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+          {moreButton(tileSlice.extra)}
+        </div>
       )}
     </div>
   );

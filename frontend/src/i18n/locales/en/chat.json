@@ -14,6 +14,9 @@
       "empty_state": "Ask Jockey anything about your videos.",
       "you": "You",
       "attached_label": "Attached: {{names}}",
+      "attached_image_alt": "Attached image",
+      "open_image_aria": "Open image preview",
+      "play_video_aria": "Play {{name}}",
       "history_loading": "Loading conversation…",
       "history_load_failed": "Couldn't load this conversation."
     },
@@ -28,12 +31,12 @@
     },
     "scope": {
       "label": "Scope",
-      "mode_single_label": "Single video",
-      "mode_single_hint": "Ask about one video — uses drag-attached video(s) below.",
+      "mode_single_label": "General",
+      "mode_single_hint": "Ask about any video(s) you attach below.",
       "mode_subset_label": "Selected videos",
       "mode_subset_hint": "Pick an Index, then choose which of its videos to include.",
-      "mode_whole_label": "Whole index",
-      "mode_whole_hint": "Search every video in an Index — best for cross-video questions."
+      "mode_whole_label": "Selected index",
+      "mode_whole_hint": "Choose an index to ask across it (uses its knowledge graph)."
     },
     "index_picker": {
       "untitled": "Untitled Index",

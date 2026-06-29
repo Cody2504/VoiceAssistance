@@ -8,6 +8,8 @@ export const ROUTES = {
 
   // Videos
   VIDEOS: "/videos",
+  VIDEO_UPLOAD_URL: "/videos/upload-url",
+  VIDEO_REGISTER: "/videos/register",
   VIDEO: (id: string) => `/videos/${id}`,
   VIDEO_STREAM: (id: string) => `/videos/${id}/stream`,
   VIDEO_THUMB: (id: string, idx: number) => `/videos/${id}/thumb/${idx}`,
@@ -16,6 +18,7 @@ export const ROUTES = {
   VIDEO_SEARCH: (id: string) => `/videos/${id}/search`,
   VIDEO_QA: (id: string) => `/videos/${id}/qa`,
   VIDEO_EDIT: (id: string) => `/videos/${id}/edit`,
+  VIDEO_EDIT_STREAM: (editId: string) => `/videos/edits/${editId}/stream`,
   VIDEO_SEGMENTS: (id: string) => `/videos/${id}/segments`,
   VIDEO_SEGMENT_RUN: (id: string) => `/videos/${id}/segment`,
   VIDEOS_SEARCH: "/videos/search",
@@ -38,6 +41,7 @@ export const ROUTES = {
     `/indexes/${id}/entities/${entityId}/mentions`,
   INDEX_ENTITY_RELATED: (id: string, entityId: string) =>
     `/indexes/${id}/entities/${entityId}/related`,
+  INDEX_GRAPH: (id: string) => `/indexes/${id}/graph`,
 
   // Chat
   CHAT_STREAM: "/chat/stream",
@@ -51,6 +55,7 @@ export const ROUTES = {
   // Billing
   BILLING_PLANS: "/billing/plans",
   BILLING_SUBSCRIPTION: "/billing/subscription",
+  BILLING_INVOICES: "/billing/invoices",
   BILLING_CHECKOUT: "/billing/checkout",
 } as const;
 

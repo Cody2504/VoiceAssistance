@@ -68,7 +68,7 @@
     }
   },
   "footer": {
-    "tagline": "Video-native AI for search, analysis and segmentation — built on open CLIP, InternVideo2 and SG-DETR models.",
+    "tagline": "Video-native AI for search, analysis and segmentation — powered by our Sprint and Stride models.",
     "copyright": "© {{year}} Jockey. Built with open models.",
     "col": {
       "platform": "Platform",

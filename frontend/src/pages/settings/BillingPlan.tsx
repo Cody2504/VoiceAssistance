@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router";
 import { Info, ArrowUpRight, MessageSquare, Check, Loader2, AlertCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { getSubscription, startCheckout, type Subscription } from "@/apis/billing.api";
+import { getSubscription, getInvoices, startCheckout, type Subscription, type Invoice } from "@/apis/billing.api";
 import { getMyUsage, getIndexUsage } from "@/apis/usage.api";
 import { formatUSD } from "@/pages/pricing/pricingData";
 
@@ -37,6 +37,7 @@ export default function BillingPlan() {
   const [sub, setSub] = useState<Subscription | null>(null);
   const [usageCost, setUsageCost] = useState<number>(0);
   const [usedMinutes, setUsedMinutes] = useState<number>(0);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [redirecting, setRedirecting] = useState(false);
@@ -47,13 +48,16 @@ export default function BillingPlan() {
     setLoading(true);
     setError(null);
     try {
-      const [s, u, iu] = await Promise.allSettled([getSubscription(), getMyUsage(), getIndexUsage()]);
+      const [s, u, iu, inv] = await Promise.allSettled([
+        getSubscription(), getMyUsage(), getIndexUsage(), getInvoices(),
+      ]);
       if (s.status === "fulfilled") setSub(s.value);
       else throw s.reason;
       if (u.status === "fulfilled") {
         setUsageCost(u.value.days.reduce((acc, d) => acc + (d.cost_usd || 0), 0));
       }
       if (iu.status === "fulfilled") setUsedMinutes(iu.value.used_minutes || 0);
+      if (inv.status === "fulfilled") setInvoices(inv.value);
     } catch {
       setError(t("settings.billing.error_load"));
     } finally {
@@ -285,11 +289,33 @@ export default function BillingPlan() {
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td colSpan={9} className="py-10 text-center text-[var(--color-gravel)]">
-                  {t("settings.billing.no_history")}
-                </td>
-              </tr>
+              {invoices.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="py-10 text-center text-[var(--color-gravel)]">
+                    {t("settings.billing.no_history")}
+                  </td>
+                </tr>
+              ) : (
+                invoices.map((inv, i) => (
+                  <tr key={i} className="border-b border-[var(--color-chalk)] last:border-0">
+                    <td className="whitespace-nowrap px-3 py-3">{new Date(inv.issued_at).toLocaleDateString()}</td>
+                    <td className="whitespace-nowrap px-3 py-3">{new Date(inv.due_at).toLocaleDateString()}</td>
+                    <td className="px-3 py-3">
+                      <span className="rounded-full bg-[#e7f6e9] px-2 py-0.5 text-[11px] font-medium capitalize text-[#3f9a48]">
+                        {inv.status}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-3">{formatUSD(inv.total)}</td>
+                    <td className="whitespace-nowrap px-3 py-3">{formatUSD(inv.amount_paid)}</td>
+                    <td className="whitespace-nowrap px-3 py-3 text-[var(--color-gravel)]">
+                      {new Date(inv.period_start).toLocaleDateString()} – {new Date(inv.period_end).toLocaleDateString()}
+                    </td>
+                    <td className="px-3 py-3 text-center text-[var(--color-gravel)]">—</td>
+                    <td className="px-3 py-3 text-center text-[var(--color-gravel)]">—</td>
+                    <td className="px-3 py-3 text-center text-[var(--color-gravel)]">{inv.usage_summary}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

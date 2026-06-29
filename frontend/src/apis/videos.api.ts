@@ -55,6 +55,13 @@ export async function getStreamUrl(id: string): Promise<string> {
   return r.data?.data?.url;
 }
 
+/** Fresh presigned URL for a combine_clips edit output (survives reload, since
+ *  the original /edit URL expires in ~1h). */
+export async function getEditStreamUrl(editId: string): Promise<string> {
+  const r = await axios.get(ROUTES.VIDEO_EDIT_STREAM(editId));
+  return r.data?.data?.url;
+}
+
 export async function getThumbUrl(id: string, shotIdx: number = 0): Promise<string> {
   const r = await axios.get(ROUTES.VIDEO_THUMB(id, shotIdx));
   return r.data?.data?.url;
@@ -77,6 +84,108 @@ export async function uploadVideo(file: File, onProgress?: (pct: number) => void
     },
   });
   return r.data?.data;
+}
+
+interface UploadUrlResponse {
+  video_id: string;
+  key: string;
+  video_put_url: string;
+  poster_put_url: string;
+}
+
+// Bare axios instance for S3 PUTs: the app's default axios has a request
+// interceptor that attaches `Authorization: Bearer` to every call — S3 rejects
+// a presigned URL that also carries an Authorization header, so we must NOT use
+// the default instance here. A fresh instance has no interceptors.
+const rawHttp = axios.create();
+
+/** Read duration (HTML5 metadata) + capture a poster frame (canvas) entirely in
+ *  the browser, so the pod never needs the file. Best-effort: returns nulls if
+ *  the browser can't decode the container. */
+async function extractVideoMeta(file: File): Promise<{ duration: number | null; poster: Blob | null }> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = (r: { duration: number | null; poster: Blob | null }) => {
+      if (settled) return;
+      settled = true;
+      try { URL.revokeObjectURL(url); } catch { /* noop */ }
+      resolve(r);
+    };
+    let url = "";
+    try {
+      url = URL.createObjectURL(file);
+      const video = document.createElement("video");
+      video.preload = "metadata";
+      video.muted = true;
+      // Safety net: never hang the upload on a weird file.
+      const timer = setTimeout(() => done({ duration: null, poster: null }), 8000);
+      video.onerror = () => { clearTimeout(timer); done({ duration: null, poster: null }); };
+      video.onloadedmetadata = () => {
+        const duration = Number.isFinite(video.duration) ? video.duration : null;
+        const at = duration && duration > 2 ? 1.0 : (duration ?? 0) / 2;
+        video.onseeked = () => {
+          clearTimeout(timer);
+          try {
+            const w = 480;
+            const scale = w / (video.videoWidth || w);
+            const canvas = document.createElement("canvas");
+            canvas.width = w;
+            canvas.height = Math.max(1, Math.round((video.videoHeight || 270) * scale));
+            const ctx = canvas.getContext("2d");
+            if (!ctx) return done({ duration, poster: null });
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob((blob) => done({ duration, poster: blob }), "image/jpeg", 0.8);
+          } catch {
+            done({ duration, poster: null });
+          }
+        };
+        try { video.currentTime = at; } catch { clearTimeout(timer); done({ duration, poster: null }); }
+      };
+      video.src = url;
+    } catch {
+      done({ duration: null, poster: null });
+    }
+  });
+}
+
+async function putToS3(url: string, body: Blob, contentType: string, onProgress?: (pct: number) => void): Promise<void> {
+  await rawHttp.put(url, body, {
+    headers: { "Content-Type": contentType },
+    transformRequest: [(d) => d], // keep the Blob as-is (don't JSON-serialize)
+    onUploadProgress: (e) => {
+      if (e.total) onProgress?.(Math.round((e.loaded / e.total) * 100));
+    },
+  });
+}
+
+/** Direct-to-S3 upload: the browser PUTs the bytes straight to S3 (real
+ *  progress, no pod relay), extracts duration+poster client-side, then registers
+ *  the row. Falls back to the relay `uploadVideo` if the presigned flow fails. */
+export async function uploadVideoDirect(file: File, onProgress?: (pct: number) => void): Promise<VideoSummary> {
+  const contentType = file.type || "application/octet-stream";
+  try {
+    const mint: UploadUrlResponse = (
+      await axios.post(ROUTES.VIDEO_UPLOAD_URL, { filename: file.name, content_type: contentType })
+    ).data?.data;
+    const { duration, poster } = await extractVideoMeta(file);
+    await putToS3(mint.video_put_url, file, contentType, onProgress);
+    if (poster) {
+      try { await putToS3(mint.poster_put_url, poster, "image/jpeg"); } catch { /* poster optional */ }
+    }
+    const r = await axios.post(ROUTES.VIDEO_REGISTER, {
+      video_id: mint.video_id,
+      key: mint.key,
+      original_filename: file.name,
+      duration_s: duration,
+    });
+    return r.data?.data;
+  } catch {
+    // Any failure in the direct path (endpoint missing, or — most likely until
+    // the bucket CORS policy is applied — the S3 PUT preflight being blocked)
+    // transparently falls back to the pod-relay upload. The S3 preflight fails
+    // before any bytes are sent, so the fallback doesn't double-upload.
+    return uploadVideo(file, onProgress);
+  }
 }
 
 export interface ShotResult {

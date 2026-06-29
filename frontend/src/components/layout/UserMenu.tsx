@@ -9,6 +9,7 @@ interface Props {
   initials: string;
   usedMin: number;
   capMin: number | null;
+  planName?: string | null;
   onClose: () => void;
 }
 
@@ -17,7 +18,7 @@ interface Props {
  * playground user menu: avatar, name/email, plan with usage bar, two stat
  * rows, Upgrade pill, Pricing link, Sign out.
  */
-export function UserMenu({ initials, usedMin, capMin, onClose }: Props) {
+export function UserMenu({ initials, usedMin, capMin, planName, onClose }: Props) {
   const { user, logout } = useAuth();
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement | null>(null);
@@ -39,8 +40,6 @@ export function UserMenu({ initials, usedMin, capMin, onClose }: Props) {
 
   const unlimited = t("settings.billing.unlimited");
   const pct = capMin ? Math.min(100, (usedMin / capMin) * 100) : 0;
-  const indexingPct = pct * 0.6;
-  const analyzePct = pct * 0.4;
 
   return (
     <div
@@ -62,7 +61,7 @@ export function UserMenu({ initials, usedMin, capMin, onClose }: Props) {
       <div className="mb-5 rounded-xl border border-[var(--color-chalk)] bg-[var(--color-eggshell)] p-4">
         <div className="mb-2 flex items-center justify-between">
           <div className="flex items-center gap-1 text-[13px] font-medium text-[var(--color-obsidian)]">
-            {t("layout.usermenu.free_plan")}
+            {planName ?? t("layout.usermenu.free_plan")}
             <Info size={12} className="text-[var(--color-slate)]" />
           </div>
           <div className="text-[13px] text-[var(--color-gravel)]">
@@ -72,18 +71,11 @@ export function UserMenu({ initials, usedMin, capMin, onClose }: Props) {
           </div>
         </div>
         <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-chalk)]">
-          <div className="absolute inset-y-0 left-0 bg-[#5fb364]" style={{ width: `${indexingPct}%` }} />
-          <div
-            className="absolute inset-y-0 bg-[#e5b659]"
-            style={{ left: `${indexingPct}%`, width: `${analyzePct}%` }}
-          />
+          <div className="absolute inset-y-0 left-0 bg-[#5fb364]" style={{ width: `${pct}%` }} />
         </div>
         <div className="mt-2 flex gap-4 text-[11px] text-[var(--color-gravel)]">
           <span className="inline-flex items-center gap-1">
             <span className="h-2 w-2 rounded-sm bg-[#5fb364]" /> {t("layout.usermenu.indexing")}
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <span className="h-2 w-2 rounded-sm bg-[#e5b659]" /> {t("layout.usermenu.analyze_segment")}
           </span>
         </div>
 

@@ -237,6 +237,9 @@ export function VideoPickerModal({
 }) {
   const { t } = useTranslation();
   const [posters, setPosters] = useState<Record<string, string>>({});
+  // Ids whose poster was already requested — fire one request per video rather
+  // than re-firing all unresolved posters on each resolution (was O(N²)).
+  const requestedPosters = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (open) onRefresh?.();
@@ -248,15 +251,16 @@ export function VideoPickerModal({
   useEffect(() => {
     if (!open) return;
     videos.forEach(async (v) => {
-      if (posters[v.id]) return;
+      if (requestedPosters.current.has(v.id)) return;
+      requestedPosters.current.add(v.id);
       try {
         const url = await getPosterUrl(v.id);
         setPosters((p) => ({ ...p, [v.id]: url }));
       } catch {
-        /* no poster yet */
+        requestedPosters.current.delete(v.id); // no poster yet — allow retry on next change
       }
     });
-  }, [open, videos, posters]);
+  }, [open, videos]);
 
   if (!open) return null;
   const isEmpty = !loading && !error && videos.length === 0;

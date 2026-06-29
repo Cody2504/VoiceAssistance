@@ -9,9 +9,10 @@ import { getSubscription } from "@/apis/billing.api";
  * monthly cap (from the subscription; null = unlimited). Best-effort — both
  * default to a safe value if their request fails.
  */
-export function useIndexUsage(): { usedMinutes: number; capMinutes: number | null } {
+export function useIndexUsage(): { usedMinutes: number; capMinutes: number | null; planName: string | null } {
   const [usedMinutes, setUsedMinutes] = useState(0);
   const [capMinutes, setCapMinutes] = useState<number | null>(null);
+  const [planName, setPlanName] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -22,7 +23,9 @@ export function useIndexUsage(): { usedMinutes: number; capMinutes: number | nul
       .catch(() => {});
     getSubscription()
       .then((s) => {
-        if (alive) setCapMinutes(s?.plan?.monthly_index_minutes ?? null);
+        if (!alive) return;
+        setCapMinutes(s?.plan?.monthly_index_minutes ?? null);
+        setPlanName(s?.plan?.name ?? null);
       })
       .catch(() => {});
     return () => {
@@ -30,7 +33,7 @@ export function useIndexUsage(): { usedMinutes: number; capMinutes: number | nul
     };
   }, []);
 
-  return { usedMinutes, capMinutes };
+  return { usedMinutes, capMinutes, planName };
 }
 
 /** "1.9 hr" / "45 min" / the `unlimited` label when the cap is null. */

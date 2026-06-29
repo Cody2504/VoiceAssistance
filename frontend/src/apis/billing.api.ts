@@ -25,6 +25,25 @@ export async function getSubscription(): Promise<Subscription> {
   return r.data?.data;
 }
 
+export interface Invoice {
+  issued_at: string;
+  due_at: string;
+  status: string;
+  total: number;
+  amount_paid: number;
+  currency: string;
+  period_start: string;
+  period_end: string;
+  invoice_url: string | null;
+  receipt_url: string | null;
+  usage_summary: string;
+}
+
+export async function getInvoices(): Promise<Invoice[]> {
+  const r = await axios.get(ROUTES.BILLING_INVOICES);
+  return (r.data?.data?.invoices ?? []) as Invoice[];
+}
+
 /**
  * Create a Stripe Checkout Session (subscription mode, Developer plan) and send
  * the browser to Stripe's hosted checkout page. No card data is collected here —

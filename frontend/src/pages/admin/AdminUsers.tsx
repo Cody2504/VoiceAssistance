@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
+import { ShieldCheck, ShieldOff, Lock, LockOpen } from "lucide-react";
 
 import { patchAdminUser, type AdminUserRow } from "@/apis/admin.api";
 import { useAdminUsersQuery } from "@/apis/queries";
@@ -63,7 +64,7 @@ export default function AdminUsers() {
 
       <div className="mt-4 overflow-x-auto rounded-2xl border border-[var(--color-chalk)] bg-white">
         <table className="w-full text-left text-[13px]">
-          <thead className="bg-[var(--color-eggshell)] text-[var(--color-gravel)]">
+          <thead className="whitespace-nowrap bg-[var(--color-eggshell)] text-[var(--color-gravel)]">
             <tr>
               <th className="px-4 py-2.5 font-medium">{t("admin.users.col_email")}</th>
               <th className="px-3 py-2.5 font-medium">{t("admin.users.col_role")}</th>
@@ -73,10 +74,11 @@ export default function AdminUsers() {
               <th className="px-3 py-2.5 font-medium">{t("admin.users.col_storage")}</th>
               <th className="px-3 py-2.5 font-medium">{t("admin.users.col_spend")}</th>
               <th className="px-3 py-2.5 font-medium">{t("admin.users.col_joined")}</th>
-              <th className="px-3 py-2.5" />
+              <th className="px-3 py-2.5 text-center font-medium">{t("admin.users.col_permission")}</th>
+              <th className="px-3 py-2.5 text-center font-medium">{t("admin.users.col_lock")}</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="whitespace-nowrap">
             {(data?.items ?? []).map((u) => {
               const isMe = u.id === me?.id;
               return (
@@ -115,32 +117,36 @@ export default function AdminUsers() {
                   <td className="px-3 py-2.5 text-[var(--color-gravel)]">
                     {new Date(u.created_at).toLocaleDateString()}
                   </td>
-                  <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-3 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
                     {!isMe && (
-                      <div className="flex justify-end gap-2 text-[12px]">
-                        <button
-                          type="button"
-                          className="cursor-pointer text-[var(--color-accent-blue)] hover:underline"
-                          onClick={() =>
-                            u.role === "admin"
-                              ? void act(u, { role: "user" }, "admin.users.confirm_demote")
-                              : void act(u, { role: "admin" }, "admin.users.confirm_promote")
-                          }
-                        >
-                          {u.role === "admin" ? t("admin.users.demote") : t("admin.users.promote")}
-                        </button>
-                        <button
-                          type="button"
-                          className={cn("cursor-pointer hover:underline", u.is_active ? "text-red-600" : "text-[#3e7e45]")}
-                          onClick={() =>
-                            u.is_active
-                              ? void act(u, { is_active: false }, "admin.users.confirm_suspend")
-                              : void act(u, { is_active: true }, "admin.users.confirm_reactivate")
-                          }
-                        >
-                          {u.is_active ? t("admin.users.suspend") : t("admin.users.reactivate")}
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        title={u.role === "admin" ? t("admin.users.demote") : t("admin.users.promote")}
+                        className="inline-flex cursor-pointer text-[var(--color-accent-blue)] hover:opacity-70"
+                        onClick={() =>
+                          u.role === "admin"
+                            ? void act(u, { role: "user" }, "admin.users.confirm_demote")
+                            : void act(u, { role: "admin" }, "admin.users.confirm_promote")
+                        }
+                      >
+                        {u.role === "admin" ? <ShieldOff size={18} strokeWidth={1.75} /> : <ShieldCheck size={18} strokeWidth={1.75} />}
+                      </button>
+                    )}
+                  </td>
+                  <td className="px-3 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
+                    {!isMe && (
+                      <button
+                        type="button"
+                        title={u.is_active ? t("admin.users.suspend") : t("admin.users.reactivate")}
+                        className={cn("inline-flex cursor-pointer hover:opacity-70", u.is_active ? "text-red-600" : "text-[#3e7e45]")}
+                        onClick={() =>
+                          u.is_active
+                            ? void act(u, { is_active: false }, "admin.users.confirm_suspend")
+                            : void act(u, { is_active: true }, "admin.users.confirm_reactivate")
+                        }
+                      >
+                        {u.is_active ? <Lock size={18} strokeWidth={1.75} /> : <LockOpen size={18} strokeWidth={1.75} />}
+                      </button>
                     )}
                   </td>
                 </tr>
@@ -148,7 +154,7 @@ export default function AdminUsers() {
             })}
             {data && data.items.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-[var(--color-gravel)]">
+                <td colSpan={10} className="px-4 py-8 text-center text-[var(--color-gravel)]">
                   {t("admin.users.empty")}
                 </td>
               </tr>

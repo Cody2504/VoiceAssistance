@@ -43,7 +43,7 @@
       "models_heading": "Our stable of models",
       "models": {
         "viclip_kind": "PERCEPTION BACKBONE",
-        "viclip_body": "Frozen CLIP-L encoder for corpus retrieval, with InternVideo2 features powering temporal grounding.",
+        "viclip_body": "Our perception backbone for corpus retrieval and temporal grounding — every frame and clip embedded into a single searchable space.",
         "qwen_kind": "VIDEO LANGUAGE MODEL",
         "qwen_body": "Generates captions, answers and analysis grounded in the full video."
       },
@@ -120,11 +120,11 @@
       "models_heading": "Video-native perception and reasoning.",
       "models": {
         "marengo_kind": "MULTIMODAL RETRIEVAL ENCODER",
-        "marengo_name": "CLIP-L retrieval",
-        "marengo_body": "Embeds frames with CLIP-L and clips with InternVideo2, so every moment is findable by what's actually in it across speech, sound and visuals.",
+        "marengo_name": "Sprint",
+        "marengo_body": "Embeds every frame and clip into a shared space, so every moment is findable by what's actually in it across speech, sound and visuals.",
         "pegasus_kind": "VIDEO LANGUAGE MODEL",
-        "pegasus_name": "Qwen3-VL reasoning",
-        "pegasus_body": "Reasons over the full temporal arc of an asset with Qwen3-VL, tracking entities, causation and narrative rather than sampling a few frames."
+        "pegasus_name": "Stride",
+        "pegasus_body": "Reasons over the full temporal arc of an asset, tracking entities, causation and narrative rather than sampling a few frames."
       },
       "cta_heading": "Ready to see what your archive actually knows?",
       "cta_sub": "Try it in the Playground, or talk to our team. No credit card required.",
@@ -450,11 +450,11 @@
         "q3": "How is moment grounding billed?",
         "a3": "Each call to the Moment Grounding endpoint — text query → (start_sec, end_sec) — counts as one call. The Free plan includes 100 calls per month; beyond that the Developer rate is $0.002 per call.",
         "q4": "Can I fine-tune the models?",
-        "a4": "Eclipse's grounding head can be fine-tuned on your own (query, video, span) data on Enterprise plans. Talk to sales for the fine-tuning workflow.",
+        "a4": "Sprint's grounding head can be fine-tuned on your own (query, video, span) data on Enterprise plans. Talk to sales for the fine-tuning workflow.",
         "q5": "How is video indexing duration measured?",
         "a5": "Indexing minutes are charged based on the total video duration submitted, not the wall-clock time taken to process. A 10-minute video always counts as 10 minutes regardless of GPU contention.",
-        "q6": "What's the difference between Eclipse and Secretariat?",
-        "a6": "Eclipse handles retrieval (finding videos and moments). Secretariat handles generation (answering questions and writing summaries). Most products use both: Eclipse to locate, Secretariat to describe."
+        "q6": "What's the difference between Sprint and Stride?",
+        "a6": "Sprint handles retrieval (finding videos and moments). Stride handles generation (answering questions and writing summaries). Most products use both: Sprint to locate, Stride to describe."
       }
     },
     "pricing_calc": {
@@ -483,8 +483,8 @@
       "month_plural": "months",
       "cost_summary": "Cost summary",
       "cost_summary_sub": "Developer (pay-as-you-go) — updates live.",
-      "eclipse_subtotal": "Eclipse subtotal",
-      "secretariat_subtotal": "Secretariat subtotal",
+      "eclipse_subtotal": "Sprint subtotal",
+      "secretariat_subtotal": "Stride subtotal",
       "monthly_total": "Monthly total",
       "projected": "Projected ({{months}} months)",
       "start_free_heading": "Start for free",

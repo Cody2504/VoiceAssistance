@@ -85,7 +85,7 @@ export function MultiTrackTimeline({
             <div key={track.id}>
               <div
                 className="relative h-[22px] cursor-pointer rounded-sm"
-                style={{ backgroundColor: "rgba(28, 29, 27, 0.08)" }}
+                style={{ backgroundColor: "rgba(28, 29, 27, 0.06)" }}
                 onClick={(e) => {
                   const rect = e.currentTarget.getBoundingClientRect();
                   const x = e.clientX - rect.left;
@@ -102,15 +102,20 @@ export function MultiTrackTimeline({
                         e.stopPropagation();
                         onSeek(b.t_start);
                       }}
-                      className="absolute top-0 h-full rounded-sm transition-[transform]"
+                      className="absolute top-0 h-full rounded-sm transition-colors hover:brightness-95"
                       style={{
+                        // TwelveLabs-style: blocks sit edge-to-edge but each has
+                        // its own 1px border + background-clip: padding-box, so a
+                        // thin divider shows between adjacent segments and the one
+                        // under the playhead is outlined in its accent colour.
                         left: pct(b.t_start),
                         width: pct(Math.max(0.001, b.t_end - b.t_start)),
                         backgroundColor: track.color.fill,
-                        borderWidth: 1,
+                        borderWidth: isActive ? 1.5 : 1,
                         borderStyle: "solid",
-                        borderColor: isActive ? track.color.stroke : "transparent",
+                        borderColor: isActive ? track.color.stroke : "rgba(28, 29, 27, 0.22)",
                         backgroundClip: "padding-box",
+                        zIndex: isActive ? 1 : 0,
                       }}
                       aria-label={`${track.label} ${formatSeconds(b.t_start)}–${formatSeconds(b.t_end)}`}
                     />

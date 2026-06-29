@@ -632,8 +632,8 @@ function Models() {
   const { t } = useTranslation();
 
   const MODELS = [
-    { kind: t("marketing.home.models.marengo_kind"), name: t("marketing.home.models.marengo_name"), open: "CLIP-L", body: t("marketing.home.models.marengo_body") },
-    { kind: t("marketing.home.models.pegasus_kind"), name: t("marketing.home.models.pegasus_name"), open: "Qwen3-VL", body: t("marketing.home.models.pegasus_body") },
+    { kind: t("marketing.home.models.marengo_kind"), name: t("marketing.home.models.marengo_name"), body: t("marketing.home.models.marengo_body") },
+    { kind: t("marketing.home.models.pegasus_kind"), name: t("marketing.home.models.pegasus_name"), body: t("marketing.home.models.pegasus_body") },
   ];
 
   return (
@@ -643,12 +643,9 @@ function Models() {
       </h2>
       <div className="mt-10 grid gap-5 md:grid-cols-2">
         {MODELS.map((m) => (
-          <div key={m.open} className="rounded-[24px] border border-[var(--color-chalk)] bg-white p-8">
+          <div key={m.name} className="rounded-[24px] border border-[var(--color-chalk)] bg-white p-8">
             <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-slate)]">{m.kind}</p>
             <h3 className="mt-3 text-[24px] font-medium tracking-[-0.4px]">{m.name}</h3>
-            <span className="mt-2 inline-flex rounded-md bg-[var(--color-powder)] px-2 py-0.5 font-mono text-[12px] text-[var(--color-gravel)]">
-              {m.open}
-            </span>
             <p className="mt-4 text-[14px] leading-[1.6] text-[var(--color-gravel)]">{m.body}</p>
             <Link to="/product/product-overview" className="mt-5 inline-flex items-center gap-1 text-[14px] font-medium text-[var(--color-accent-blue)] hover:gap-1.5">
               {t("actions.learn_more")}

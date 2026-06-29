@@ -74,8 +74,8 @@ export default function Build() {
   ];
 
   const MODELS = [
-    { name: "CLIP-L + InternVideo2", kind: t("marketing.build.models.viclip_kind"), body: t("marketing.build.models.viclip_body") },
-    { name: "Qwen3-VL", kind: t("marketing.build.models.qwen_kind"), body: t("marketing.build.models.qwen_body") },
+    { name: "Sprint", kind: t("marketing.build.models.viclip_kind"), body: t("marketing.build.models.viclip_body") },
+    { name: "Stride", kind: t("marketing.build.models.qwen_kind"), body: t("marketing.build.models.qwen_body") },
   ];
 
   const SUPPORT = [

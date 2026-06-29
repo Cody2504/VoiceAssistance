@@ -104,7 +104,26 @@
       "error_remove": "Không thể xoá video",
       "error_video_only": "Chỉ chấp nhận tệp video.",
       "upload_failed": "Tải lên thất bại cho {{name}}: {{message}}",
-      "upload_failed_short": "Tải lên thất bại cho {{name}}"
+      "upload_failed_short": "Tải lên thất bại cho {{name}}",
+      "knowledge_graph_btn": "Đồ thị tri thức",
+      "kg_page_title": "Đồ thị tri thức",
+      "kg_back": "Quay lại chỉ mục",
+      "kg_loading": "Đang tải đồ thị tri thức…",
+      "kg_empty": "Chỉ mục này chưa có đồ thị tri thức — hãy thêm và lập chỉ mục video trước.",
+      "kg_error": "Không thể tải đồ thị tri thức.",
+      "kg_retry": "Thử lại",
+      "kg_truncated": "Đang hiển thị {{shown}}/{{total}} nút (kết nối nhiều nhất).",
+      "kg_legend": "Loại thực thể",
+      "kg_types": {
+        "concept": "Khái niệm",
+        "method": "Phương pháp",
+        "person": "Người",
+        "organization": "Tổ chức",
+        "tool": "Công cụ",
+        "event": "Sự kiện",
+        "location": "Địa điểm",
+        "object": "Đối tượng"
+      }
     },
     "add_videos_modal": {
       "title": "Thêm video vào chỉ mục này",
@@ -146,8 +165,11 @@
       "status_indexing": "Đang lập chỉ mục",
       "status_ready": "Sẵn sàng",
       "status_error": "Lỗi",
+      "status_flagged": "Đã gắn cờ",
+      "status_rejected": "Đã từ chối",
       "delete": "Xóa",
       "n_selected": "Đã chọn {{count}} tệp",
+      "bulk_delete_confirm": "Xoá {{count}} tệp đã chọn? Hành động này xoá các tệp, chỉ mục và mọi dữ liệu phái sinh, và không thể hoàn tác.",
       "add_to_index": "Thêm vào chỉ mục",
       "add_n_to_index": "Thêm {{count}} tệp vào một chỉ mục",
       "select_an_index": "Chọn một chỉ mục",
@@ -158,7 +180,7 @@
       "upload_done_other": "Đã tải lên {{total}} tệp",
       "upload_progress": "Đang tải lên {{current}} / {{total}}",
       "upload_failed": "{{count}} thất bại — bỏ qua",
-      "upload_background": "Đang lập chỉ mục nền — theo dõi cột Trạng thái."
+      "upload_background": "Đã lưu vào kho. Thêm video vào một Chỉ mục để xử lý cho tìm kiếm và trò chuyện."
     },
     "video": {
       "status_label": "Trạng thái:",

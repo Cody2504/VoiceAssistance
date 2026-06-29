@@ -186,3 +186,36 @@ export async function listEntityRelated(
   });
   return r.data?.data;
 }
+
+// Whole-graph view — every entity (node) + relation (edge) for one index.
+export interface GraphNode {
+  id: string;
+  label: string;
+  type: string | null;
+  description: string | null;
+  mention_count: number;
+}
+
+export interface GraphEdge {
+  source: string;
+  target: string;
+  relation: string;
+  description: string | null;
+  weight: number;
+}
+
+export interface IndexGraph {
+  index_id: string;
+  kg_available: boolean;
+  truncated: boolean;
+  total_nodes: number;
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+}
+
+export async function getIndexGraph(id: string, maxNodes?: number): Promise<IndexGraph> {
+  const r = await axios.get(ROUTES.INDEX_GRAPH(id), {
+    params: maxNodes !== undefined ? { max_nodes: maxNodes } : undefined,
+  });
+  return r.data?.data;
+}

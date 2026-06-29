@@ -9,9 +9,13 @@ export interface VideoPlayerHandle {
 interface Props {
   src: string;
   onTimeUpdate?: (t: number) => void;
+  /** Override the default sizing. Defaults to `aspect-video w-full` (height
+   *  tracks width). Pass a fill-height variant (e.g. `h-full ... object-contain`)
+   *  when the player must shrink to fit a height-bounded flex column. */
+  className?: string;
 }
 
-export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(function VideoPlayer({ src, onTimeUpdate }, ref) {
+export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(function VideoPlayer({ src, onTimeUpdate, className }, ref) {
   const el = useRef<HTMLVideoElement>(null);
 
   useImperativeHandle(ref, () => ({
@@ -26,7 +30,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(function VideoPl
       src={src}
       controls
       onTimeUpdate={(e) => onTimeUpdate?.((e.target as HTMLVideoElement).currentTime)}
-      className="aspect-video w-full overflow-hidden rounded-lg bg-black"
+      className={className ?? "aspect-video w-full overflow-hidden rounded-lg bg-black"}
     />
   );
 });

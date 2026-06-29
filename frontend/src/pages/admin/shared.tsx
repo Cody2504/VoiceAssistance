@@ -48,3 +48,61 @@ export function shortDay(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
+
+/** Build a continuous, zero-filled daily series for the last `days` days
+ * (anchored to today) from sparse {day, value} points. */
+export function dailySeries(
+  points: { day: string; value: number }[],
+  days: number,
+): { day: string; value: number }[] {
+  const byDay = new Map(points.map((p) => [p.day.slice(0, 10), p.value]));
+  const out: { day: string; value: number }[] = [];
+  const today = new Date();
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const iso = d.toISOString().slice(0, 10);
+    out.push({ day: iso, value: byDay.get(iso) ?? 0 });
+  }
+  return out;
+}
+
+/** Vertical bar chart (CSS only, no chart lib). The tallest bar is highlighted
+ * (accent colour + its value printed on top), the rest are muted — matching the
+ * reference dashboard. Each column has a hover tooltip. Keep the row count small
+ * (≈5–7) so the x-axis labels stay readable. */
+export function BarChart({
+  rows,
+  emptyLabel,
+  accent = "#6366f1",
+}: {
+  rows: { label: string; value: number; display: string }[];
+  emptyLabel: string;
+  accent?: string;
+}) {
+  if (!rows.length) return <p className="text-[13px] text-[var(--color-gravel)]">{emptyLabel}</p>;
+  const max = Math.max(...rows.map((r) => r.value), 1);
+  const peak = rows.reduce((mi, r, i, a) => (r.value > a[mi].value ? i : mi), 0);
+  return (
+    <div className="flex h-44 items-stretch gap-2">
+      {rows.map((r, i) => {
+        const hl = i === peak && r.value > 0;
+        return (
+          <div key={i} className="flex flex-1 flex-col" title={`${r.label}: ${r.display}`}>
+            <div className="flex flex-1 flex-col items-center justify-end">
+              {hl && <span className="mb-1 text-[11px] font-semibold text-[var(--color-obsidian)]">{r.display}</span>}
+              <div
+                className="w-full rounded-md transition-all"
+                style={{
+                  height: `${Math.max((r.value / max) * 100, r.value > 0 ? 6 : 2)}%`,
+                  background: hl ? accent : "var(--color-chalk)",
+                }}
+              />
+            </div>
+            <span className="mt-1.5 truncate text-center text-[10px] text-[var(--color-gravel)]">{r.label}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
