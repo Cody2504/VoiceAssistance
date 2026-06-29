@@ -50,32 +50,32 @@ def _auto_device() -> str:
 class PipelineConfig:
     """Central configuration for all open-source pipeline components."""
 
-    # --- OpenRouter API ---
+    # OpenRouter API
     openrouter_api_key: str = os.environ.get("OPENROUTER_API_KEY", "")
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
 
-    # --- HuggingFace ---
+    # HuggingFace
     hf_token: str = os.environ.get("HF_TOKEN", "")
 
-    # --- Qdrant ---
+    # Qdrant
     qdrant_host: str = os.environ.get("QDRANT_HOST", "localhost")
     qdrant_port: int = int(os.environ.get("QDRANT_PORT", "6333"))
     qdrant_api_key: Optional[str] = os.environ.get("QDRANT_API_KEY", None)
 
-    # --- CLIP-L visual embeddings (openai/clip-vit-large-patch14, Local HF) ---
+    # CLIP-L visual embeddings (openai/clip-vit-large-patch14, Local HF)
     # NB: env vars stay VICLIP_MODEL / VICLIP_DEVICE for deployment-contract compat.
     clipl_model_name: str = os.environ.get("VICLIP_MODEL", "openai/clip-vit-large-patch14")
     clipl_device: str = os.environ.get("VICLIP_DEVICE", _auto_device())
     clipl_embedding_dim: int = 768
 
-    # --- Text Embeddings (via OpenRouter API) ---
+    # Text Embeddings (via OpenRouter API)
     text_embedding_model: str = os.environ.get("TEXT_EMBEDDING_MODEL", "openai/text-embedding-3-large")
     text_embedding_dim: int = 3072  # text-embedding-3-large output dimension
 
-    # --- VLM / Video QA (via OpenRouter API) ---
+    # VLM / Video QA (via OpenRouter API)
     vlm_model: str = os.environ.get("VLM_MODEL", "qwen/qwen3-vl-8b-instruct")
 
-    # --- ASR ---
+    # ASR
     # Backend: "whisperx" (default, faster-whisper CTranslate2) | "zipformer" (sherpa-onnx) | "none"
     asr_backend: str = os.environ.get("ASR_BACKEND", "whisperx")
     # WhisperX/faster-whisper uses short model names ("tiny", "base", "small",
@@ -100,13 +100,13 @@ class PipelineConfig:
         os.path.join(os.path.dirname(__file__), "models", "zipformer")
     )
 
-    # --- Video Storage ---
+    # Video Storage
     video_data_dir: str = os.environ.get("VIDEO_DATA_DIR", os.environ.get("HOST_PUBLIC_DIR", "/tmp/jockey_videos"))
 
-    # --- Shot Detection ---
+    # Shot Detection
     shot_detection_threshold: float = float(os.environ.get("SHOT_DETECTION_THRESHOLD", "27.0"))
 
-    # --- Sentence-boundary chunk refinement -----------------------------
+    # Sentence-boundary chunk refinement
     # When True, long shots (>max_shot_s) from PySceneDetect are split at
     # sentence boundaries / long pauses using word-level ASR timestamps,
     # instead of equal-length subdivision. Costs one extra Whisper pass per
@@ -115,7 +115,7 @@ class PipelineConfig:
         "SENTENCE_REFINE_ENABLED", "false"
     ).lower() in ("true", "1", "yes")
 
-    # --- VLM per-shot captioning (VideoRAG / NVIDIA VSS pattern) ----------
+    # VLM per-shot captioning (VideoRAG / NVIDIA VSS pattern)
     # When enabled, the indexer generates a short caption per shot via the
     # same Qwen3-VL endpoint the agent already uses for VQA (via OpenRouter,
     # see ``vlm_model`` above). The caption is joined with the ASR
@@ -136,7 +136,7 @@ class PipelineConfig:
             return bool(self.openrouter_api_key)
         return raw in ("true", "1", "yes")
 
-    # --- Uniform-window override -----------------------------------------
+    # Uniform-window override
     # When set (e.g. 5.0), the indexer SKIPS PySceneDetect and chops the
     # video into fixed-length windows. Necessary for continuous footage
     # (lectures, ego-centric, single-camera) where PySceneDetect collapses
@@ -147,10 +147,10 @@ class PipelineConfig:
         if os.environ.get("UNIFORM_WINDOW_SEC") else None
     )
 
-    # --- Frame Sampling ---
+    # Frame Sampling
     max_frames_per_shot: int = int(os.environ.get("MAX_FRAMES_PER_SHOT", "8"))
 
-    # --- Thesis-side training (offline; not used by the agent runtime) ---
+    # Thesis-side training (offline; not used by the agent runtime)
     # Kept here so the existing training code (qd_detr_train.py, MomentLocalizer)
     # reads its paths from the same singleton. Has no effect on the agent.
     qd_detr_checkpoint: str = os.environ.get("QD_DETR_CHECKPOINT", "")

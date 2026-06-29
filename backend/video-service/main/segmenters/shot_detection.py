@@ -10,12 +10,13 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from main.api.segments_types import SegmentDefinition
+from main.api.segments_types import SegmentDefinition, SegmentField
 
+from ._holistic import holistic_segments
 from .qdrant_io import read_shots
 
 
-def segment(video_id: UUID, definition: SegmentDefinition) -> list[dict[str, Any]]:
+def _legacy(video_id: UUID, definition: SegmentDefinition) -> list[dict[str, Any]]:
     shots = read_shots(video_id, with_vectors=False)
     field_names = {f.name for f in definition.fields}
     out: list[dict[str, Any]] = []
@@ -36,3 +37,28 @@ def segment(video_id: UUID, definition: SegmentDefinition) -> list[dict[str, Any
             meta["description"] = (sh.get("chunk_caption") or "").strip()
         out.append({"t_start": sh["t_start"], "t_end": sh["t_end"], "metadata": meta})
     return out
+
+
+_ANGLES = ["wide", "medium", "close_up", "extreme_close_up", "overhead", "aerial"]
+_SHOT_TYPES = ["clean", "dirty_single", "over_the_shoulder", "point_of_view", "insert", "master"]
+_DEFAULT_FIELDS = [
+    SegmentField(name="angle_type", type="string", enum=_ANGLES),
+    SegmentField(name="shot_type", type="string", enum=_SHOT_TYPES),
+    SegmentField(name="description", description="Brief description of the shot content"),
+]
+
+
+def segment(video_id, definition):
+    return holistic_segments(
+        video_id, definition,
+        guidance=(
+            "a hard cut or SIGNIFICANT change in camera angle / shot type occurs; "
+            "MERGE consecutive shots that share the same angle and framing into one segment"
+        ),
+        target_hint="One segment per distinct camera setup",
+        primary_signal="caption",
+        default_fields=_DEFAULT_FIELDS,
+        fallback=_legacy,
+        vision_fields=["angle_type", "shot_type"],
+        vision_guidance="Determine the camera angle_type and shot_type from the framing in these frames.",
+    )

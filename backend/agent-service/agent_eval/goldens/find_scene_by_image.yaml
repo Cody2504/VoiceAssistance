@@ -1,0 +1,132 @@
+- id: sceneL-0
+  query: where in this video does this frame appear?
+  context:
+    video_id: vid-bball-1
+    image: data:image/png;base64,FAKE
+  expected_tools:
+  - name: find_scene_by_image
+    args:
+      video_id: vid-bball-1
+  fake_outputs:
+    find_scene_by_image:
+      video_id: vid-bball-1
+      matched_scene:
+        idx: 2
+        t_start: 12.0
+        t_end: 15.0
+        score: 0.88
+      ranked_scenes:
+      - idx: 2
+        t_start: 12.0
+        t_end: 15.0
+        score: 0.88
+- id: sceneL-1
+  query: find the moment that matches this image in this video
+  context:
+    video_id: vid-cook-1
+    image: data:image/png;base64,FAKE
+  expected_tools:
+  - name: find_scene_by_image
+    args:
+      video_id: vid-cook-1
+  fake_outputs:
+    find_scene_by_image:
+      video_id: vid-cook-1
+      matched_scene:
+        idx: 2
+        t_start: 12.0
+        t_end: 15.0
+        score: 0.88
+      ranked_scenes:
+      - idx: 2
+        t_start: 12.0
+        t_end: 15.0
+        score: 0.88
+- id: sceneL-2
+  query: locate this scene within this video
+  context:
+    video_id: vid-soccer-1
+    image: data:image/png;base64,FAKE
+  expected_tools:
+  - name: find_scene_by_image
+    args:
+      video_id: vid-soccer-1
+  fake_outputs:
+    find_scene_by_image:
+      video_id: vid-soccer-1
+      matched_scene:
+        idx: 2
+        t_start: 12.0
+        t_end: 15.0
+        score: 0.88
+      ranked_scenes:
+      - idx: 2
+        t_start: 12.0
+        t_end: 15.0
+        score: 0.88
+- id: sceneL-3
+  query: at what time does this shot occur in this video?
+  context:
+    video_id: vid-concert-1
+    image: data:image/png;base64,FAKE
+  expected_tools:
+  - name: find_scene_by_image
+    args:
+      video_id: vid-concert-1
+  fake_outputs:
+    find_scene_by_image:
+      video_id: vid-concert-1
+      matched_scene:
+        idx: 2
+        t_start: 12.0
+        t_end: 15.0
+        score: 0.88
+      ranked_scenes:
+      - idx: 2
+        t_start: 12.0
+        t_end: 15.0
+        score: 0.88
+- id: sceneL-4
+  query: find where this picture is from in this video
+  context:
+    video_id: vid-nature-1
+    image: data:image/png;base64,FAKE
+  expected_tools:
+  - name: find_scene_by_image
+    args:
+      video_id: vid-nature-1
+  fake_outputs:
+    find_scene_by_image:
+      video_id: vid-nature-1
+      matched_scene:
+        idx: 2
+        t_start: 12.0
+        t_end: 15.0
+        score: 0.88
+      ranked_scenes:
+      - idx: 2
+        t_start: 12.0
+        t_end: 15.0
+        score: 0.88
+- id: sceneL-5
+  query: which timestamp in this video matches this image?
+  context:
+    video_id: vid-tennis-1
+    image: data:image/png;base64,FAKE
+  expected_tools:
+  - name: find_scene_by_image
+    args:
+      video_id: vid-tennis-1
+  fake_outputs:
+    find_scene_by_image:
+      video_id: vid-tennis-1
+      matched_scene:
+        idx: 2
+        t_start: 12.0
+        t_end: 15.0
+        score: 0.88
+      ranked_scenes:
+      - idx: 2
+        t_start: 12.0
+        t_end: 15.0
+        score: 0.88

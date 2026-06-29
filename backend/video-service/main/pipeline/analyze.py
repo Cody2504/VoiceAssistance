@@ -22,6 +22,7 @@ retrieved — preserves the skeleton, sacrifices the detail in the long tail.
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
@@ -41,37 +42,62 @@ class AnalyzeResult:
     used_segments: int
 
 
+# Cues that mark a WHOLE-VIDEO summary request (EN + VI). For these we must walk
+# every segment in time order — top-K retrieval against the literal words
+# "summarize this video" clusters in one window and yields a partial answer.
+_SUMMARY_CUES = (
+    "summar",            # summary / summarize / summarise / summarization
+    "overview", "recap", "tl;dr", "tldr",
+    "what is this video about", "what's this video about",
+    "describe the video", "describe this video",
+    "tóm tắt", "tổng quan", "khái quát",   # VI: summarize / overview
+)
+
+
+def _is_summary_intent(question: str) -> bool:
+    q = (question or "").lower()
+    return any(c in q for c in _SUMMARY_CUES)
+
+
 def run_analyze(video_id: UUID, question: str, global_summary: str | None = None) -> AnalyzeResult:
     """Long-context Q&A. Reads only Qdrant + the videos row; no model load."""
     s = get_settings()
     vid = str(video_id)
 
-    # --- 1. Dense top-K segments ---
-    retrieved = _retrieve_top_segments(vid, question, k=s.analyze_top_k_segments)
-    log.info("analyze:retrieved=%d for video=%s", len(retrieved), vid)
+    # 1. Segments. A whole-video SUMMARY must cover the entire timeline, so
+    # walk ALL segments in time order; otherwise retrieve the top-K segments
+    # most similar to the question.
+    summary_intent = _is_summary_intent(question)
+    if summary_intent:
+        retrieved = _retrieve_all_segments(vid)
+        log.info("analyze:summary-intent — using ALL %d segments for video=%s", len(retrieved), vid)
+    else:
+        retrieved = _retrieve_top_segments(vid, question, k=s.analyze_top_k_segments)
+        log.info("analyze:retrieved=%d for video=%s", len(retrieved), vid)
 
-    # --- 2. Full ordered window-summary skeleton ---
+    # 2. Full ordered window-summary skeleton
     windows = _fetch_window_summaries(vid)
     log.info("analyze:windows=%d", len(windows))
 
-    # --- 2b. Fine-grained action timeline (vlm_actions + on-screen text) ---
+    # 2b. Fine-grained action timeline (vlm_actions + on-screen text)
     # Precise per-action [t_start, t_end] moments so the LLM can cite the exact
     # instant an action happens (e.g. "tomato sauce poured" at 1:02) instead of
     # the coarse ~30s segment that merely contains it.
     actions = _fetch_action_events(vid)
     log.info("analyze:actions=%d", len(actions))
 
-    # --- 3. Global summary (passed in by caller from videos.global_summary). ---
+    # 3. Global summary (passed in by caller from videos.global_summary).
     global_text = (global_summary or "").strip() or _fetch_global_summary_from_qdrant(vid)
 
-    # --- 4. Build the LLM prompt with token-budget guard ---
+    # 4. Build the LLM prompt with token-budget guard
     prompt = _build_prompt(question, global_text, windows, retrieved, actions,
-                           token_budget=s.analyze_token_budget)
+                           token_budget=s.analyze_token_budget,
+                           summary_intent=summary_intent)
 
-    # --- 5. Call the LLM ---
+    # 5. Call the LLM
     answer = _call_llm(prompt)
 
-    # --- 6. Parse [mm:ss–mm:ss] citations for the frontend chips ---
+    # 6. Parse [mm:ss–mm:ss] citations for the frontend chips
     citations = _parse_citations(answer, retrieved)
 
     return AnalyzeResult(
@@ -84,9 +110,7 @@ def run_analyze(video_id: UUID, question: str, global_summary: str | None = None
     )
 
 
-# ---------------------------------------------------------------------------
 # Qdrant access
-# ---------------------------------------------------------------------------
 
 
 def _retrieve_top_segments(video_id: str, question: str, k: int) -> list[dict]:
@@ -123,6 +147,33 @@ def _retrieve_top_segments(video_id: str, question: str, k: int) -> list[dict]:
         return [h.payload for h in hits if h.payload]
     except Exception as exc:
         log.warning("analyze:retrieve failed: %s", exc)
+        return []
+
+
+def _retrieve_all_segments(video_id: str, limit: int = 600) -> list[dict]:
+    """Every segment for the video, ordered by t_start. Used for whole-video
+    summary intent so the answer spans the entire timeline rather than only the
+    top-K segments lexically closest to the word "summarize". The prompt
+    token-budget guard downstream handles very long videos (drops transcripts,
+    then sparsifies) so this stays safe even for hour-long content."""
+    try:
+        from main.qdrant_util import get_qdrant_client
+        from qdrant_client.http import models as qm
+        client = get_qdrant_client(timeout=60)
+        points, _ = client.scroll(
+            collection_name="jockey_segments_text",
+            scroll_filter=qm.Filter(must=[
+                qm.FieldCondition(key="video_id", match=qm.MatchValue(value=video_id)),
+            ]),
+            with_payload=True,
+            with_vectors=False,
+            limit=limit,
+        )
+        segs = [p.payload for p in points if p.payload]
+        segs.sort(key=lambda p: float(p.get("t_start", 0)))
+        return segs
+    except Exception as exc:
+        log.warning("analyze:retrieve_all failed: %s", exc)
         return []
 
 
@@ -219,9 +270,7 @@ def _fetch_global_summary_from_qdrant(video_id: str) -> str:
         return ""
 
 
-# ---------------------------------------------------------------------------
 # Prompt assembly + LLM
-# ---------------------------------------------------------------------------
 
 
 def _build_prompt(
@@ -231,6 +280,7 @@ def _build_prompt(
     retrieved: list[dict],
     actions: list[dict],
     token_budget: int,
+    summary_intent: bool = False,
 ) -> str:
     skeleton_lines = "\n".join(
         f"- [{_fmt(w['t_start'])}] {w['summary']}" for w in windows
@@ -239,22 +289,30 @@ def _build_prompt(
     action_lines = "\n".join(
         f"- [{_fmt(a['t_start'])}-{_fmt(a['t_end'])}] {a['label']}" for a in actions
     )
+    def _ocr_suffix(p: dict) -> str:
+        ocr = (p.get("ocr_text") or "").strip()
+        return f"  on-screen text: {ocr}" if ocr else ""
+
     seg_lines_full = "\n".join(
         f"- [{_fmt(p.get('t_start', 0))}-{_fmt(p.get('t_end', 0))}] "
         f"caption: {(p.get('caption') or '').strip()}  "
         f"transcript: {(p.get('transcript') or '').strip()}"
+        f"{_ocr_suffix(p)}"
         for p in retrieved
     )
-    prompt = _assemble(question, global_summary, skeleton_lines, action_lines, seg_lines_full)
+    prompt = _assemble(question, global_summary, skeleton_lines, action_lines, seg_lines_full, summary_intent)
     if _approx_tokens(prompt) <= token_budget:
         return prompt
 
-    # Fall back 1: drop transcripts but keep captions and the full window skeleton.
+    # Fall back 1: drop transcripts but keep captions, on-screen text (high-value,
+    # low-token — often the literal answer for signage/infographics), and the
+    # full window skeleton.
     seg_lines_short = "\n".join(
         f"- [{_fmt(p.get('t_start', 0))}-{_fmt(p.get('t_end', 0))}] {(p.get('caption') or '').strip()}"
+        f"{_ocr_suffix(p)}"
         for p in retrieved
     )
-    prompt = _assemble(question, global_summary, skeleton_lines, action_lines, seg_lines_short)
+    prompt = _assemble(question, global_summary, skeleton_lines, action_lines, seg_lines_short, summary_intent)
     log.warning("analyze:prompt over budget — dropped transcripts from retrieved segments")
     if _approx_tokens(prompt) <= token_budget:
         return prompt
@@ -265,13 +323,20 @@ def _build_prompt(
     skeleton_short = "\n".join(
         f"- [{_fmt(w['t_start'])}] {w['summary']}" for w in sparse
     )
-    prompt = _assemble(question, global_summary, skeleton_short, action_lines, seg_lines_short)
+    prompt = _assemble(question, global_summary, skeleton_short, action_lines, seg_lines_short, summary_intent)
     log.warning("analyze:prompt still over budget — dropping every-other window summary")
     return prompt
 
 
 def _assemble(question: str, global_summary: str, skeleton_lines: str,
-              action_lines: str, seg_lines: str) -> str:
+              action_lines: str, seg_lines: str, summary_intent: bool = False) -> str:
+    summary_directive = (
+        "This is a WHOLE-VIDEO SUMMARY request: summarize the ENTIRE video from "
+        "the start [00:00] to the end, covering every major part/topic in "
+        "chronological order. Do NOT focus on a single section — walk the whole "
+        "VIDEO SKELETON and RELEVANT SEGMENTS below (which span the full video).\n"
+        if summary_intent else ""
+    )
     return (
         "You are answering a question about a video by reading layers "
         "of context that have already been precomputed for you. "
@@ -282,7 +347,12 @@ def _assemble(question: str, global_summary: str, skeleton_lines: str,
         "IMPORTANT: when the question asks WHEN something happens or about a "
         "specific action/moment, cite the precise [mm:ss-mm:ss] from the ACTION "
         "TIMELINE (fine-grained) rather than the coarser segment span — the "
-        "action timeline pinpoints the exact instant.\n\n"
+        "action timeline pinpoints the exact instant.\n"
+        "IMPORTANT: the 'on-screen text' in RELEVANT SEGMENTS is text read "
+        "directly from the video frames (signage, infographics, captions) and is "
+        "AUTHORITATIVE for numbers, labels, temperatures and durations — prefer "
+        "it over inference when the question asks for such specifics.\n"
+        f"{summary_directive}\n"
         f"── GLOBAL SUMMARY ──\n{global_summary or '(none)'}\n\n"
         "── VIDEO SKELETON (in order, one bullet per ~2 minutes) ──\n"
         f"{skeleton_lines or '(none)'}\n\n"
@@ -317,22 +387,16 @@ def _call_llm(prompt: str) -> str:
         return f"(model error: {exc})"
 
 
-# ---------------------------------------------------------------------------
 # Citation parsing
-# ---------------------------------------------------------------------------
 
 
-_CITATION_RE = None
+_CITATION_RE = re.compile(r"\[(\d{1,2}):(\d{2})\s*[-–]\s*(\d{1,2}):(\d{2})\]")
 
 
 def _parse_citations(answer: str, retrieved: list[dict]) -> list[dict[str, Any]]:
     """Extract `[mm:ss-mm:ss]` spans the LLM emitted, matching each to the
     nearest retrieved segment so the UI can render a click-to-seek chip with
     a thumbnail."""
-    import re
-    global _CITATION_RE
-    if _CITATION_RE is None:
-        _CITATION_RE = re.compile(r"\[(\d{1,2}):(\d{2})\s*[-–]\s*(\d{1,2}):(\d{2})\]")
     out: list[dict[str, Any]] = []
     for m in _CITATION_RE.finditer(answer):
         t0 = int(m.group(1)) * 60 + int(m.group(2))
@@ -353,17 +417,7 @@ def _parse_citations(answer: str, retrieved: list[dict]) -> list[dict[str, Any]]
     return out
 
 
-# ---------------------------------------------------------------------------
 # Utilities
-# ---------------------------------------------------------------------------
-
-
-def _cosine(a, b) -> float:
-    import numpy as np
-    a = np.asarray(a, dtype=np.float32)
-    b = np.asarray(b, dtype=np.float32)
-    denom = (np.linalg.norm(a) * np.linalg.norm(b)) or 1e-9
-    return float(np.dot(a, b) / denom)
 
 
 def _approx_tokens(s: str) -> int:

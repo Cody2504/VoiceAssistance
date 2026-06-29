@@ -1,0 +1,162 @@
+- id: ground-0
+  query: when does the goal happen in this video?
+  context:
+    video_id: vid-soccer-1
+  expected_tools:
+  - name: ground_video
+    args:
+      video_id: vid-soccer-1
+      query: ~goal
+  fake_outputs:
+    ground_video:
+      video_id: vid-soccer-1
+      moments:
+      - t_start: 41.0
+        t_end: 47.0
+        label: goal
+        score: 0.9
+        source: grounding
+- id: ground-1
+  query: at what point do they add the tomato sauce?
+  context:
+    video_id: vid-cook-1
+  expected_tools:
+  - name: ground_video
+    args:
+      video_id: vid-cook-1
+      query: ~add tomato sauce
+  fake_outputs:
+    ground_video:
+      video_id: vid-cook-1
+      moments:
+      - t_start: 41.0
+        t_end: 47.0
+        label: add tomato sauce
+        score: 0.9
+        source: grounding
+- id: ground-2
+  query: when does the player score the winning point?
+  context:
+    video_id: vid-tennis-1
+  expected_tools:
+  - name: ground_video
+    args:
+      video_id: vid-tennis-1
+      query: ~winning point
+  fake_outputs:
+    ground_video:
+      video_id: vid-tennis-1
+      moments:
+      - t_start: 41.0
+        t_end: 47.0
+        label: winning point
+        score: 0.9
+        source: grounding
+- id: ground-3
+  query: find the moment the guitar solo starts
+  context:
+    video_id: vid-concert-1
+  expected_tools:
+  - name: ground_video
+    args:
+      video_id: vid-concert-1
+      query: ~guitar solo starts
+  fake_outputs:
+    ground_video:
+      video_id: vid-concert-1
+      moments:
+      - t_start: 41.0
+        t_end: 47.0
+        label: guitar solo starts
+        score: 0.9
+        source: grounding
+- id: ground-4
+  query: when do they introduce the main theorem?
+  context:
+    video_id: vid-ml-3
+  expected_tools:
+  - name: ground_video
+    args:
+      video_id: vid-ml-3
+      query: ~main theorem
+  fake_outputs:
+    ground_video:
+      video_id: vid-ml-3
+      moments:
+      - t_start: 41.0
+        t_end: 47.0
+        label: main theorem
+        score: 0.9
+        source: grounding
+- id: ground-5
+  query: at what timestamp does the explosion occur?
+  context:
+    video_id: vid-news-1
+  expected_tools:
+  - name: ground_video
+    args:
+      video_id: vid-news-1
+      query: ~explosion
+  fake_outputs:
+    ground_video:
+      video_id: vid-news-1
+      moments:
+      - t_start: 41.0
+        t_end: 47.0
+        label: explosion
+        score: 0.9
+        source: grounding
+- id: ground-6
+  query: when does the dunk happen?
+  context:
+    video_id: vid-bball-1
+  expected_tools:
+  - name: ground_video
+    args:
+      video_id: vid-bball-1
+      query: ~dunk
+  fake_outputs:
+    ground_video:
+      video_id: vid-bball-1
+      moments:
+      - t_start: 41.0
+        t_end: 47.0
+        label: dunk
+        score: 0.9
+        source: grounding
+- id: ground-7
+  query: find when the chef starts plating the dish
+  context:
+    video_id: vid-cook-2
+  expected_tools:
+  - name: ground_video
+    args:
+      video_id: vid-cook-2
+      query: ~plating the dish
+  fake_outputs:
+    ground_video:
+      video_id: vid-cook-2
+      moments:
+      - t_start: 41.0
+        t_end: 47.0
+        label: plating the dish
+        score: 0.9
+        source: grounding
+- id: ground-8
+  query: when does the sunset appear in this video?
+  context:
+    video_id: vid-nature-1
+  expected_tools:
+  - name: ground_video
+    args:
+      video_id: vid-nature-1
+      query: ~sunset
+  fake_outputs:
+    ground_video:
+      video_id: vid-nature-1
+      moments:
+      - t_start: 41.0
+        t_end: 47.0
+        label: sunset
+        score: 0.9
+        source: grounding

@@ -102,7 +102,7 @@ class WhisperASR:
         self._n_silent = 0
         self._n_transcribed = 0
 
-    # ---------- lazy loader ----------
+    # lazy loader
 
     def _resolve_device(self) -> str:
         if self.device.startswith("cuda"):
@@ -137,7 +137,7 @@ class WhisperASR:
             log.warning(f"Could not load faster-whisper: {e}. ASR will return empty transcripts.")
             self._model = _UNAVAILABLE
 
-    # ---------- audio extraction ----------
+    # audio extraction
 
     def _extract_audio_wav(
         self, video_path: str, start_sec: float = 0.0, end_sec: Optional[float] = None
@@ -170,7 +170,7 @@ class WhisperASR:
             except OSError:
                 pass
 
-    # ---------- internal: one transcribe call against an audio input ----------
+    # internal: one transcribe call against an audio input
 
     def _run_transcribe(self, audio, word_timestamps: bool = False):
         """Single faster-whisper invocation. Returns (segments_list, info).
@@ -189,7 +189,7 @@ class WhisperASR:
         )
         return list(segments), info
 
-    # ---------- public API ----------
+    # public API
 
     def transcribe(
         self, video_path: str, start_sec: float = 0.0, end_sec: Optional[float] = None
@@ -329,9 +329,7 @@ class WhisperASR:
         }
 
 
-# ----------------------------------------------------------------------------
 # Process-singleton convenience for the ingest pipeline.
-# ----------------------------------------------------------------------------
 
 _singleton: Optional[WhisperASR] = None
 

@@ -89,3 +89,52 @@ class ObjectDetector:
         except Exception as exc:  # noqa: BLE001
             log.warning("ObjectDetector: detection failed: %s", exc)
             return None
+
+    def detect_regions(
+        self, frame: np.ndarray, prompt: str, top_k: int = 8
+    ) -> list[tuple[tuple[int, int, int, int], float]]:
+        """Class-agnostic region proposals for `prompt`'s objects in ONE RGB frame
+        [H, W, 3] uint8 — the boxes (not just the max score) for the region-index
+        image search. Returns up to `top_k` `((x0, y0, x1, y1), score)` tuples by
+        detection score, best first. `[]` when the detector is unavailable or the
+        frame is empty (never raises). `prompt` is GroundingDINO open-vocab syntax
+        ("a logo. a sign. a product." — period-separated phrases)."""
+        self._lazy_load()
+        if self._model in (None, _UNAVAILABLE) or not prompt:
+            return []
+        if frame is None or getattr(frame, "size", 0) == 0:
+            return []
+        try:
+            import torch
+            from PIL import Image
+            img = Image.fromarray(np.asarray(frame, dtype=np.uint8))
+            inputs = self._processor(
+                images=img, text=prompt, return_tensors="pt"
+            ).to(self._device)
+            with torch.no_grad():
+                outputs = self._model(**inputs)
+            sizes = [img.size[::-1]]
+            try:
+                results = self._processor.post_process_grounded_object_detection(
+                    outputs, inputs.input_ids,
+                    threshold=self.box_threshold, text_threshold=0.2, target_sizes=sizes,
+                )
+            except TypeError:
+                results = self._processor.post_process_grounded_object_detection(
+                    outputs, inputs.input_ids,
+                    box_threshold=self.box_threshold, text_threshold=0.2, target_sizes=sizes,
+                )
+            r = results[0]
+            boxes = r.get("boxes")
+            scores = r.get("scores")
+            if boxes is None or scores is None or not len(scores):
+                return []
+            boxes = boxes.cpu().numpy()
+            scores = scores.cpu().numpy()
+            order = scores.argsort()[::-1][:top_k]
+            return [
+                (tuple(int(v) for v in boxes[i]), float(scores[i])) for i in order
+            ]
+        except Exception as exc:  # noqa: BLE001
+            log.warning("ObjectDetector: region proposal failed: %s", exc)
+            return []

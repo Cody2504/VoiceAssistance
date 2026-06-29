@@ -1,7 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import delete, select
+from sqlalchemy import case, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cm_shared.auth import TokenPayload, require_user
@@ -29,8 +29,14 @@ async def get_conversation(conversation_id: UUID, payload: TokenPayload = Depend
     convo = await session.get(Conversation, conversation_id)
     if not convo or convo.user_id != UUID(payload.sub):
         raise HTTPException(404, "Conversation not found")
+    # The user + assistant rows of one turn are committed in the same transaction,
+    # so Postgres `now()` gives them an IDENTICAL created_at. Without a tiebreaker
+    # the order is arbitrary and the assistant can sort before its user message
+    # (renders the question below its answer on reload). Tiebreak user(0)<assistant(1).
+    _role_order = case((Message.role == "user", 0), else_=1)
     msgs = (await session.execute(
-        select(Message).where(Message.conversation_id == conversation_id).order_by(Message.created_at.asc())
+        select(Message).where(Message.conversation_id == conversation_id)
+        .order_by(Message.created_at.asc(), _role_order)
     )).scalars().all()
     return success_response({
         "id": str(convo.id),
@@ -43,6 +49,7 @@ async def get_conversation(conversation_id: UUID, payload: TokenPayload = Depend
                 "content": m.content,
                 "thoughts": m.thoughts,
                 "tool_calls": m.tool_calls,
+                "image": m.image,
                 "created_at": m.created_at.isoformat(),
             }
             for m in msgs

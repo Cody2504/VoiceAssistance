@@ -24,6 +24,24 @@ async def search_corpus(query: str, top_n: int = 3, group_by: Literal["clip", "v
 
 
 @tool
+async def search_corpus_text(query: str, top_n: int = 5, group_by: Literal["clip", "video"] = "video") -> dict[str, Any]:
+    """Search across all the user's videos by TRANSCRIPT / SPOKEN WORDS / ON-SCREEN TEXT
+    (caption + speech + OCR), NOT visual appearance. Use when the query is about something
+    SAID or shown as TEXT/numbers on screen — e.g. "where do they explain inverse matrices",
+    "which clip shows the score San Antonio leading Miami", "find the clip that mentions
+    tomato paste". For visual appearance/objects use `search_corpus`; for movement/action use
+    `search_motion`. No Index needed. `group_by="video"` is the default; use `"clip"` only when
+    the user explicitly asks for multiple moments.
+    """
+    resp = await post_request(
+        "video-service",
+        "/api/v1/videos/search/text",
+        json={"query": query, "top_n": top_n, "group_by": group_by},
+    )
+    return _unwrap(resp)
+
+
+@tool
 async def search_video_local(video_id: str, query: str) -> dict[str, Any]:
     """Search shots within a single video by id."""
     resp = await post_request(

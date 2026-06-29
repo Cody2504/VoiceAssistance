@@ -22,6 +22,7 @@ from typing import Iterable, Sequence
 from uuid import UUID, uuid4
 
 import numpy as np
+from sqlalchemy import select
 
 from main.encoders.search import TextEmbedder
 from main.models.kg import Entity, EntityMention, EntityRelation
@@ -31,7 +32,7 @@ from main.settings import Settings, get_settings
 log = logging.getLogger(__name__)
 
 
-# --- delimiters (kept compatible with VideoRAG's PROMPTS["entity_extraction"]) -
+# delimiters (kept compatible with VideoRAG's PROMPTS["entity_extraction"])
 _TUPLE = "<|>"
 _RECORD = "##"
 _COMPLETION = "<|COMPLETE|>"
@@ -81,7 +82,7 @@ Output:
 """
 
 
-# ---------------------------------------------------------------- parsing -----
+# parsing
 
 _ENTITY_RX = re.compile(
     r'\(\s*"entity"\s*' + re.escape(_TUPLE)
@@ -154,7 +155,7 @@ def _strip_quotes(s: str) -> str:
     return s.strip()
 
 
-# --------------------------------------------------------------- LLM client --
+# LLM client
 
 def _llm_client(settings: Settings):
     from openai import OpenAI
@@ -208,14 +209,13 @@ def _fmt(seconds: float) -> str:
     return f"{s // 60:02d}:{s % 60:02d}"
 
 
-# -------------------------------------------------------- canonicalisation ---
+# canonicalisation
 
 def _normalise(name: str) -> str:
     """Lowercase, fold punctuation (hyphens/slashes/etc.) to spaces, collapse
     whitespace — the exact-match key. Punctuation folding merges variants that
     differ only by hyphenation ("matrix-vector" == "matrix vector"), which were
     otherwise creating duplicate entities."""
-    import re
     return " ".join(re.sub(r"[^\w\s]", " ", name.lower()).split())
 
 
@@ -231,7 +231,7 @@ def _cosine(a: np.ndarray, b: np.ndarray) -> float:
     return float(np.dot(a, b) / (na * nb))
 
 
-# ---------------------------------------------- main entry point used by ingest
+# main entry point used by ingest
 
 @dataclass
 class KGExtractResult:
@@ -395,7 +395,18 @@ def run_kg_extract(
                 relations_seen[key] = r
                 relation_pairs.append((src_id, dst_id, relation, r, list(win_segment_ids)))
 
-    # --- persist ----------------------------------------------------------
+    # persist
+    # Idempotent re-extraction: drop THIS video's existing mentions (scoped to
+    # this index's entities) before re-inserting, so a re-index REPLACES them
+    # instead of colliding on the entity_mentions PK (entity_id, video_id,
+    # segment_idx). Entities themselves are shared across the index and reused,
+    # so we only clear the per-video mentions. Scoping to the index's entities
+    # keeps a (rare) multi-index video's other-index mentions intact.
+    db_session.query(EntityMention).filter(
+        EntityMention.video_id == video_id,
+        EntityMention.entity_id.in_(select(Entity.id).where(Entity.index_id == index_id)),
+    ).delete(synchronize_session=False)
+
     if new_entities:
         db_session.add_all(new_entities)
     if new_mentions:

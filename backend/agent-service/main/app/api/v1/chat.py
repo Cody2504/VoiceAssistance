@@ -96,6 +96,7 @@ async def _event_stream(
     index_id: UUID | None,
     message: str,
     session: AsyncSession,
+    image: str | None = None,
 ):
     final_text_parts: list[str] = []
     thoughts: list[dict] = []
@@ -106,7 +107,9 @@ async def _event_stream(
         "messages": [HumanMessage(content=message)],
         "conversation_id": str(conversation_id),
         "user_id": str(user_id),
-        "video_id": str(video_ids[0]) if video_ids else None,
+        # "this video" = the MOST RECENTLY attached one (router.md), so a freshly
+        # attached video wins over an earlier one if multiple ids arrive.
+        "video_id": str(video_ids[-1]) if video_ids else None,
         "video_ids": [str(v) for v in video_ids] if video_ids else None,
         "index_id": str(index_id) if index_id else None,
         "router_steps": 0,
@@ -127,9 +130,11 @@ async def _event_stream(
             if "reflect" in tags:
                 final_text_parts.append(content)
                 yield {"event": "message", "data": json.dumps({"delta": content})}
-            elif "router" in tags:
-                thoughts.append({"agent": "router", "delta": content})
-                yield {"event": "thought", "data": json.dumps({"agent": "router", "delta": content})}
+            # NOTE: router-tagged prose is NOT surfaced as a "thought". reflect is
+            # the sole author of the user-facing answer; on its stop-pass the router
+            # would otherwise regenerate that same answer, which previously leaked
+            # into the "Thinking" step (showing the final answer before the tool).
+            # The routing decision is already visible via the tool_call step.
 
         elif kind == "on_tool_start":
             tc = {"tool": ev.get("name"), "args": data.get("input")}
@@ -147,7 +152,7 @@ async def _event_stream(
             if u:
                 usage.add(*u)
 
-    msg_user = Message(conversation_id=conversation_id, role="user", content=message)
+    msg_user = Message(conversation_id=conversation_id, role="user", content=message, image=image or None)
     msg_assistant = Message(
         conversation_id=conversation_id,
         role="assistant",
@@ -195,5 +200,5 @@ async def stream(
 
     agent = await get_agent()
     return EventSourceResponse(
-        _event_stream(agent, user_id, convo.id, video_ids, body.index_id, body.message, session)
+        _event_stream(agent, user_id, convo.id, video_ids, body.index_id, body.message, session, body.image)
     )

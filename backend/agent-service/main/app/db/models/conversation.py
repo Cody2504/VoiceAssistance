@@ -27,4 +27,8 @@ class Message(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
     thoughts: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     tool_calls: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    # Base64 data-URL of an image attached to a user turn, so old conversations
+    # re-render the thumbnail on resume (it's also fed to find_scene_by_image at
+    # send time via the current_image context var). Null for non-image turns.
+    image: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(server_default=text("now()"), nullable=False)

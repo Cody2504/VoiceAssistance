@@ -13,13 +13,21 @@ class Settings(BaseServiceSettings):
     service_port: int = 1102
 
     # LLM provider
-    llm_provider: str = "OPENAI"  # OPENAI | AZURE
+    llm_provider: str = "OPENAI"  # OPENAI | AZURE | OPENROUTER
 
     # OpenAI — env var names kept from the prior layout so existing docker-compose vars still bind.
     # The new graph maps role -> model as: router -> *_planner_model, reflect -> *_worker_model.
     openai_api_key: str = ""
     openai_planner_model: str = "gpt-4o"   # used by router role
     openai_worker_model: str = "gpt-4o-mini"  # used by reflect role
+
+    # OpenRouter (OpenAI-compatible). Set LLM_PROVIDER=OPENROUTER to route the
+    # router/reflect calls through OpenRouter's billing instead of a rate-limited
+    # direct OpenAI account. Model ids take the `provider/model` form.
+    openrouter_api_key: str = ""
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    openrouter_planner_model: str = "openai/gpt-4o"       # router
+    openrouter_worker_model: str = "openai/gpt-4o-mini"   # reflect
 
     # Azure OpenAI
     azure_openai_endpoint: str = ""

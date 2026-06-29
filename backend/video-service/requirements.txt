@@ -22,10 +22,17 @@ boto3==1.35.50
 numpy==1.26.4
 ffmpeg-python==0.2.0
 scenedetect[opencv]==0.6.4
+# DISK + LightGlue (bundled in kornia) for the gated Stage-2 image-search verifier
+# (main/search/lightglue_verify.py). Depends on the env's torch — does not pin it.
+kornia==0.8.3
 # SG-DETR head (vendored under main/vendor/sgdetr) is config-instantiated via Hydra.
 omegaconf==2.3.0
 hydra-core==1.3.2
 decord==0.6.0
+# OCR engine for per-shot on-screen text (OCREncoder) + the image-search OCR
+# query channel. Was previously installed ad-hoc on the ingest pod; pinned here
+# so a fresh pod actually produces ocr_text (and title-card image search works).
+easyocr==1.7.2
 transformers==4.45.2
 qdrant-client==1.12.0
 

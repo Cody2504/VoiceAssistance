@@ -74,6 +74,14 @@ def verify_events(events: list[dict], local_path: str, query: str, *, settings) 
 
     confs: list[float | None] = []
     for e in events[: settings.object_verify_top_k]:
+        # Precise VLM-derived action events ("X is poured/added") are the
+        # authoritative "when does X happen" signal. An object detector reranks by
+        # where X is VISIBLE, which for action queries favours hero/appearance
+        # shots over the moment X is added (often mid-pour / occluded). Never let it
+        # demote them — leave the score untouched.
+        if e.get("source") == "event:vlm_actions":
+            confs.append(None)
+            continue
         mid = (float(e["t_start"]) + float(e["t_end"])) / 2
         half = max(0.25, min(2.0, (float(e["t_end"]) - float(e["t_start"])) / 2))
         frames = extract_frames(

@@ -1,0 +1,210 @@
+- id: index-0
+  query: which lecture in this course covers gradient descent?
+  context:
+    index_id: idx-ml-101
+    video_ids: []
+  expected_tools:
+  - name: search_index
+    args:
+      index_id: idx-ml-101
+      query: ~gradient descent
+  fake_outputs:
+    search_index:
+      query: gradient descent
+      group_by: video
+      shots:
+      - video_id: vid-ml-3
+        original_filename: vid-ml-3.mp4
+        t_start: 0.0
+        t_end: 6.0
+        caption: gradient descent
+        asr_text: talking about gradient descent
+        score: 0.74
+        idx: 0
+      - video_id: vid-ml-3
+        original_filename: vid-ml-3.mp4
+        t_start: 6.0
+        t_end: 12.0
+        caption: more gradient descent
+        score: 0.58
+        idx: 1
+- id: index-1
+  query: which video in this course is about overfitting?
+  context:
+    index_id: idx-ml-101
+    video_ids: []
+  expected_tools:
+  - name: search_index
+    args:
+      index_id: idx-ml-101
+      query: ~overfitting
+  fake_outputs:
+    search_index:
+      query: overfitting
+      group_by: video
+      shots:
+      - video_id: vid-ml-3
+        original_filename: vid-ml-3.mp4
+        t_start: 0.0
+        t_end: 6.0
+        caption: overfitting
+        asr_text: talking about overfitting
+        score: 0.74
+        idx: 0
+      - video_id: vid-ml-3
+        original_filename: vid-ml-3.mp4
+        t_start: 6.0
+        t_end: 12.0
+        caption: more overfitting
+        score: 0.58
+        idx: 1
+- id: index-2
+  query: find the lecture that introduces backpropagation
+  context:
+    index_id: idx-ml-101
+    video_ids: []
+  expected_tools:
+  - name: search_index
+    args:
+      index_id: idx-ml-101
+      query: ~backpropagation
+  fake_outputs:
+    search_index:
+      query: backpropagation
+      group_by: video
+      shots:
+      - video_id: vid-ml-3
+        original_filename: vid-ml-3.mp4
+        t_start: 0.0
+        t_end: 6.0
+        caption: backpropagation
+        asr_text: talking about backpropagation
+        score: 0.74
+        idx: 0
+      - video_id: vid-ml-3
+        original_filename: vid-ml-3.mp4
+        t_start: 6.0
+        t_end: 12.0
+        caption: more backpropagation
+        score: 0.58
+        idx: 1
+- id: index-3
+  query: which video shows how to make pasta dough?
+  context:
+    index_id: idx-cook-201
+    video_ids: []
+  expected_tools:
+  - name: search_index
+    args:
+      index_id: idx-cook-201
+      query: ~pasta dough
+  fake_outputs:
+    search_index:
+      query: pasta dough
+      group_by: video
+      shots:
+      - video_id: vid-cook-3
+        original_filename: vid-cook-3.mp4
+        t_start: 0.0
+        t_end: 6.0
+        caption: pasta dough
+        asr_text: talking about pasta dough
+        score: 0.74
+        idx: 0
+      - video_id: vid-cook-3
+        original_filename: vid-cook-3.mp4
+        t_start: 6.0
+        t_end: 12.0
+        caption: more pasta dough
+        score: 0.58
+        idx: 1
+- id: index-4
+  query: which lecture covers the French Revolution?
+  context:
+    index_id: idx-hist-301
+    video_ids: []
+  expected_tools:
+  - name: search_index
+    args:
+      index_id: idx-hist-301
+      query: ~French Revolution
+  fake_outputs:
+    search_index:
+      query: French Revolution
+      group_by: video
+      shots:
+      - video_id: vid-hist-3
+        original_filename: vid-hist-3.mp4
+        t_start: 0.0
+        t_end: 6.0
+        caption: French Revolution
+        asr_text: talking about French Revolution
+        score: 0.74
+        idx: 0
+      - video_id: vid-hist-3
+        original_filename: vid-hist-3.mp4
+        t_start: 6.0
+        t_end: 12.0
+        caption: more French Revolution
+        score: 0.58
+        idx: 1
+- id: index-5
+  query: find the video segment about regularization in this course
+  context:
+    index_id: idx-ml-101
+    video_ids: []
+  expected_tools:
+  - name: search_index
+    args:
+      index_id: idx-ml-101
+      query: ~regularization
+  fake_outputs:
+    search_index:
+      query: regularization
+      group_by: video
+      shots:
+      - video_id: vid-ml-3
+        original_filename: vid-ml-3.mp4
+        t_start: 0.0
+        t_end: 6.0
+        caption: regularization
+        asr_text: talking about regularization
+        score: 0.74
+        idx: 0
+      - video_id: vid-ml-3
+        original_filename: vid-ml-3.mp4
+        t_start: 6.0
+        t_end: 12.0
+        caption: more regularization
+        score: 0.58
+        idx: 1
+- id: index-6
+  query: which video teaches knife skills?
+  context:
+    index_id: idx-cook-201
+    video_ids: []
+  expected_tools:
+  - name: search_index
+    args:
+      index_id: idx-cook-201
+      query: ~knife skills
+  fake_outputs:
+    search_index:
+      query: knife skills
+      group_by: video
+      shots:
+      - video_id: vid-cook-3
+        original_filename: vid-cook-3.mp4
+        t_start: 0.0
+        t_end: 6.0
+        caption: knife skills
+        asr_text: talking about knife skills
+        score: 0.74
+        idx: 0
+      - video_id: vid-cook-3
+        original_filename: vid-cook-3.mp4
+        t_start: 6.0
+        t_end: 12.0
+        caption: more knife skills
+        score: 0.58
+        idx: 1

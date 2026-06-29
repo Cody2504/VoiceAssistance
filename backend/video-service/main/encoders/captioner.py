@@ -112,7 +112,7 @@ class VLMCaptioner:
             enabled=getattr(config, "caption_enabled", None),
         )
 
-    # ---------- lazy loader ----------
+    # lazy loader
 
     def _lazy_load(self) -> None:
         if self._client is not None:
@@ -139,7 +139,7 @@ class VLMCaptioner:
         self._lazy_load()
         return self._client not in (None, _UNAVAILABLE)
 
-    # ---------- public API ----------
+    # public API
 
     def caption_shot(self, frames: np.ndarray) -> str:
         """Caption a single shot. ``frames`` is uint8 RGB [N, H, W, 3]."""
@@ -167,7 +167,6 @@ class VLMCaptioner:
         Workers default to 8 (OpenRouter handles this comfortably). Override
         with the ``CAPTION_BATCH_WORKERS`` env var.
         """
-        import os
         from concurrent.futures import ThreadPoolExecutor
 
         self._lazy_load()
@@ -194,7 +193,7 @@ class VLMCaptioner:
                 out[i] = caption
         return out
 
-    # ---------- internals ----------
+    # internals
 
     def _run_one(self, frames: np.ndarray) -> str:
         """Single VLM call over a shot's frames. Returns trimmed caption."""
@@ -235,9 +234,7 @@ class VLMCaptioner:
         }
 
 
-# ----------------------------------------------------------------------------
 # Process-singleton convenience for the ingest pipeline.
-# ----------------------------------------------------------------------------
 
 _singleton: Optional[VLMCaptioner] = None
 

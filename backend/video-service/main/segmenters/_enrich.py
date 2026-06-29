@@ -28,6 +28,8 @@ from typing import Any
 from main.api.segments_types import SegmentDefinition, SegmentField
 from main.settings import get_settings
 
+from ._holistic import _coerce_field as _coerce
+
 log = logging.getLogger(__name__)
 
 
@@ -79,24 +81,6 @@ def _schema_prompt(fields: list[SegmentField], already_filled: dict[str, Any]) -
             line += f" — allowed: {', '.join(f.enum)}"
         parts.append(line)
     return "\n".join(parts)
-
-
-def _coerce(value: Any, type_name: str) -> Any:
-    t = (type_name or "string").lower()
-    if value is None:
-        return None
-    if t == "number":
-        try:
-            return float(value)
-        except (TypeError, ValueError):
-            return None
-    if t == "boolean":
-        if isinstance(value, bool):
-            return value
-        if isinstance(value, str):
-            return value.lower() in {"true", "yes", "1"}
-        return bool(value)
-    return str(value)
 
 
 def _validate(

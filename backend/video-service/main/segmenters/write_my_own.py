@@ -36,6 +36,7 @@ from uuid import UUID
 from main.api.segments_types import SegmentDefinition
 from main.settings import get_settings
 
+from ._holistic import holistic_segments, _build_schema_prompt, _validate_metadata
 from .qdrant_io import read_shots
 
 log = logging.getLogger(__name__)
@@ -77,47 +78,8 @@ def _format_chunk_context(chunk: list[dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
-def _build_schema_prompt(definition: SegmentDefinition) -> str:
-    """Turn the user's field list into a short prompt fragment describing
-    what JSON we want back."""
-    parts = []
-    for f in definition.fields:
-        line = f'- "{f.name}" ({f.type or "string"})'
-        if f.description:
-            line += f": {f.description}"
-        if f.enum:
-            line += f" — allowed: {', '.join(f.enum)}"
-        parts.append(line)
-    return "\n".join(parts) if parts else "(no fields requested — emit an empty object)"
-
-
-def _coerce_field(value: Any, type_name: str) -> Any:
-    t = (type_name or "string").lower()
-    if value is None:
-        return None
-    if t == "number":
-        try:
-            return float(value)
-        except (TypeError, ValueError):
-            return None
-    if t == "boolean":
-        if isinstance(value, bool):
-            return value
-        if isinstance(value, str):
-            return value.lower() in {"true", "yes", "1"}
-        return bool(value)
-    return str(value)
-
-
-def _validate_metadata(raw: dict[str, Any], definition: SegmentDefinition) -> dict[str, Any]:
-    out: dict[str, Any] = {}
-    for f in definition.fields:
-        v = _coerce_field(raw.get(f.name), f.type or "string")
-        if f.enum and v is not None and v not in f.enum:
-            v = None
-        if v is not None:
-            out[f.name] = v
-    return out
+# Schema-prompt + metadata-validation helpers now live in `_holistic` (imported
+# above) so the holistic core and this legacy body share one implementation.
 
 
 def _call_llm(api_key: str, model: str, definition: SegmentDefinition, context: str) -> dict[str, Any] | None:
@@ -160,7 +122,7 @@ def _call_llm(api_key: str, model: str, definition: SegmentDefinition, context: 
         return None
 
 
-def segment(video_id: UUID, definition: SegmentDefinition) -> list[dict[str, Any]]:
+def _legacy(video_id: UUID, definition: SegmentDefinition) -> list[dict[str, Any]]:
     shots = read_shots(video_id, with_vectors=False)
     if not shots:
         return []
@@ -198,3 +160,14 @@ def segment(video_id: UUID, definition: SegmentDefinition) -> list[dict[str, Any
         results = list(pool.map(_process, chunks))
 
     return [r for r in results if r is not None]
+
+
+def segment(video_id, definition):
+    return holistic_segments(
+        video_id, definition,
+        guidance="the content matching the user's definition changes; merge consecutive similar windows",
+        target_hint="As many segments as the definition implies; do not emit one per shot",
+        primary_signal="auto",
+        default_fields=[],          # custom defs: the user's own fields drive the schema
+        fallback=_legacy,
+    )

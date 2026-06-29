@@ -1,7 +1,8 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import BigInteger, Boolean, ForeignKey, Integer, String, Text, text
+from sqlalchemy import JSON, BigInteger, Boolean, ForeignKey, Integer, String, Text, text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -45,6 +46,20 @@ class Video(Base):
     # offset_s + local_t). Both NULL for ordinary single-file uploads.
     parent_video_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True), nullable=True, index=True)
     offset_s: Mapped[float | None] = mapped_column(nullable=True)
+
+    # Content-moderation guardrail (status='flagged' quarantine). Per-video max
+    # scores + which categories tripped, written by the worker from the ingest
+    # verdict. `moderation_detail` holds the flagged segments (timestamps+scores)
+    # for the admin review scrubber. `moderation_override` = admin approved, so a
+    # re-index bypasses the guardrail. All NULL/false until the guardrail runs.
+    nsfw_max: Mapped[float | None] = mapped_column(nullable=True)
+    violence_max: Mapped[float | None] = mapped_column(nullable=True)
+    toxic_max: Mapped[float | None] = mapped_column(nullable=True)
+    moderation_labels: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    # JSONB on Postgres; JSON variant so Video.__table__ still create_all()s on
+    # SQLite (the usage tests build this table in-memory). Migration uses JSONB.
+    moderation_detail: Mapped[dict | None] = mapped_column(JSONB().with_variant(JSON(), "sqlite"), nullable=True)
+    moderation_override: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"), default=False)
 
 
 class IndexingJob(Base):

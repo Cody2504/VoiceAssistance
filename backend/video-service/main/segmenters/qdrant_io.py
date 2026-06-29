@@ -65,4 +65,19 @@ def read_shots(video_id: UUID, with_vectors: bool = False) -> list[dict[str, Any
             break
 
     out.sort(key=lambda r: r["idx"])
-    return out
+
+    # `jockey_shots` stores MULTIPLE points per shot (one per sampled frame),
+    # all carrying the same shot_idx + boundaries. Segmenters expect ONE row per
+    # shot. Collapse duplicates (keep the first per idx, preferring a row that
+    # actually has a caption). Without this the semantic-boundary segmenter asks
+    # the LLM for boundary indices into the per-frame list; those land mid-shot,
+    # split a shot's duplicate rows across two groups, and each group inherits
+    # the shared shot's full time span → overlapping segment time ranges.
+    deduped: dict[Any, dict[str, Any]] = {}
+    for r in out:
+        cur = deduped.get(r["idx"])
+        if cur is None:
+            deduped[r["idx"]] = r
+        elif not (cur.get("chunk_caption") or "").strip() and (r.get("chunk_caption") or "").strip():
+            deduped[r["idx"]] = r
+    return list(deduped.values())

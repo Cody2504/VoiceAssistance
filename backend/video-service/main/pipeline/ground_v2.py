@@ -98,9 +98,7 @@ def run_grounding_v2(
     )
 
 
-# ---------------------------------------------------------------------------
 # Coarse retrieval
-# ---------------------------------------------------------------------------
 
 
 def _dense_candidates(video_id: str, query: str, k: int) -> list[dict]:
@@ -165,9 +163,7 @@ def _greedy_merge(candidates: list[dict], pad_sec: float, max_window_sec: float)
     return out
 
 
-# ---------------------------------------------------------------------------
 # Backend selection (visual CG-DETR vs audio QD-DETR)
-# ---------------------------------------------------------------------------
 
 
 def _select_backend(video_id: str, use_audio: bool):
@@ -194,9 +190,7 @@ def _load_npy(bucket: str, key: str) -> np.ndarray:
     return np.load(buf)
 
 
-# ---------------------------------------------------------------------------
 # IoU dedupe
-# ---------------------------------------------------------------------------
 
 
 def _iou_dedupe(moments: list[tuple[float, float, float]], threshold: float) -> list[tuple[float, float, float]]:

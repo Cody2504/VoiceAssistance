@@ -43,6 +43,7 @@ class SegmentRecord:
     caption: str = ""
     transcript: str = ""
     audio_tags: list[dict] = field(default_factory=list)
+    ocr_text: str = ""
 
     def to_segment_summary(self) -> str:
         """Deterministic stitch — no LLM. Captures everything the per-segment
@@ -53,6 +54,8 @@ class SegmentRecord:
             parts.append(self.caption.strip())
         if self.transcript.strip():
             parts.append(f"Said: {self.transcript.strip()}")
+        if self.ocr_text.strip():
+            parts.append(f"On-screen: {self.ocr_text.strip()}")
         if self.audio_tags:
             top = [t.get("label") for t in self.audio_tags[:3] if t.get("label")]
             if top:
@@ -103,18 +106,24 @@ class HierarchicalSummarizer:
         log.info("summarize:windows=%d segments=%d", len(windows), len(segments))
 
         client = self._llm_client()
-        window_summaries: list[WindowSummary] = []
-        for w in windows:
-            text = self._summarize_window(client, w, seg_summaries, video_title)
-            window_summaries.append(
-                WindowSummary(
-                    idx=w["idx"],
-                    t_start=w["t_start"],
-                    t_end=w["t_end"],
-                    segment_indices=w["segment_indices"],
-                    summary=text,
-                )
+
+        # Window summaries are independent LLM calls (network-bound) → fan out
+        # instead of looping serially. pool.map preserves window order. The global
+        # summary still runs after, since it consumes all window summaries.
+        from concurrent.futures import ThreadPoolExecutor
+
+        def _summ(w: dict) -> WindowSummary:
+            return WindowSummary(
+                idx=w["idx"],
+                t_start=w["t_start"],
+                t_end=w["t_end"],
+                segment_indices=w["segment_indices"],
+                summary=self._summarize_window(client, w, seg_summaries, video_title),
             )
+
+        max_workers = min(8, max(1, len(windows)))
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            window_summaries: list[WindowSummary] = list(pool.map(_summ, windows))
 
         global_summary = self._summarize_global(client, window_summaries, video_title)
         return HierarchicalSummary(
@@ -123,7 +132,7 @@ class HierarchicalSummarizer:
             global_summary=global_summary,
         )
 
-    # ---------------------------------------------------------------- helpers
+    # helpers
 
     def _group_into_windows(self, segments: Sequence[SegmentRecord]) -> list[dict]:
         """Bin segments into fixed-size windows by their start time. We don't
@@ -193,7 +202,7 @@ class HierarchicalSummarizer:
         )
         return self._llm_complete(client, prompt, max_tokens=300)
 
-    # ----------------------------------------------------------- LLM wiring
+    # LLM wiring
 
     def _llm_client(self):
         from openai import OpenAI

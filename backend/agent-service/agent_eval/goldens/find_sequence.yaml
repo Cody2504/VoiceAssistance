@@ -1,0 +1,100 @@
+- id: seq-0
+  query: does he chop the onions before adding the garlic in this video?
+  context:
+    video_id: vid-cook-1
+  expected_tools:
+  - name: find_sequence
+    args:
+      video_id: vid-cook-1
+  fake_outputs:
+    find_sequence:
+      ordered: true
+      steps:
+      - a
+      - b
+      - c
+      per_step:
+      - step: a
+        t_start: 5.0
+        t_end: 9.0
+      - step: b
+        t_start: 20.0
+        t_end: 24.0
+      - step: c
+        t_start: 40.0
+        t_end: 44.0
+- id: seq-1
+  query: verify that the player dribbles then shoots in this clip
+  context:
+    video_id: vid-bball-1
+  expected_tools:
+  - name: find_sequence
+    args:
+      video_id: vid-bball-1
+  fake_outputs:
+    find_sequence:
+      ordered: true
+      steps:
+      - a
+      - b
+      - c
+      per_step:
+      - step: a
+        t_start: 5.0
+        t_end: 9.0
+      - step: b
+        t_start: 20.0
+        t_end: 24.0
+      - step: c
+        t_start: 40.0
+        t_end: 44.0
+- id: seq-2
+  query: check whether they explain the theory before the example
+  context:
+    video_id: vid-ml-3
+  expected_tools:
+  - name: find_sequence
+    args:
+      video_id: vid-ml-3
+  fake_outputs:
+    find_sequence:
+      ordered: true
+      steps:
+      - a
+      - b
+      - c
+      per_step:
+      - step: a
+        t_start: 5.0
+        t_end: 9.0
+      - step: b
+        t_start: 20.0
+        t_end: 24.0
+      - step: c
+        t_start: 40.0
+        t_end: 44.0
+- id: seq-3
+  query: did the goal happen after the foul in this match?
+  context:
+    video_id: vid-soccer-1
+  expected_tools:
+  - name: find_sequence
+    args:
+      video_id: vid-soccer-1
+  fake_outputs:
+    find_sequence:
+      ordered: true
+      steps:
+      - a
+      - b
+      - c
+      per_step:
+      - step: a
+        t_start: 5.0
+        t_end: 9.0
+      - step: b
+        t_start: 20.0
+        t_end: 24.0
+      - step: c
+        t_start: 40.0
+        t_end: 44.0

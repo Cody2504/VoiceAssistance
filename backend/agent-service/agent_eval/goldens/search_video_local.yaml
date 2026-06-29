@@ -1,0 +1,108 @@
+- id: local-0
+  query: find the part of this video where they discuss defense
+  context:
+    video_id: vid-bball-1
+  expected_tools:
+  - name: search_video_local
+    args:
+      video_id: vid-bball-1
+      query: ~defense
+  fake_outputs:
+    search_video_local:
+      video_id: vid-bball-1
+      shots:
+      - idx: 3
+        t_start: 30.0
+        t_end: 36.0
+        asr_text: defense
+        score: 0.66
+- id: local-1
+  query: where in this video do they mention the recipe ingredients?
+  context:
+    video_id: vid-cook-1
+  expected_tools:
+  - name: search_video_local
+    args:
+      video_id: vid-cook-1
+      query: ~ingredients
+  fake_outputs:
+    search_video_local:
+      video_id: vid-cook-1
+      shots:
+      - idx: 3
+        t_start: 30.0
+        t_end: 36.0
+        asr_text: ingredients
+        score: 0.66
+- id: local-2
+  query: jump to the section about gradient descent in this video
+  context:
+    video_id: vid-ml-3
+  expected_tools:
+  - name: search_video_local
+    args:
+      video_id: vid-ml-3
+      query: ~gradient descent
+  fake_outputs:
+    search_video_local:
+      video_id: vid-ml-3
+      shots:
+      - idx: 3
+        t_start: 30.0
+        t_end: 36.0
+        asr_text: gradient descent
+        score: 0.66
+- id: local-3
+  query: locate the moment they talk about the final score
+  context:
+    video_id: vid-soccer-1
+  expected_tools:
+  - name: search_video_local
+    args:
+      video_id: vid-soccer-1
+      query: ~final score
+  fake_outputs:
+    search_video_local:
+      video_id: vid-soccer-1
+      shots:
+      - idx: 3
+        t_start: 30.0
+        t_end: 36.0
+        asr_text: final score
+        score: 0.66
+- id: local-4
+  query: find where the guitar solo is explained in this video
+  context:
+    video_id: vid-concert-1
+  expected_tools:
+  - name: search_video_local
+    args:
+      video_id: vid-concert-1
+      query: ~guitar solo
+  fake_outputs:
+    search_video_local:
+      video_id: vid-concert-1
+      shots:
+      - idx: 3
+        t_start: 30.0
+        t_end: 36.0
+        asr_text: guitar solo
+        score: 0.66
+- id: local-5
+  query: which part of this video covers the serve technique?
+  context:
+    video_id: vid-tennis-1
+  expected_tools:
+  - name: search_video_local
+    args:
+      video_id: vid-tennis-1
+      query: ~serve technique
+  fake_outputs:
+    search_video_local:
+      video_id: vid-tennis-1
+      shots:
+      - idx: 3
+        t_start: 30.0
+        t_end: 36.0
+        asr_text: serve technique
+        score: 0.66

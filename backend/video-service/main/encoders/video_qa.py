@@ -12,7 +12,6 @@ Usage:
 import base64
 import json
 import logging
-import os
 from typing import List, Optional
 
 import numpy as np

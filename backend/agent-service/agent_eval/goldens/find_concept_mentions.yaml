@@ -1,0 +1,132 @@
+- id: kgm-0
+  query: where is backpropagation discussed in this course?
+  context:
+    index_id: idx-ml-101
+    video_ids: []
+  expected_tools:
+  - name: find_concept_mentions
+    args:
+      index_id: idx-ml-101
+      concept_name: ~backpropagation
+  fake_outputs:
+    find_concept_mentions:
+      resolved_concept:
+        entity_id: e2
+        canonical_name: backpropagation
+      mentions:
+      - video_id: vid-ml-4
+        video_title: Lecture
+        video_position: 3
+        t_start: 200.0
+        t_end: 230.0
+        transcript: discussing backpropagation
+- id: kgm-1
+  query: which lectures mention the chain rule?
+  context:
+    index_id: idx-ml-101
+    video_ids: []
+  expected_tools:
+  - name: find_concept_mentions
+    args:
+      index_id: idx-ml-101
+      concept_name: ~chain rule
+  fake_outputs:
+    find_concept_mentions:
+      resolved_concept:
+        entity_id: e2
+        canonical_name: chain rule
+      mentions:
+      - video_id: vid-ml-4
+        video_title: Lecture
+        video_position: 3
+        t_start: 200.0
+        t_end: 230.0
+        transcript: discussing chain rule
+- id: kgm-2
+  query: where in this course do they talk about emulsification?
+  context:
+    index_id: idx-cook-201
+    video_ids: []
+  expected_tools:
+  - name: find_concept_mentions
+    args:
+      index_id: idx-cook-201
+      concept_name: ~emulsification
+  fake_outputs:
+    find_concept_mentions:
+      resolved_concept:
+        entity_id: e2
+        canonical_name: emulsification
+      mentions:
+      - video_id: vid-cook-4
+        video_title: Lecture
+        video_position: 3
+        t_start: 200.0
+        t_end: 230.0
+        transcript: discussing emulsification
+- id: kgm-3
+  query: find all the places that discuss the Cold War
+  context:
+    index_id: idx-hist-301
+    video_ids: []
+  expected_tools:
+  - name: find_concept_mentions
+    args:
+      index_id: idx-hist-301
+      concept_name: ~Cold War
+  fake_outputs:
+    find_concept_mentions:
+      resolved_concept:
+        entity_id: e2
+        canonical_name: Cold War
+      mentions:
+      - video_id: vid-hist-4
+        video_title: Lecture
+        video_position: 3
+        t_start: 200.0
+        t_end: 230.0
+        transcript: discussing Cold War
+- id: kgm-4
+  query: where is the learning rate explained?
+  context:
+    index_id: idx-ml-101
+    video_ids: []
+  expected_tools:
+  - name: find_concept_mentions
+    args:
+      index_id: idx-ml-101
+      concept_name: ~learning rate
+  fake_outputs:
+    find_concept_mentions:
+      resolved_concept:
+        entity_id: e2
+        canonical_name: learning rate
+      mentions:
+      - video_id: vid-ml-4
+        video_title: Lecture
+        video_position: 3
+        t_start: 200.0
+        t_end: 230.0
+        transcript: discussing learning rate
+- id: kgm-5
+  query: which segments mention caramelization?
+  context:
+    index_id: idx-cook-201
+    video_ids: []
+  expected_tools:
+  - name: find_concept_mentions
+    args:
+      index_id: idx-cook-201
+      concept_name: ~caramelization
+  fake_outputs:
+    find_concept_mentions:
+      resolved_concept:
+        entity_id: e2
+        canonical_name: caramelization
+      mentions:
+      - video_id: vid-cook-4
+        video_title: Lecture
+        video_position: 3
+        t_start: 200.0
+        t_end: 230.0
+        transcript: discussing caramelization

@@ -134,6 +134,9 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       OPENAI_PLANNER_MODEL: ${OPENAI_PLANNER_MODEL:-gpt-4o}
       OPENAI_WORKER_MODEL: ${OPENAI_WORKER_MODEL:-gpt-4o-mini}
+      # OpenRouter fallback (LLM_PROVIDER=OPENROUTER) — routes router/reflect via
+      # OpenRouter billing when the direct OpenAI account is rate-limited.
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT}
       AZURE_OPENAI_API_KEY: ${AZURE_OPENAI_API_KEY}
       OPENAI_API_VERSION: ${OPENAI_API_VERSION:-2024-08-01-preview}

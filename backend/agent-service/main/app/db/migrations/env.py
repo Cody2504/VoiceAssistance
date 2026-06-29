@@ -5,7 +5,7 @@ from sqlalchemy import engine_from_config, pool
 
 from cm_shared.db import Base
 from cm_shared.settings import get_base_settings
-from main.app.db.models import Conversation, Message  # noqa: F401
+from main.app.db.models import Conversation, EvalCase, EvalRun, Message  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:

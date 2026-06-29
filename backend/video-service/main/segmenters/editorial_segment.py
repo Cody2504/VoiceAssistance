@@ -25,9 +25,10 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 from uuid import UUID
 
-from main.api.segments_types import SegmentDefinition
+from main.api.segments_types import SegmentDefinition, SegmentField
 from main.settings import get_settings
 
+from ._holistic import holistic_segments
 from .qdrant_io import read_shots
 
 log = logging.getLogger(__name__)
@@ -93,7 +94,7 @@ def _call_llm(api_key: str, model: str, context: str, roles: list[str]) -> dict[
         return None
 
 
-def segment(video_id: UUID, definition: SegmentDefinition) -> list[dict[str, Any]]:
+def _legacy(video_id: UUID, definition: SegmentDefinition) -> list[dict[str, Any]]:
     shots = read_shots(video_id, with_vectors=False)
     if not shots:
         return []
@@ -154,3 +155,24 @@ def segment(video_id: UUID, definition: SegmentDefinition) -> list[dict[str, Any
         else:
             out.append({"t_start": start, "t_end": end, "metadata": meta})
     return out
+
+
+_DEFAULT_FIELDS = [
+    SegmentField(name="segment_title", description="Title of the editorial segment"),
+    SegmentField(name="description", description="Brief description of the narrative (200 chars max)"),
+    SegmentField(name="editorial_subjects", description="Topics and themes in this segment"),
+    SegmentField(name="visual_subjects", description="Key visual elements (people, places, objects)"),
+    SegmentField(name="names", description="Identifiable people mentioned or visible"),
+    SegmentField(name="confidence", type="string", enum=["HIGH", "MEDIUM", "LOW"]),
+]
+
+
+def segment(video_id, definition):
+    return holistic_segments(
+        video_id, definition,
+        guidance="a new editorial chapter/theme/story begins (intro -> step -> ... -> outro; recipe steps; news stories)",
+        target_hint="Typically 4-8 segments; one per distinct stage, step, or story beat",
+        primary_signal="asr",
+        default_fields=_DEFAULT_FIELDS,
+        fallback=_legacy,
+    )

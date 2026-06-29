@@ -1,0 +1,120 @@
+- id: kgc-0
+  query: what key concepts are covered in this course?
+  context:
+    index_id: idx-ml-101
+    video_ids: []
+  expected_tools:
+  - name: find_index_concepts
+    args:
+      index_id: idx-ml-101
+      topic: ~concepts
+  fake_outputs:
+    find_index_concepts:
+      kg_available: true
+      concepts:
+      - entity_id: e1
+        canonical_name: concepts
+        entity_type: concept
+        score: 0.8
+        mention_count: 5
+        video_count: 2
+- id: kgc-1
+  query: list the main topics in this lecture series
+  context:
+    index_id: idx-ml-101
+    video_ids: []
+  expected_tools:
+  - name: find_index_concepts
+    args:
+      index_id: idx-ml-101
+      topic: ~topics
+  fake_outputs:
+    find_index_concepts:
+      kg_available: true
+      concepts:
+      - entity_id: e1
+        canonical_name: topics
+        entity_type: concept
+        score: 0.8
+        mention_count: 5
+        video_count: 2
+- id: kgc-2
+  query: what techniques does this cooking course teach?
+  context:
+    index_id: idx-cook-201
+    video_ids: []
+  expected_tools:
+  - name: find_index_concepts
+    args:
+      index_id: idx-cook-201
+      topic: ~techniques
+  fake_outputs:
+    find_index_concepts:
+      kg_available: true
+      concepts:
+      - entity_id: e1
+        canonical_name: techniques
+        entity_type: concept
+        score: 0.8
+        mention_count: 5
+        video_count: 2
+- id: kgc-3
+  query: what are the important ideas in this course?
+  context:
+    index_id: idx-hist-301
+    video_ids: []
+  expected_tools:
+  - name: find_index_concepts
+    args:
+      index_id: idx-hist-301
+      topic: ~ideas
+  fake_outputs:
+    find_index_concepts:
+      kg_available: true
+      concepts:
+      - entity_id: e1
+        canonical_name: ideas
+        entity_type: concept
+        score: 0.8
+        mention_count: 5
+        video_count: 2
+- id: kgc-4
+  query: show me the core concepts of this course
+  context:
+    index_id: idx-ml-101
+    video_ids: []
+  expected_tools:
+  - name: find_index_concepts
+    args:
+      index_id: idx-ml-101
+      topic: ~core concepts
+  fake_outputs:
+    find_index_concepts:
+      kg_available: true
+      concepts:
+      - entity_id: e1
+        canonical_name: core concepts
+        entity_type: concept
+        score: 0.8
+        mention_count: 5
+        video_count: 2
+- id: kgc-5
+  query: what subjects are taught in this course?
+  context:
+    index_id: idx-cook-201
+    video_ids: []
+  expected_tools:
+  - name: find_index_concepts
+    args:
+      index_id: idx-cook-201
+      topic: ~subjects
+  fake_outputs:
+    find_index_concepts:
+      kg_available: true
+      concepts:
+      - entity_id: e1
+        canonical_name: subjects
+        entity_type: concept
+        score: 0.8
+        mention_count: 5
+        video_count: 2

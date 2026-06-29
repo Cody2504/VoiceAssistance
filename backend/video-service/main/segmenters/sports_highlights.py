@@ -26,8 +26,9 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from main.api.segments_types import SegmentDefinition
+from main.api.segments_types import SegmentDefinition, SegmentField
 
+from ._holistic import holistic_segments
 from .qdrant_io import read_shots
 
 HIGHLIGHT_KEYWORDS = (
@@ -79,7 +80,7 @@ def _normalize_event(label: str) -> str:
     return label
 
 
-def segment(video_id: UUID, definition: SegmentDefinition) -> list[dict[str, Any]]:
+def _legacy(video_id: UUID, definition: SegmentDefinition) -> list[dict[str, Any]]:
     shots = read_shots(video_id, with_vectors=False)
     if not shots:
         return []
@@ -129,3 +130,23 @@ def segment(video_id: UUID, definition: SegmentDefinition) -> list[dict[str, Any
         out.append({"t_start": sh["t_start"], "t_end": sh["t_end"], "metadata": meta})
 
     return out
+
+
+_DEFAULT_FIELDS = [
+    SegmentField(name="play_type", description="Type of play or moment"),
+    SegmentField(name="scoring_play", type="boolean", description="Did this result in points scored?"),
+    SegmentField(name="key_players", description="Players involved in this play"),
+    SegmentField(name="excitement_level", type="string", enum=["HIGH", "MEDIUM", "LOW"]),
+    SegmentField(name="description", description="Brief description of the play"),
+]
+
+
+def segment(video_id, definition):
+    return holistic_segments(
+        video_id, definition,
+        guidance="each distinct play or key game moment; IGNORE replays and non-gameplay footage",
+        target_hint="One segment per play/key moment",
+        primary_signal="caption",
+        default_fields=_DEFAULT_FIELDS,
+        fallback=_legacy,
+    )

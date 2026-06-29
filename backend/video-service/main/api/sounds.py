@@ -24,6 +24,47 @@ def _qdrant():
     return get_qdrant_client()
 
 
+# PANN's AudioSet vocabulary rarely matches the free-text sound the agent/user
+# asks for ("cheering" vs PANN's actual "Crowd"/"Applause"). Expand a query into
+# a set of related label fragments and match if ANY appears in a shot's tags, so
+# common sound intents aren't lost to an exact-vocabulary mismatch.
+_SOUND_SYNONYMS: dict[str, set[str]] = {
+    "cheer": {"cheer", "crowd", "applause", "clap", "chant", "ovation"},
+    "crowd": {"crowd", "cheer", "applause", "chatter", "hubbub"},
+    "applause": {"applause", "clap", "cheer", "ovation"},
+    "clap": {"clap", "applause", "cheer"},
+    "laugh": {"laugh", "giggle", "chuckle"},
+    "music": {"music", "musical instrument", "song", "singing", "melody"},
+    "song": {"song", "singing", "music"},
+    "sing": {"singing", "song", "music", "vocal"},
+    "talk": {"speech", "conversation", "narration", "monologue", "talk"},
+    "speak": {"speech", "conversation", "narration", "monologue"},
+    "speech": {"speech", "conversation", "narration", "monologue"},
+    "shout": {"shout", "yell", "screaming", "cheer"},
+    "scream": {"screaming", "shout", "yell"},
+    "whistle": {"whistle"},
+    "dog": {"dog", "bark", "animal"},
+    "car": {"vehicle", "car", "engine", "motor"},
+    "engine": {"engine", "motor", "vehicle"},
+    "water": {"water", "liquid", "splash", "stream"},
+    "footstep": {"footstep", "walk", "steps"},
+}
+
+
+def _expand_query(tag: str | None) -> set[str]:
+    """Lower-cased label fragments to match against stored AudioSet labels: the
+    raw query plus any synonym group it falls into (bidirectional), so free-text
+    sound names ("cheering") also hit PANN's real labels ("Crowd", "Applause")."""
+    q = (tag or "").lower().strip()
+    if not q:
+        return set()
+    terms = {q}
+    for key, syns in _SOUND_SYNONYMS.items():
+        if key in q or any(syn in q for syn in syns):
+            terms |= syns
+    return terms
+
+
 @router.get("/{video_id}/sounds")
 async def sounds(
     video_id: UUID,
@@ -47,7 +88,7 @@ async def sounds(
 
     out: list[dict] = []
     next_offset = None
-    tag_lc = (tag or "").lower().strip()
+    terms = _expand_query(tag)
 
     while True:
         points, next_offset = client.scroll(
@@ -61,8 +102,9 @@ async def sounds(
         for p in points:
             pl = p.payload or {}
             tags = pl.get("audio_tags") or []
-            if tag_lc:
-                if not any(tag_lc in (t.get("label", "") or "").lower() for t in tags):
+            if terms:
+                labels_lc = [(t.get("label", "") or "").lower() for t in tags]
+                if not any(term in lab for term in terms for lab in labels_lc):
                     continue
             out.append({
                 "idx": pl.get("shot_idx"),

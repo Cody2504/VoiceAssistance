@@ -34,15 +34,15 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 from uuid import UUID
 
-from main.api.segments_types import SegmentDefinition
+from main.api.segments_types import SegmentDefinition, SegmentField
 from main.settings import get_settings
 
+from ._holistic import holistic_segments
 from .qdrant_io import read_shots
 
 log = logging.getLogger(__name__)
 
 TOPIC_SIM_THRESHOLD = 0.78
-MIN_SHOTS_PER_TOPIC = 1
 
 
 def _cosine(a: list[float], b: list[float]) -> float:
@@ -157,14 +157,6 @@ def _visual_groups(shots: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
             groups.append([curr])
         else:
             groups[-1].append(curr)
-    if MIN_SHOTS_PER_TOPIC > 1:
-        merged: list[list[dict[str, Any]]] = []
-        for g in groups:
-            if merged and len(g) < MIN_SHOTS_PER_TOPIC:
-                merged[-1].extend(g)
-            else:
-                merged.append(g)
-        groups = merged
     return groups
 
 
@@ -252,7 +244,7 @@ def _semantic_boundaries(shots: list[dict[str, Any]], api_key: str) -> list[int]
         return None
 
 
-def segment(video_id: UUID, definition: SegmentDefinition) -> list[dict[str, Any]]:
+def _legacy(video_id: UUID, definition: SegmentDefinition) -> list[dict[str, Any]]:
     shots = read_shots(video_id, with_vectors=True)
     if not shots:
         return []
@@ -285,3 +277,28 @@ def segment(video_id: UUID, definition: SegmentDefinition) -> list[dict[str, Any
         return list(
             pool.map(lambda g: _segment_from_shots(g, want_summary, want_topic, api_key), groups)
         )
+
+
+_DEFAULT_FIELDS = [
+    SegmentField(name="topic", description="The main topic/subject of this segment"),
+    SegmentField(name="subtopics", description="Related subtopics discussed"),
+    SegmentField(name="key_points", description="Key points or takeaways"),
+    SegmentField(
+        name="transition_type", type="string",
+        enum=["hard_cut", "gradual", "host_introduction", "natural_flow"],
+    ),
+]
+
+
+def segment(video_id, definition):
+    return holistic_segments(
+        video_id, definition,
+        guidance=(
+            "the primary TOPIC or subject matter changes — even if the camera looks identical; "
+            "use the SPEECH (asr) as the main signal for lectures/talks"
+        ),
+        target_hint="Typically 6-12 segments; start a new one when a distinct sub-idea, definition, or worked example begins (but still merge consecutive shots of the same point)",
+        primary_signal="asr",
+        default_fields=_DEFAULT_FIELDS,
+        fallback=_legacy,
+    )

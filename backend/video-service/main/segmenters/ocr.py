@@ -22,10 +22,12 @@ from functools import lru_cache
 from typing import Any
 from uuid import UUID
 
-from main.api.segments_types import SegmentDefinition
+from main.api.segments_types import SegmentDefinition, SegmentField
 from main.models.video import Video
 from main.settings import get_settings
 from main.storage.minio import download_to_path
+
+from ._holistic import holistic_segments
 
 from .qdrant_io import read_shots
 from .video_io import fetch_video
@@ -121,7 +123,7 @@ def _format_from_fresh(
         except OSError: pass
 
 
-def segment(video_id: UUID, definition: SegmentDefinition) -> list[dict[str, Any]]:
+def _legacy(video_id: UUID, definition: SegmentDefinition) -> list[dict[str, Any]]:
     shots = read_shots(video_id, with_vectors=False)
     if not shots:
         return []
@@ -138,3 +140,34 @@ def segment(video_id: UUID, definition: SegmentDefinition) -> list[dict[str, Any
             log.info("ocr:PaddleOCR not available — falling back to cached payload")
 
     return _format_from_cached(shots, definition)
+
+
+_ELEMENTS = ["lower_third", "title_card", "caption", "logo", "score_bug", "chyron", "watermark", "other"]
+_POSITIONS = ["top", "bottom", "center", "lower_third", "full_screen"]
+_DEFAULT_FIELDS = [
+    SegmentField(name="element_type", type="string", enum=_ELEMENTS),
+    SegmentField(name="text_content", description="The on-screen text, cleaned of OCR errors and de-duplicated"),
+    SegmentField(name="position", type="string", enum=_POSITIONS),
+]
+
+
+def segment(video_id, definition):
+    return holistic_segments(
+        video_id, definition,
+        guidance=(
+            "the on-screen text or graphic element appears or changes. For text_content, "
+            "transcribe ONLY the literal text/caption actually shown on screen (clean up OCR "
+            "garble, dedupe repeated fragments); DO NOT describe the scene, the animation, or "
+            "what is happening — output only the words that are literally displayed. "
+            "position is best-effort."
+        ),
+        target_hint="One segment per distinct on-screen text state",
+        primary_signal="ocr",
+        default_fields=_DEFAULT_FIELDS,
+        fallback=_legacy,
+        vision_fields=["text_content", "element_type", "position"],
+        vision_guidance=(
+            "Read and transcribe VERBATIM the on-screen text/graphics visible in these frames "
+            "(do NOT describe the scene). Identify the element_type and its position on screen."
+        ),
+    )

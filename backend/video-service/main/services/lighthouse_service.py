@@ -128,7 +128,7 @@ class LighthouseService:
         )
         log.info("lighthouse:ready")
 
-    # ------------------------------------------------------------------ ingest
+    # ingest
 
     def encode_video_to_features(self, video_path: str) -> np.ndarray:
         """Encode the WHOLE video — no 150-second cap.
@@ -152,7 +152,7 @@ class LighthouseService:
         log.info("lighthouse:encode_audio clips=%d dim=%d", arr.shape[0], arr.shape[1])
         return arr
 
-    # ------------------------------------------------------------------ query
+    # query
 
     def predict_moments(
         self,
@@ -213,7 +213,7 @@ class LighthouseService:
             for i, s in enumerate(saliency)
         ]
 
-    # ---------------------------------------------------------------- helpers
+    # helpers
 
     def _enforce_window(self, features: np.ndarray) -> np.ndarray:
         """Lighthouse's DETR head was trained with at most 75 clips of 2s each.
@@ -266,7 +266,7 @@ class LighthouseService:
             moments.append((start + time_offset, end + time_offset, score))
         return moments
 
-    # ------------------------------------------------- long-video chunking
+    # long-video chunking
 
     def iter_windows(
         self,

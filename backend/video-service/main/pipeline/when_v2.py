@@ -99,9 +99,7 @@ def merge_rank(cands: list[WhenCandidate], *, top_n: int, iou_threshold: float) 
     return kept[:top_n]
 
 
-# --------------------------------------------------------------------------- #
 # Fan-out stream fetchers
-# --------------------------------------------------------------------------- #
 
 def _qdrant():
     from main.qdrant_util import get_qdrant_client
@@ -362,9 +360,7 @@ def run_when(video_id, query, *, modality=None, top_n=None, refine=None,
     return WhenResult(video_id=str(video_id), query=query, events=events)
 
 
-# --------------------------------------------------------------------------- #
 # Timeline read (Postgres -> Segment-UI shape)
-# --------------------------------------------------------------------------- #
 
 def shape_timeline_rows(rows) -> list[dict]:
     """rows: iterable of (track_kind, track_label, t_start, t_end, label, metadata, score),

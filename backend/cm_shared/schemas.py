@@ -41,7 +41,7 @@ class GoogleAuthRequest(BaseModel):
 
 
 # -------- Videos --------
-VideoStatus = Literal["stored", "queued", "processing", "ready", "error"]
+VideoStatus = Literal["stored", "queued", "processing", "ready", "error", "flagged", "rejected"]
 VideoModality = Literal["video_audio", "video_only", "audio_only"]
 
 

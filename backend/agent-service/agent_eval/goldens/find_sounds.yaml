@@ -1,0 +1,114 @@
+- id: sound-0
+  query: find the moments with applause in this video
+  context:
+    video_id: vid-concert-1
+  expected_tools:
+  - name: find_sounds
+    args:
+      video_id: vid-concert-1
+      tag: ~Applause
+  fake_outputs:
+    find_sounds:
+      video_id: vid-concert-1
+      shots:
+      - idx: 9
+        t_start: 66.0
+        t_end: 70.0
+        audio_tags:
+        - label: Applause
+          confidence: 0.82
+- id: sound-1
+  query: where is there laughter in this video?
+  context:
+    video_id: vid-news-1
+  expected_tools:
+  - name: find_sounds
+    args:
+      video_id: vid-news-1
+      tag: ~Laughter
+  fake_outputs:
+    find_sounds:
+      video_id: vid-news-1
+      shots:
+      - idx: 9
+        t_start: 66.0
+        t_end: 70.0
+        audio_tags:
+        - label: Laughter
+          confidence: 0.82
+- id: sound-2
+  query: find parts of this video with music playing
+  context:
+    video_id: vid-concert-1
+  expected_tools:
+  - name: find_sounds
+    args:
+      video_id: vid-concert-1
+      tag: ~Music
+  fake_outputs:
+    find_sounds:
+      video_id: vid-concert-1
+      shots:
+      - idx: 9
+        t_start: 66.0
+        t_end: 70.0
+        audio_tags:
+        - label: Music
+          confidence: 0.82
+- id: sound-3
+  query: locate the cheering in this video
+  context:
+    video_id: vid-soccer-1
+  expected_tools:
+  - name: find_sounds
+    args:
+      video_id: vid-soccer-1
+      tag: ~Cheering
+  fake_outputs:
+    find_sounds:
+      video_id: vid-soccer-1
+      shots:
+      - idx: 9
+        t_start: 66.0
+        t_end: 70.0
+        audio_tags:
+        - label: Cheering
+          confidence: 0.82
+- id: sound-4
+  query: when can I hear a whistle in this video?
+  context:
+    video_id: vid-tennis-1
+  expected_tools:
+  - name: find_sounds
+    args:
+      video_id: vid-tennis-1
+      tag: ~Whistle
+  fake_outputs:
+    find_sounds:
+      video_id: vid-tennis-1
+      shots:
+      - idx: 9
+        t_start: 66.0
+        t_end: 70.0
+        audio_tags:
+        - label: Whistle
+          confidence: 0.82
+- id: sound-5
+  query: find sections with a dog barking
+  context:
+    video_id: vid-nature-1
+  expected_tools:
+  - name: find_sounds
+    args:
+      video_id: vid-nature-1
+      tag: ~Dog
+  fake_outputs:
+    find_sounds:
+      video_id: vid-nature-1
+      shots:
+      - idx: 9
+        t_start: 66.0
+        t_end: 70.0
+        audio_tags:
+        - label: Dog
+          confidence: 0.82

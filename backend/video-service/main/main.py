@@ -9,6 +9,7 @@ from main.api.grounding import router as grounding_router
 from main.api.indexes import router as indexes_router
 from main.api.qa import router as qa_router
 from main.api.highlights import router as highlights_router
+from main.api.moderate import admin_router as moderate_admin_router
 from main.api.moderate import router as moderate_router
 from main.api.recommend import router as recommend_router
 from main.api.search import router as search_router
@@ -40,6 +41,7 @@ app.include_router(segments_router)
 app.include_router(recommend_router)
 app.include_router(highlights_router)
 app.include_router(moderate_router)
+app.include_router(moderate_admin_router)
 app.include_router(sounds_router)
 app.include_router(qa_router)
 app.include_router(edit_router)

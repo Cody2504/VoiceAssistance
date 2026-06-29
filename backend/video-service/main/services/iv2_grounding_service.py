@@ -22,7 +22,6 @@ from __future__ import annotations
 import logging
 import os
 import threading
-from typing import Sequence
 
 import numpy as np
 
@@ -106,7 +105,7 @@ class IV2GroundingService:
         self._build_head(head_ckpt)
         log.info("iv2:ready (head params=%d)", sum(p.numel() for p in self._head.parameters()))
 
-    # ------------------------------------------------------------------ head
+    # head
     def _build_head(self, head_ckpt: str) -> None:
         """Instantiate MRDETR from the vendored config + load the stripped state-dict,
         plus the Preparator / PostProcessorDETR (also vendored, config-driven)."""
@@ -131,7 +130,7 @@ class IV2GroundingService:
         self._preparator = instantiate(pp.preparator, _convert_="all")
         self._postproc = instantiate(pp.postprocessor, _convert_="all")
 
-    # ------------------------------------------------------------------ ingest
+    # ingest
     @property
     def vmodel(self):
         """Lazy-load the 4 GB IV2 video encoder (ingest only)."""
@@ -166,7 +165,7 @@ class IV2GroundingService:
             emb = self.vmodel(x.to(self.device)).float().cpu()
         return np.asarray(emb, dtype=np.float32).reshape(-1)
 
-    # ------------------------------------------------------------------ query
+    # query
     def _embed_query_tokens(self, query: str):
         """Query -> (src_txt [1,L,512] per-token, src_txt_mask [1,L]).
 
@@ -230,7 +229,7 @@ class IV2GroundingService:
             for i in range(n)
         ]
 
-    # ---------------------------------------------------------------- helpers
+    # helpers
     def _iter_windows(self, n_clips: int) -> list[tuple[int, int, float]]:
         """Non-overlapping ≤WINDOW_CLIPS windows: (clip_start, clip_end, offset_sec)."""
         out: list[tuple[int, int, float]] = []
@@ -275,10 +274,6 @@ class IV2GroundingService:
         moments = [(float(r[0]), float(r[1]), float(r[2])) for r in mw.tolist()]
         sal = torch.as_tensor(detr[0]["pred_saliency_scores"]).float().cpu().numpy()
         return moments, sal
-
-
-def _l2(x: np.ndarray) -> np.ndarray:
-    return x / (np.linalg.norm(x, axis=-1, keepdims=True) + 1e-8)
 
 
 def _iou_1d(a, b) -> float:

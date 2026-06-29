@@ -62,6 +62,15 @@ REGISTRY: dict[str, SegmenterFn] = {
 # than 1-2 collapsed segments from our visual-similarity boundary logic.
 # If you want specialised dispatch for a TL id, add it explicitly above.
 
+# Presets that fill their fields inside the holistic core call — they must NOT
+# be re-run through the post-hoc `_enrich` pass (it would waste a call and could
+# overwrite the core's values). Non-core presets that still need enrichment
+# (currently `speaker_diarization`) are deliberately absent from this set.
+_CORE_PRESETS = {
+    "topic_changes", "editorial_segment", "shot_detection",
+    "ocr", "person_of_focus", "sports_highlights",
+}
+
 
 def run_definition(video_id: UUID, definition: "SegmentDefinition") -> list[dict[str, Any]]:
     # Built-in presets dispatch to their specialised segmenter; any other (custom)
@@ -74,7 +83,12 @@ def run_definition(video_id: UUID, definition: "SegmentDefinition") -> list[dict
     # LLM enrichment: fill any `definition.fields` the segmenter didn't natively
     # populate (Twelve Labs schema parity). Skipped for `write_my_own` which
     # already does its own LLM call per segment; skipped if no API key set.
-    if definition.id != "write_my_own" and raw and definition.fields:
+    if (
+        definition.id != "write_my_own"
+        and definition.id not in _CORE_PRESETS
+        and raw
+        and definition.fields
+    ):
         shots = read_shots(video_id, with_vectors=False)
         raw = _enrich.enrich_segments(raw, definition, shots)
     return _apply_definition_time_ranges(raw, definition.time_ranges)

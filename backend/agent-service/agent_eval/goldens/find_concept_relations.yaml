@@ -1,0 +1,126 @@
+- id: kgr-0
+  query: what concepts are related to gradient descent in this course?
+  context:
+    index_id: idx-ml-101
+    video_ids: []
+  expected_tools:
+  - name: find_concept_relations
+    args:
+      index_id: idx-ml-101
+      concept_name: ~gradient descent
+  fake_outputs:
+    find_concept_relations:
+      resolved_concept:
+        entity_id: e1
+        canonical_name: gradient descent
+      related:
+      - entity_id: e3
+        canonical_name: related concept
+        relation: is related to
+        weight: 0.7
+        direction: outgoing
+- id: kgr-1
+  query: what is backpropagation connected to?
+  context:
+    index_id: idx-ml-101
+    video_ids: []
+  expected_tools:
+  - name: find_concept_relations
+    args:
+      index_id: idx-ml-101
+      concept_name: ~backpropagation
+  fake_outputs:
+    find_concept_relations:
+      resolved_concept:
+        entity_id: e1
+        canonical_name: backpropagation
+      related:
+      - entity_id: e3
+        canonical_name: related concept
+        relation: is related to
+        weight: 0.7
+        direction: outgoing
+- id: kgr-2
+  query: what prerequisites does overfitting relate to?
+  context:
+    index_id: idx-ml-101
+    video_ids: []
+  expected_tools:
+  - name: find_concept_relations
+    args:
+      index_id: idx-ml-101
+      concept_name: ~overfitting
+  fake_outputs:
+    find_concept_relations:
+      resolved_concept:
+        entity_id: e1
+        canonical_name: overfitting
+      related:
+      - entity_id: e3
+        canonical_name: related concept
+        relation: is related to
+        weight: 0.7
+        direction: outgoing
+- id: kgr-3
+  query: what techniques are related to braising in this course?
+  context:
+    index_id: idx-cook-201
+    video_ids: []
+  expected_tools:
+  - name: find_concept_relations
+    args:
+      index_id: idx-cook-201
+      concept_name: ~braising
+  fake_outputs:
+    find_concept_relations:
+      resolved_concept:
+        entity_id: e1
+        canonical_name: braising
+      related:
+      - entity_id: e3
+        canonical_name: related concept
+        relation: is related to
+        weight: 0.7
+        direction: outgoing
+- id: kgr-4
+  query: how does the French Revolution connect to other topics here?
+  context:
+    index_id: idx-hist-301
+    video_ids: []
+  expected_tools:
+  - name: find_concept_relations
+    args:
+      index_id: idx-hist-301
+      concept_name: ~French Revolution
+  fake_outputs:
+    find_concept_relations:
+      resolved_concept:
+        entity_id: e1
+        canonical_name: French Revolution
+      related:
+      - entity_id: e3
+        canonical_name: related concept
+        relation: is related to
+        weight: 0.7
+        direction: outgoing
+- id: kgr-5
+  query: what is the learning rate associated with?
+  context:
+    index_id: idx-ml-101
+    video_ids: []
+  expected_tools:
+  - name: find_concept_relations
+    args:
+      index_id: idx-ml-101
+      concept_name: ~learning rate
+  fake_outputs:
+    find_concept_relations:
+      resolved_concept:
+        entity_id: e1
+        canonical_name: learning rate
+      related:
+      - entity_id: e3
+        canonical_name: related concept
+        relation: is related to
+        weight: 0.7
+        direction: outgoing

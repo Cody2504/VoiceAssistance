@@ -73,3 +73,16 @@ def presigned_get(bucket: str, key: str, expires: int = 3600, public: bool = Tru
     return client.generate_presigned_url(
         "get_object", Params={"Bucket": bucket, "Key": key}, ExpiresIn=expires,
     )
+
+
+def presigned_put(bucket: str, key: str, content_type: str, expires: int = 3600, public: bool = True) -> str:
+    """Presigned PUT URL so the browser can upload bytes straight to S3 (no pod
+    relay). Signs ``ContentType`` into the URL — the client MUST send the same
+    ``Content-Type`` header on the PUT or the SigV4 signature won't match. Signs
+    against the browser-reachable host (``public=True``), like ``presigned_get``."""
+    client = _s3_public() if public else s3()
+    return client.generate_presigned_url(
+        "put_object",
+        Params={"Bucket": bucket, "Key": key, "ContentType": content_type},
+        ExpiresIn=expires,
+    )

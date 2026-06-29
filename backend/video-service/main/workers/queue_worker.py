@@ -24,7 +24,6 @@ work-horses share the GPU at SM granularity instead of time-slicing
 the whole context. See ``docker-compose.yml`` for the MPS wiring.
 """
 import logging
-import os
 import sys
 from datetime import datetime, timezone
 from uuid import UUID
@@ -104,8 +103,18 @@ def index_video(video_id: str) -> dict:
                 vid, video.minio_key,
                 user_id=video.user_id,
                 original_filename=video.original_filename,
+                moderation_override=bool(getattr(video, "moderation_override", False)),
             )
-            video.status = "ready"
+            # Content guardrail: a flagged verdict quarantines the video (already
+            # skipped from the index inside run_indexing); otherwise it's ready.
+            mod = result.get("moderation")
+            video.status = "flagged" if (mod and mod.get("flagged")) else "ready"
+            if mod:
+                video.nsfw_max = mod.get("nsfw_max")
+                video.violence_max = mod.get("violence_max")
+                video.toxic_max = mod.get("toxic_max")
+                video.moderation_labels = ",".join(mod.get("labels") or []) or None
+                video.moderation_detail = mod.get("detail")
             video.duration_s = result["duration_s"]
             video.shot_count = result["shot_count"]
             video.modality = result.get("modality")

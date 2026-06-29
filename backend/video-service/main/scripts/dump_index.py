@@ -6,7 +6,6 @@ Usage (inside jockey-video container):
 import asyncio
 import json
 import sys
-from uuid import UUID
 
 from sqlalchemy import select
 

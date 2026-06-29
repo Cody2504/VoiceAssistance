@@ -1,0 +1,120 @@
+- id: high-0
+  query: give me the highlights of this video
+  context:
+    video_id: vid-soccer-1
+  expected_tools:
+  - name: get_highlights
+    args:
+      video_id: vid-soccer-1
+  fake_outputs:
+    get_highlights:
+      video_id: vid-soccer-1
+      duration_s: 120.0
+      moments:
+      - t_start: 12.0
+        t_end: 18.0
+        score: 0.95
+      - t_start: 61.0
+        t_end: 66.0
+        score: 0.88
+      modality_used: video
+- id: high-1
+  query: make a highlight reel for this match
+  context:
+    video_id: vid-bball-1
+  expected_tools:
+  - name: get_highlights
+    args:
+      video_id: vid-bball-1
+  fake_outputs:
+    get_highlights:
+      video_id: vid-bball-1
+      duration_s: 120.0
+      moments:
+      - t_start: 12.0
+        t_end: 18.0
+        score: 0.95
+      - t_start: 61.0
+        t_end: 66.0
+        score: 0.88
+      modality_used: video
+- id: high-2
+  query: what are the best moments in this video?
+  context:
+    video_id: vid-concert-1
+  expected_tools:
+  - name: get_highlights
+    args:
+      video_id: vid-concert-1
+  fake_outputs:
+    get_highlights:
+      video_id: vid-concert-1
+      duration_s: 120.0
+      moments:
+      - t_start: 12.0
+        t_end: 18.0
+        score: 0.95
+      - t_start: 61.0
+        t_end: 66.0
+        score: 0.88
+      modality_used: video
+- id: high-3
+  query: show me the key moments
+  context:
+    video_id: vid-tennis-1
+  expected_tools:
+  - name: get_highlights
+    args:
+      video_id: vid-tennis-1
+  fake_outputs:
+    get_highlights:
+      video_id: vid-tennis-1
+      duration_s: 120.0
+      moments:
+      - t_start: 12.0
+        t_end: 18.0
+        score: 0.95
+      - t_start: 61.0
+        t_end: 66.0
+        score: 0.88
+      modality_used: video
+- id: high-4
+  query: summarize this into a highlight clip
+  context:
+    video_id: vid-news-1
+  expected_tools:
+  - name: get_highlights
+    args:
+      video_id: vid-news-1
+  fake_outputs:
+    get_highlights:
+      video_id: vid-news-1
+      duration_s: 120.0
+      moments:
+      - t_start: 12.0
+        t_end: 18.0
+        score: 0.95
+      - t_start: 61.0
+        t_end: 66.0
+        score: 0.88
+      modality_used: video
+- id: high-5
+  query: pull the exciting parts of this video
+  context:
+    video_id: vid-nature-1
+  expected_tools:
+  - name: get_highlights
+    args:
+      video_id: vid-nature-1
+  fake_outputs:
+    get_highlights:
+      video_id: vid-nature-1
+      duration_s: 120.0
+      moments:
+      - t_start: 12.0
+        t_end: 18.0
+        score: 0.95
+      - t_start: 61.0
+        t_end: 66.0
+        score: 0.88
+      modality_used: video

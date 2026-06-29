@@ -1,0 +1,45 @@
+- id: edit-0
+  query: cut the first 10 seconds and the goal moment into one clip
+  context:
+    video_id: vid-soccer-1
+  expected_tools:
+  - name: combine_clips
+    args:
+      video_id: vid-soccer-1
+  fake_outputs:
+    combine_clips:
+      video_id: vid-soccer-1
+      output_url: s3://edits/out.mp4
+      clips:
+      - t_start: 10.0
+        t_end: 20.0
+- id: edit-1
+  query: combine the dunk and the celebration into a single video
+  context:
+    video_id: vid-bball-1
+  expected_tools:
+  - name: combine_clips
+    args:
+      video_id: vid-bball-1
+  fake_outputs:
+    combine_clips:
+      video_id: vid-bball-1
+      output_url: s3://edits/out.mp4
+      clips:
+      - t_start: 10.0
+        t_end: 20.0
+- id: edit-2
+  query: stitch together the intro and the recipe steps
+  context:
+    video_id: vid-cook-1
+  expected_tools:
+  - name: combine_clips
+    args:
+      video_id: vid-cook-1
+  fake_outputs:
+    combine_clips:
+      video_id: vid-cook-1
+      output_url: s3://edits/out.mp4
+      clips:
+      - t_start: 10.0
+        t_end: 20.0

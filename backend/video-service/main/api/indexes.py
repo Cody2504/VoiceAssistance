@@ -99,6 +99,22 @@ class RelatedConceptOut(BaseModel):
     direction: Literal["outgoing", "incoming"]
 
 
+class GraphNodeOut(BaseModel):
+    id: UUID
+    label: str
+    type: str | None
+    description: str | None
+    mention_count: int
+
+
+class GraphEdgeOut(BaseModel):
+    source: UUID
+    target: UUID
+    relation: str
+    description: str | None
+    weight: float
+
+
 async def _load_owned(session: AsyncSession, index_id: UUID, user_id: UUID) -> Index:
     row = await session.get(Index, index_id)
     if row is None or row.user_id != user_id:
@@ -470,9 +486,7 @@ async def search_within_index(
     )
 
 
-# ---------------------------------------------------------------------------
 # Knowledge-graph endpoints (Phase 2a)
-# ---------------------------------------------------------------------------
 # Single-purpose primitives — each one is a clean handle the LangGraph agent
 # can call via its own tool. See CROSS_VIDEO_LECTURE_PLAN.md §4 for the design
 # rationale (separate tools beat fused scores).
@@ -527,6 +541,7 @@ async def search_concepts(
     embedder = TextEmbedder(api_key=s.openrouter_api_key)
     qvec = embedder.encode(body.query).tolist()
     must = [qm.FieldCondition(key="index_id", match=qm.MatchValue(value=str(index_id)))]
+    must_not = []
     if body.entity_types:
         must.append(
             qm.FieldCondition(
@@ -534,11 +549,23 @@ async def search_concepts(
                 match=qm.MatchAny(any=[t.lower() for t in body.entity_types]),
             )
         )
+    else:
+        # No explicit type filter → this is a "main concepts/topics" query. Exclude
+        # clearly-non-topic entity types so the list isn't polluted by characters,
+        # orgs and pedagogy props (e.g. "CS Student"=person, "3Blue1Brown"=organization,
+        # "Visual Aids"=tool). NB: keep `object` — core nouns like "vector"/"matrix"
+        # are typed object by the extractor and ARE central concepts.
+        must_not.append(
+            qm.FieldCondition(
+                key="entity_type",
+                match=qm.MatchAny(any=["person", "organization", "location", "event", "tool"]),
+            )
+        )
     try:
         hits = client.search(
             collection_name=s.kg_qdrant_collection,
             query_vector=qvec,
-            query_filter=qm.Filter(must=must),
+            query_filter=qm.Filter(must=must, must_not=must_not or None),
             limit=body.top_k,
         )
     except Exception as exc:
@@ -786,3 +813,119 @@ async def list_entity_relations(
             "related": [r.model_dump(mode="json") for r in results],
         }
     )
+
+
+def build_graph_payload(entities, relations, mention_counts, max_nodes: int = 300) -> dict:
+    """Pure transform behind GET /{index_id}/graph.
+
+    Turns entity rows + relation rows (+ a ``{entity_id: mention_count}`` map)
+    into the ``{nodes, edges, truncated, total_nodes}`` payload the frontend
+    renders. When the index has more than ``max_nodes`` entities, keep the
+    most-connected ones (edge degree desc, then mention_count) and drop edges to
+    pruned nodes so the whole-graph view stays responsive. Kept dependency-free
+    (ORM rows in, plain dicts out) so it can be unit-tested without a DB.
+    """
+    entities = list(entities)
+    relations = list(relations)
+    total_nodes = len(entities)
+
+    # Degree = number of relation endpoints touching each entity.
+    degree: dict = {}
+    for r in relations:
+        degree[r.src_entity_id] = degree.get(r.src_entity_id, 0) + 1
+        degree[r.dst_entity_id] = degree.get(r.dst_entity_id, 0) + 1
+
+    kept = entities
+    if total_nodes > max_nodes:
+        kept = sorted(
+            entities,
+            key=lambda e: (degree.get(e.id, 0), mention_counts.get(e.id, 0), str(e.id)),
+            reverse=True,
+        )[:max_nodes]
+    kept_ids = {e.id for e in kept}
+
+    nodes = [
+        GraphNodeOut(
+            id=e.id,
+            label=e.canonical_name,
+            type=e.entity_type,
+            description=e.description,
+            mention_count=int(mention_counts.get(e.id, 0)),
+        ).model_dump(mode="json")
+        for e in kept
+    ]
+    edges = [
+        GraphEdgeOut(
+            source=r.src_entity_id,
+            target=r.dst_entity_id,
+            relation=r.relation,
+            description=r.description,
+            weight=float(r.weight),
+        ).model_dump(mode="json")
+        for r in relations
+        if r.src_entity_id in kept_ids and r.dst_entity_id in kept_ids
+    ]
+    return {
+        "nodes": nodes,
+        "edges": edges,
+        "truncated": total_nodes > len(kept_ids),
+        "total_nodes": total_nodes,
+    }
+
+
+@router.get("/{index_id}/graph")
+async def get_index_graph(
+    index_id: UUID,
+    payload: TokenPayload = Depends(require_user),
+    session: AsyncSession = Depends(get_session),
+    max_nodes: int = 300,
+):
+    """Whole knowledge graph for an index — every entity (node) and relation
+    (edge) — for the full-page graph view.
+
+    Capped at the ``max_nodes`` most-connected entities so a large index stays
+    renderable; ``truncated``/``total_nodes`` tell the UI when nodes were
+    dropped. Returns ``kg_available: false`` (not an error) when the index has
+    no extracted entities yet, mirroring the concepts/search contract.
+    """
+    user_id = UUID(payload.sub)
+    await _load_owned(session, index_id, user_id)
+    max_nodes = max(1, min(max_nodes, 1000))
+
+    entities = (
+        await session.execute(select(Entity).where(Entity.index_id == index_id))
+    ).scalars().all()
+
+    if not entities:
+        return success_response(
+            {
+                "index_id": str(index_id),
+                "kg_available": False,
+                "nodes": [],
+                "edges": [],
+                "truncated": False,
+                "total_nodes": 0,
+            }
+        )
+
+    relations = (
+        await session.execute(
+            select(EntityRelation).where(EntityRelation.index_id == index_id)
+        )
+    ).scalars().all()
+
+    entity_ids = [e.id for e in entities]
+    count_rows = (
+        await session.execute(
+            select(
+                EntityMention.entity_id,
+                func.count(EntityMention.segment_idx).label("mention_count"),
+            )
+            .where(EntityMention.entity_id.in_(entity_ids))
+            .group_by(EntityMention.entity_id)
+        )
+    ).all()
+    mention_counts = {r.entity_id: int(r.mention_count) for r in count_rows}
+
+    graph = build_graph_payload(entities, relations, mention_counts, max_nodes=max_nodes)
+    return success_response({"index_id": str(index_id), "kg_available": True, **graph})

@@ -74,3 +74,21 @@ async def edit(
         return success_response({"edit_id": str(edit_id), "url": url, "clips": [c.model_dump() for c in body.clips]})
     except subprocess.CalledProcessError as exc:
         raise HTTPException(500, f"ffmpeg failed: {exc}") from exc
+
+
+@router.get("/edits/{edit_id}/stream")
+async def edit_stream(
+    edit_id: UUID,
+    payload: TokenPayload = Depends(require_user),
+):
+    """Re-presign a previously-produced edit (combine_clips output) so the chat UI
+    can play it. The /edit POST returns a URL that expires in ~1h; on reload the
+    frontend fetches a fresh one here by edit_id. The object key is user-scoped
+    (`{user_id}/{edit_id}.mp4`), so a user can only fetch their own edits."""
+    s = get_settings()
+    key = f"{payload.sub}/{edit_id}.mp4"
+    try:
+        s3().head_object(Bucket=s.minio_bucket_edits, Key=key)
+    except Exception:
+        raise HTTPException(404, "Edit not found")
+    return success_response({"edit_id": str(edit_id), "url": presigned_get(s.minio_bucket_edits, key)})

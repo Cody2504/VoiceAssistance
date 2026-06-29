@@ -37,6 +37,22 @@ def _relevance_gate(shots: list[dict]) -> list[dict]:
     return kept
 
 
+# Cross-video corpus results span a wider score range than one video's moments, so
+# the per-video 0.85 ratio is too strict (it would drop a genuine second video that
+# scores lower). Keep everything within half the top score — the real cluster (incl.
+# several videos showing the same logo/object) — and drop the unrelated low tail.
+_CORPUS_KEEP_RATIO = 0.5
+
+
+def _corpus_relevance_gate(shots: list[dict]) -> list[dict]:
+    if not shots:
+        return shots
+    top = shots[0].get("score") or 0
+    if top <= 0:
+        return shots[:1]
+    return [sh for sh in shots if (sh.get("score") or 0) >= top * _CORPUS_KEEP_RATIO]
+
+
 @tool
 async def find_scene_by_image(video_id: str) -> dict[str, Any]:
     """Find the scene/moment in a single video that visually matches the image the
@@ -68,7 +84,7 @@ async def find_scene_by_image(video_id: str) -> dict[str, Any]:
 
 @tool
 async def search_scene_by_image(
-    top_n: int = 5, group_by: Literal["clip", "video"] = "clip"
+    top_n: int = 3, group_by: Literal["clip", "video"] = "clip"
 ) -> dict[str, Any]:
     """Find the moments ACROSS ALL of the user's videos that visually match the image
     the user attached to this message (corpus-wide image-to-moment).
@@ -87,14 +103,17 @@ async def search_scene_by_image(
     if not image:
         return {"error": "no_image", "message": "No image attached. Ask the user to attach an image to search by."}
 
-    # Returns {"query": "(image)", "group_by": ..., "shots": [...]} — the top-level
-    # `shots` array (each with video_id + t_start/t_end) is what the frontend clip
-    # extractor and reflect both consume.
+    # Returns {"query": "(image)", "group_by": ..., "shots": [...]}. The fused
+    # CLIP+DINOv2+OCR ranker (+VLM verify) still pads a small/mixed corpus with an
+    # unrelated low-score tail, so gate to the genuine high-score cluster before the
+    # answer cites them. `shots` feeds the frontend clip extractor + reflect. (This
+    # only trims the tail — it cannot fix a wrong top match, e.g. a clean logo on a
+    # white background matching by background; for logos prefer an in-context crop.)
     resp = _unwrap(await post_request(
         "video-service",
         "/api/v1/videos/search/image",
         json={"image": image, "top_n": top_n, "group_by": group_by},
     ))
-    if isinstance(resp, dict):
-        resp["shots"] = _relevance_gate(resp.get("shots", []) or [])
+    if isinstance(resp, dict) and resp.get("shots"):
+        resp["shots"] = _corpus_relevance_gate(resp["shots"])
     return resp

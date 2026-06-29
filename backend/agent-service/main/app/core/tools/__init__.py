@@ -10,13 +10,14 @@ from .video_highlights import get_highlights
 from .video_moderate import moderate_video
 from .video_motion import search_motion
 from .video_qa import ask_video_local
-from .video_search import search_corpus, search_video_local
+from .video_search import search_corpus, search_corpus_text, search_video_local
 from .video_sequence import find_sequence
 from .video_similar import find_similar
 from .video_sounds import find_sounds
 
 TOOLS = [
     search_corpus,
+    search_corpus_text,
     search_motion,
     search_index,
     find_index_concepts,

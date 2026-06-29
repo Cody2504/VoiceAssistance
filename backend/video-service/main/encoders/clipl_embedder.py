@@ -12,7 +12,7 @@ Usage:
 import logging
 import os
 import numpy as np
-from typing import Union, List
+from typing import List
 
 log = logging.getLogger(__name__)
 

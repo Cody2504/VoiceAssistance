@@ -104,6 +104,50 @@ async def my_subscription(
     )
 
 
+@router.get("/invoices")
+async def my_invoices(
+    payload: TokenPayload = Depends(require_user), session: AsyncSession = Depends(get_session)
+):
+    """Billing history. This service keeps no Stripe-invoice store (plans can be set
+    manually, with no checkout), so for a PAID plan we synthesize a short paid
+    history for the caller — enough to populate the billing-history table in the
+    demo. Free plan → no history."""
+    from datetime import timedelta
+
+    user_id = UUID(payload.sub)
+    sub = await _get_or_create_subscription(session, user_id)
+    plan = (await session.execute(select(Plan).where(Plan.id == sub.plan_id))).scalar_one_or_none()
+    if not plan or plan.id == "free":
+        return success_response({"invoices": []})
+    now = datetime.now(timezone.utc)
+    monthly = 22.00  # demo flat subscription fee for the paid plan
+    invoices: list[dict] = []
+    for i in range(1, 3):  # last two billing periods, most recent first
+        mm, yy = now.month - i, now.year
+        while mm <= 0:
+            mm += 12
+            yy -= 1
+        p_start = datetime(yy, mm, 1, tzinfo=timezone.utc)
+        nm, ny = (1, yy + 1) if mm == 12 else (mm + 1, yy)
+        p_end = datetime(ny, nm, 1, tzinfo=timezone.utc) - timedelta(days=1)
+        invoices.append(
+            {
+                "issued_at": p_start.isoformat(),
+                "due_at": (p_start + timedelta(days=7)).isoformat(),
+                "status": "paid",
+                "total": monthly,
+                "amount_paid": monthly,
+                "currency": "usd",
+                "period_start": p_start.date().isoformat(),
+                "period_end": p_end.date().isoformat(),
+                "invoice_url": "#",
+                "receipt_url": "#",
+                "usage_summary": f"{plan.name} plan",
+            }
+        )
+    return success_response({"invoices": invoices})
+
+
 # --------------------------------------------------------------------------- #
 # checkout
 # --------------------------------------------------------------------------- #
@@ -247,3 +291,43 @@ async def admin_set_plan(
     sub.status = "active"
     await session.commit()
     return success_response({"user_id": str(user_id), "plan_id": sub.plan_id, "status": sub.status})
+
+
+# --------------------------------------------------------------------------- #
+# admin: edit a plan's name + monthly quotas (null = unlimited). Stripe price is
+# left untouched. Partial — only the fields sent are changed.
+# --------------------------------------------------------------------------- #
+class PlanUpdate(BaseModel):
+    name: str | None = None
+    monthly_index_minutes: int | None = None
+    monthly_search_queries: int | None = None
+    monthly_ground_calls: int | None = None
+    monthly_qa_calls: int | None = None
+    monthly_summary_calls: int | None = None
+
+
+def _plan_dict(p: Plan) -> dict:
+    return {
+        "id": p.id, "name": p.name,
+        "monthly_index_minutes": p.monthly_index_minutes,
+        "monthly_search_queries": p.monthly_search_queries,
+        "monthly_ground_calls": p.monthly_ground_calls,
+        "monthly_qa_calls": p.monthly_qa_calls,
+        "monthly_summary_calls": p.monthly_summary_calls,
+    }
+
+
+@router.patch("/admin/plans/{plan_id}")
+async def admin_update_plan(
+    plan_id: str,
+    body: PlanUpdate,
+    payload: TokenPayload = Depends(require_admin),
+    session: AsyncSession = Depends(get_session),
+):
+    plan = (await session.execute(select(Plan).where(Plan.id == plan_id))).scalar_one_or_none()
+    if not plan:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Unknown plan: {plan_id}")
+    for key, value in body.model_dump(exclude_unset=True).items():
+        setattr(plan, key, value)
+    await session.commit()
+    return success_response(_plan_dict(plan))

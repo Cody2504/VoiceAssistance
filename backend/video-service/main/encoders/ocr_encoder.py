@@ -8,7 +8,6 @@ slots cleanly into Qdrant payloads as `ocr_text`.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 import numpy as np
 

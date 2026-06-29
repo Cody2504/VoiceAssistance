@@ -29,7 +29,6 @@ searchable on whichever features succeeded.
 """
 from __future__ import annotations
 
-import io
 import logging
 import os
 import subprocess
@@ -50,6 +49,10 @@ log = logging.getLogger(__name__)
 # Per-segment grid size (seconds). The summarizer's per-window grouping is
 # layered on top of this — a 2-min window = 4 segments.
 SEGMENT_LEN_SEC = 30.0
+
+# Lazily-bound DINOv2 embedder class (set on first _encode_dino call). Kept as a
+# module attribute so tests can monkeypatch it without importing torch.
+DINOv2Embedder = None
 
 
 def _torch_device() -> str:
@@ -85,11 +88,16 @@ class IngestArtifacts:
     toxic_scores: list[float]
     lighthouse_visual_path: str | None
     lighthouse_audio_path: str | None
+    violence_scores: list[float] | None = None  # per-segment P(violence); None until the guardrail runs
     shot_actions: list[dict] | None = None  # VLM timestamped actions (roadmap #3); None when disabled
     audio_event_embeddings: "np.ndarray | None" = None  # CLAP per-segment (roadmap #2); None when disabled
     crop_embeddings: "list | None" = None  # (shot_idx, region, vec) image crops (roadmap #6); None when disabled
     speaker_turns: list[dict] | None = None  # pyannote turns (research F); None when disabled
     motion_embeddings: "np.ndarray | None" = None  # ViCLIP per-segment (research A); None when disabled
+    dino_embeddings: "np.ndarray | None" = None  # DINOv2 per-segment instance embed (image search); None when disabled
+    region_embeddings: "list | None" = None  # (shot_idx, bbox, DINOv2 vec) detected object/logo regions; None when disabled
+    visual_entities_texts: "list | None" = None  # per-segment 32B visual-entities text (image search); None when disabled
+    visual_entities_vectors: "list | None" = None  # text embeddings of visual_entities_texts; None when disabled
 
 
 def run_indexing(
@@ -97,8 +105,14 @@ def run_indexing(
     minio_key: str,
     user_id: UUID | None = None,
     original_filename: str = "",
+    moderation_override: bool = False,
 ) -> dict[str, Any]:
-    """End-to-end indexing for one upload. Returns a summary dict."""
+    """End-to-end indexing for one upload. Returns a summary dict.
+
+    ``moderation_override`` (set by an admin "approve") bypasses the content
+    guardrail so an approved video re-indexes through to ``ready`` instead of
+    re-quarantining.
+    """
     s = get_settings()
     log.info("ingest:start video_id=%s key=%s", video_id, minio_key)
     start = time.time()
@@ -107,17 +121,17 @@ def run_indexing(
     local_path = os.path.join(scratch, "input.bin")
     download_to_path(s.minio_bucket_videos, minio_key, local_path)
 
-    # --- 1. Modality detection ---
+    # 1. Modality detection
     from main.pipeline.modality import detect_modality
     mod = detect_modality(local_path)
 
-    # --- 2. Visual vs audio-only branch ---
+    # 2. Visual vs audio-only branch
     if mod.has_video:
         artifacts = _ingest_with_video(local_path, video_id, mod, scratch)
     else:
         artifacts = _ingest_audio_only(local_path, video_id, mod, scratch)
 
-    # --- 3. Hierarchical summarization ---
+    # 3. Hierarchical summarization
     from main.pipeline.summarize import HierarchicalSummarizer, SegmentRecord
     seg_records = [
         SegmentRecord(
@@ -127,47 +141,56 @@ def run_indexing(
             caption=artifacts.captions[i],
             transcript=artifacts.transcripts[i],
             audio_tags=artifacts.audio_tags_per_segment[i],
+            ocr_text=artifacts.ocr_texts[i],
         )
         for i, (t0, t1) in enumerate(artifacts.segments)
     ]
     summary = HierarchicalSummarizer().run(seg_records, video_title=original_filename)
 
-    # --- 4. Qdrant upsert ---
-    _upsert_qdrant(s, video_id, artifacts, summary, user_id, original_filename)
+    # 4. Content-moderation guardrail. A flagged video is QUARANTINED: skip the
+    # Qdrant upsert + timeline + KG so it never enters the search corpus. The
+    # worker reads the returned `moderation` block to set status='flagged'.
+    verdict = None
+    if s.moderation_guardrail_enabled and not moderation_override:
+        from main.pipeline.moderation import evaluate_moderation
+        verdict = evaluate_moderation(artifacts, s)
 
-    # --- 4a. Standing event timeline (Plan 1) ---
-    # After Qdrant upsert, before KG. Gated + best-effort: a failure here never
-    # blocks searchability or the rest of ingest.
-    if s.timeline_enabled:
-        try:
-            _run_timeline_for_video(video_id, artifacts, summary, s)
-        except Exception as exc:  # noqa: BLE001
-            log.warning("ingest:timeline build failed for video=%s: %s", video_id, exc)
+    if verdict and verdict.flagged:
+        log.warning("ingest:guardrail quarantined video=%s labels=%s", video_id, verdict.labels)
+    else:
+        # 5. Qdrant upsert
+        _upsert_qdrant(s, video_id, artifacts, summary, user_id, original_filename)
 
-    # --- 4b. Knowledge-graph extraction (Phase 2a) ---
-    # Runs after Qdrant upsert on purpose: if the LLM step fails halfway, the
-    # video is still searchable via plain text + visual retrieval. Gated on the
-    # global flag AND on the video actually belonging to at least one Index —
-    # standalone Assets uploads pay no KG cost.
-    if s.kg_enabled and user_id is not None:
-        try:
-            _run_kg_for_video_indexes(
-                video_id=video_id,
-                user_id=user_id,
-                seg_records=seg_records,
-                summary=summary,
-                video_title=original_filename,
-                settings=s,
-            )
-        except Exception as exc:
-            log.warning("ingest:kg_extract failed for video=%s: %s", video_id, exc)
+        # 5a. Standing event timeline (Plan 1). Gated + best-effort: a failure
+        # here never blocks searchability or the rest of ingest.
+        if s.timeline_enabled:
+            try:
+                _run_timeline_for_video(video_id, artifacts, summary, s)
+            except Exception as exc:  # noqa: BLE001
+                log.warning("ingest:timeline build failed for video=%s: %s", video_id, exc)
 
-    # --- 5. Thumbnails + per-video metadata embedding (visual only) ---
-    if artifacts.has_video:
-        _write_thumbnails(local_path, video_id, artifacts.segments, scratch)
+        # 5b. Knowledge-graph extraction (Phase 2a). After upsert on purpose: if
+        # the LLM step fails halfway, the video is still searchable. Gated on the
+        # global flag AND on the video belonging to at least one Index.
+        if s.kg_enabled and user_id is not None:
+            try:
+                _run_kg_for_video_indexes(
+                    video_id=video_id,
+                    user_id=user_id,
+                    seg_records=seg_records,
+                    summary=summary,
+                    video_title=original_filename,
+                    settings=s,
+                )
+            except Exception as exc:
+                log.warning("ingest:kg_extract failed for video=%s: %s", video_id, exc)
 
-    # --- 6. Persist DB-bound state (global_summary, modality flags) on the
-    # videos row. The worker calls this; we return values for it to commit. ---
+        # 5c. Thumbnails + per-video metadata embedding (visual only)
+        if artifacts.has_video:
+            _write_thumbnails(local_path, video_id, artifacts.segments, scratch)
+
+    # 6. Persist DB-bound state (global_summary, modality flags) on the
+    # videos row. The worker calls this; we return values for it to commit.
     elapsed = time.time() - start
     log.info(
         "ingest:done video_id=%s modality=%s segments=%d elapsed=%.1fs",
@@ -183,12 +206,11 @@ def run_indexing(
         "global_summary": summary.global_summary,
         "elapsed_s": elapsed,
         "completed_at": datetime.now(timezone.utc).isoformat(),
+        "moderation": verdict.as_dict() if verdict else None,
     }
 
 
-# ---------------------------------------------------------------------------
 # Visual branch (modality = video_audio | video_only)
-# ---------------------------------------------------------------------------
 
 
 def _ingest_with_video(local_path: str, video_id: UUID, mod, scratch: str) -> IngestArtifacts:
@@ -208,11 +230,36 @@ def _ingest_with_video(local_path: str, video_id: UUID, mod, scratch: str) -> In
             shots = detect_shots(local_path, refine_with_speech=False)
     else:
         shots = detect_shots(local_path, refine_with_speech=False)
-    segments = _align_segments_to_shots(duration, shots, segment_len=SEGMENT_LEN_SEC)
-    log.info("ingest:visual segments=%d duration=%.1fs", len(segments), duration)
+    seg_len = _compute_segment_len(duration, s.segment_target_len_sec, s.segment_max_count)
+    segments = _align_segments_to_shots(
+        duration, shots, segment_len=seg_len, snap_tolerance=s.segment_snap_tolerance_sec
+    )
+    log.info("ingest:visual segments=%d duration=%.1fs seg_len=%.1fs", len(segments), duration, seg_len)
 
     # Per-segment frame batches (used by CLIP-L, captioner, NSFW, OCR).
     frame_batches = [extract_frames(local_path, s_, e_, max_frames=s.clipl_frames_per_segment) for s_, e_ in segments]
+
+    # NETWORK LANE — the OpenRouter VLM modules (captions + action-captions) are
+    # network-bound (HTTP wait, ~no GPU), so run them in a background thread
+    # CONCURRENTLY with the GPU lane below (CLIP/ASR/OCR/CLAP/motion/IV2). They
+    # only need frame_batches / local_path (ready now); joined just before the
+    # artifact build. This hides their HTTP latency under the GPU work instead of
+    # running after it. (The GPU modules themselves can't parallelize — one GPU.)
+    from concurrent.futures import ThreadPoolExecutor as _ThreadPool
+
+    def _network_lane() -> tuple[list, list]:
+        caps = _try_encode(
+            "vlm_caption", lambda: _caption_segments(frame_batches),
+            fallback=lambda: ["" for _ in segments],
+        )
+        acts = _try_encode(
+            "vlm_actions", lambda: _action_caption_segments(local_path, segments, settings=s),
+            fallback=lambda: [],
+        )
+        return caps, acts
+
+    _net_pool = _ThreadPool(max_workers=1, thread_name_prefix="ingest-net")
+    _net_future = _net_pool.submit(_network_lane)
 
     visual_feats = _try_encode(
         "clipl",
@@ -222,6 +269,16 @@ def _ingest_with_video(local_path: str, video_id: UUID, mod, scratch: str) -> In
     crop_embeddings = _try_encode(
         "image_crops",
         lambda: _encode_crop_embeddings(frame_batches, s.image_tile_grid) if s.image_tiling_enabled else None,
+        fallback=lambda: None,
+    )
+    dino_feats = _try_encode(
+        "dino",
+        lambda: _encode_dino(frame_batches, s),
+        fallback=lambda: None,
+    )
+    region_embeddings = _try_encode(
+        "regions",
+        lambda: _encode_region_embeddings(frame_batches, s) if s.region_search_enabled else None,
         fallback=lambda: None,
     )
 
@@ -251,15 +308,14 @@ def _ingest_with_video(local_path: str, video_id: UUID, mod, scratch: str) -> In
         lambda: _score_nsfw(local_path, segments),
         fallback=lambda: [0.0 for _ in segments],
     )
-    captions = _try_encode(
-        "vlm_caption",
-        lambda: _caption_segments(frame_batches),
-        fallback=lambda: ["" for _ in segments],
-    )
-    shot_actions = _try_encode(
-        "vlm_actions",
-        lambda: _action_caption_segments(local_path, segments, settings=s),
-        fallback=lambda: [],
+    # Violence/gore — only scored when the guardrail is on (avoids loading a model
+    # per job for a signal nothing reads when moderation is disabled).
+    violence_scores = _try_encode(
+        "violence",
+        lambda: _score_violence(local_path, segments, settings=s)
+        if (s.moderation_guardrail_enabled and s.moderation_violence_enabled)
+        else [0.0 for _ in segments],
+        fallback=lambda: [0.0 for _ in segments],
     )
     audio_event_embeddings = _try_encode(
         "clap_audio_events",
@@ -275,11 +331,6 @@ def _ingest_with_video(local_path: str, video_id: UUID, mod, scratch: str) -> In
         "motion",
         lambda: _encode_motion(local_path, segments, settings=s),
         fallback=lambda: None,
-    )
-    caption_feats = _try_encode(
-        "caption_embed",
-        lambda: _embed_captions(captions, transcripts, ocr_texts),
-        fallback=lambda: np.zeros((len(segments), 3072), dtype=np.float32),
     )
     toxic_scores = _try_encode(
         "toxic",
@@ -317,6 +368,28 @@ def _ingest_with_video(local_path: str, video_id: UUID, mod, scratch: str) -> In
         except Exception as exc:  # noqa: BLE001
             log.warning("ingest:audio CLAP grounding-feature cache failed for video=%s: %s", video_id, exc)
 
+    # Join the network lane (captions + action-captions ran concurrently with the
+    # GPU lane). caption_embed depends on captions + transcripts + ocr, so it runs
+    # after the join. Defensive: a lane failure leaves captions/actions empty
+    # rather than failing the whole ingest.
+    try:
+        captions, shot_actions = _net_future.result()
+    except Exception as exc:  # noqa: BLE001
+        log.warning("ingest:network lane failed (%s) — captions/actions empty", exc)
+        captions, shot_actions = ["" for _ in segments], []
+    finally:
+        _net_pool.shutdown(wait=True)
+    caption_feats = _try_encode(
+        "caption_embed",
+        lambda: _embed_captions(captions, transcripts, ocr_texts),
+        fallback=lambda: np.zeros((len(segments), 3072), dtype=np.float32),
+    )
+
+    if s.visual_entities_enabled:
+        ve_texts, ve_vecs = _visual_entities_segments(frame_batches, s)
+    else:
+        ve_texts, ve_vecs = None, None
+
     return IngestArtifacts(
         modality=mod.label,
         duration_s=duration,
@@ -330,6 +403,7 @@ def _ingest_with_video(local_path: str, video_id: UUID, mod, scratch: str) -> In
         ocr_texts=ocr_texts,
         audio_tags_per_segment=audio_tags_per_segment,
         nsfw_scores=nsfw_scores,
+        violence_scores=violence_scores,
         toxic_scores=toxic_scores,
         lighthouse_visual_path=lighthouse_visual_key,
         lighthouse_audio_path=lighthouse_audio_key,
@@ -338,12 +412,14 @@ def _ingest_with_video(local_path: str, video_id: UUID, mod, scratch: str) -> In
         crop_embeddings=crop_embeddings,
         speaker_turns=speaker_turns,
         motion_embeddings=motion_embeddings,
+        dino_embeddings=dino_feats,
+        region_embeddings=region_embeddings,
+        visual_entities_texts=ve_texts,
+        visual_entities_vectors=ve_vecs,
     )
 
 
-# ---------------------------------------------------------------------------
 # Audio-only branch (modality = audio_only)
-# ---------------------------------------------------------------------------
 
 
 def _ingest_audio_only(local_path: str, video_id: UUID, mod, scratch: str) -> IngestArtifacts:
@@ -407,6 +483,7 @@ def _ingest_audio_only(local_path: str, video_id: UUID, mod, scratch: str) -> In
         ocr_texts=["" for _ in segments],
         audio_tags_per_segment=audio_tags_per_segment,
         nsfw_scores=[0.0 for _ in segments],
+        violence_scores=[0.0 for _ in segments],
         toxic_scores=toxic_scores,
         lighthouse_visual_path=None,
         lighthouse_audio_path=lighthouse_audio_key,
@@ -414,9 +491,7 @@ def _ingest_audio_only(local_path: str, video_id: UUID, mod, scratch: str) -> In
     )
 
 
-# ---------------------------------------------------------------------------
 # Encoder wrappers — kept short so the orchestration above is the readable bit
-# ---------------------------------------------------------------------------
 
 
 def _try_encode(stage: str, run, fallback):
@@ -432,6 +507,20 @@ def _encode_clipl(frame_batches):
     return CLIPLEmbedder().encode_video_batch(frame_batches)
 
 
+def _encode_dino(frame_batches, settings):
+    """One DINOv2 instance vector per segment (mean-pooled over frames), or None
+    when disabled. Mirrors _encode_clipl's per-segment shape. `DINOv2Embedder`
+    is a module global so tests can monkeypatch it."""
+    if not getattr(settings, "dino_enabled", False):
+        return None
+    global DINOv2Embedder
+    if DINOv2Embedder is None:
+        from main.encoders.dino_embedder import DINOv2Embedder as _D
+        DINOv2Embedder = _D
+    device = settings.dino_device or _torch_device()
+    return DINOv2Embedder(model_name_or_path=settings.dino_model, device=device).encode_video_batch(frame_batches)
+
+
 def _encode_crop_embeddings(frame_batches, grid):
     """Per-shot per-crop CLIP-L embeddings (roadmap #6, index side) for better
     small-object / logo recall. Returns [(shot_idx, region, vec), ...]."""
@@ -445,6 +534,46 @@ def _encode_crop_embeddings(frame_batches, grid):
                 continue
             out.append((shot_idx, region, emb.encode_video(crop)))
     return out
+
+
+def _encode_region_embeddings(frame_batches, settings):
+    """GroundingDINO class-agnostic region proposals on each segment's mid-frame,
+    every region crop DINOv2-embedded → [(shot_idx, bbox, vec), ...] for the
+    jockey_regions index. Unlike the whole-frame CLIP/DINOv2 channels (where the
+    background dominates a clean logo/object query), this matches the query against
+    detected object regions — background-invariant instance search, fused with OCR
+    (wordmark logos). Returns None when the detector is unavailable. Reuses the
+    GroundingDINO weights from object_verify and the DINOv2 weights from dino."""
+    from main.encoders.object_detector import ObjectDetector
+    det = ObjectDetector(
+        model_name=settings.region_detect_model,
+        box_threshold=settings.region_detect_box_threshold,
+    )
+    if not det.is_available():
+        return None
+    global DINOv2Embedder
+    if DINOv2Embedder is None:
+        from main.encoders.dino_embedder import DINOv2Embedder as _D
+        DINOv2Embedder = _D
+    device = settings.dino_device or _torch_device()
+    dino = DINOv2Embedder(model_name_or_path=settings.dino_model, device=device)
+    prompt = settings.region_detect_prompt
+    out = []
+    for shot_idx, frames in enumerate(frame_batches):
+        if frames is None or len(frames) == 0:
+            continue
+        frame = np.asarray(frames[len(frames) // 2], dtype=np.uint8)  # segment mid-frame
+        h, w = frame.shape[:2]
+        for (x0, y0, x1, y1), _score in det.detect_regions(
+            frame, prompt, top_k=settings.regions_per_frame
+        ):
+            x0, y0 = max(0, x0), max(0, y0)
+            x1, y1 = min(w, x1), min(h, y1)
+            if x1 - x0 < 12 or y1 - y0 < 12:  # drop degenerate slivers (DINOv2 needs real pixels)
+                continue
+            crop = frame[y0:y1, x0:x1]
+            out.append((shot_idx, [x0, y0, x1, y1], dino.encode_video(np.asarray([crop]))))
+    return out or None
 
 
 def _transcribe_segments(local_path, segments):
@@ -500,6 +629,19 @@ def _score_nsfw(local_path, segments):
     return scores
 
 
+def _score_violence(local_path, segments, *, settings=None):
+    from main.encoders.moderation_encoder import ViolenceClassifier
+    from main.encoders.indexer import extract_frames  # type: ignore
+    s = settings or get_settings()
+    cls = ViolenceClassifier(device=_torch_device(), model_name=s.moderation_violence_model)
+    scores = []
+    for s_, e_ in segments:
+        mid = (s_ + e_) / 2
+        frames = extract_frames(local_path, mid, mid + 0.5, max_frames=1)
+        scores.append(cls.score_frame(frames[0]) if frames is not None and len(frames) else 0.0)
+    return scores
+
+
 def _caption_segments(frame_batches):
     from main.encoders.captioner import VLMCaptioner
     from main.encoders.config import config as _jockey_config
@@ -525,16 +667,31 @@ def _action_caption_segments(local_path, segments, *, settings=None) -> list[dic
     if not cap.is_available():
         log.info("ingest:action captioner disabled — no action events")
         return []
-    events: list[dict] = []
-    for (t0, t1) in segments:
+
+    def _caption_one(seg: tuple[float, float]) -> list[dict]:
+        t0, t1 = seg
         dur = float(t1) - float(t0)
         n = max(1, min(s.vlm_actions_max_frames, int(round(dur * s.vlm_actions_fps))))
         frames = extract_frames(local_path, float(t0), float(t1), max_frames=n)
         if frames is None or len(frames) == 0:
-            continue
-        events.extend(cap.caption_actions(
+            return []
+        return cap.caption_actions(
             frames, clip_start=float(t0), clip_dur=dur, span_sec=s.vlm_actions_event_span_sec,
-        ))
+        )
+
+    # Parallelize the per-segment VLM calls (network-bound on OpenRouter; the old
+    # serial loop was ~45% of ingest time). Bounded by vlm_actions_concurrency and
+    # backed by per-call 429 retry+backoff to respect OpenRouter rate limits.
+    workers = max(1, int(getattr(s, "vlm_actions_concurrency", 4)))
+    events: list[dict] = []
+    if workers == 1:
+        for seg in segments:
+            events.extend(_caption_one(seg))
+    else:
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            for ev in pool.map(_caption_one, segments):
+                events.extend(ev)
     return events
 
 
@@ -625,6 +782,42 @@ def _caption_from_transcript(transcripts: list[str], audio_tags: list[list[dict]
     return out
 
 
+def _visual_entities_segments(frame_batches, settings):
+    """32B VLM -> visual_entities text per segment, + text embeddings. Returns
+    (texts, vectors|None). Empty/failed VLM -> '' text (non-blocking)."""
+    from main.encoders.visual_entities import get_visual_entity_captioner
+    cap = get_visual_entity_captioner()
+    texts = cap.caption_batch(list(frame_batches))
+    if not any(t for t in texts):
+        return texts, None
+    from main.encoders.search import TextEmbedder
+    from main.encoders.config import config
+    embedder = TextEmbedder(api_key=config.openrouter_api_key,
+                            model=config.text_embedding_model, base_url=config.openrouter_base_url)
+    vectors = embedder.encode_batch([t or " " for t in texts])  # -> List[np.ndarray]
+    return texts, vectors
+
+
+def _upsert_visual_entities(client, video_id, texts, vectors, segments, settings):
+    """Upsert one point per shot into jockey_visual_entities. No-op if vectors is None."""
+    if vectors is None:
+        return
+    from uuid import uuid5, NAMESPACE_OID
+    from qdrant_client.http import models as qm
+    from main.qdrant_util import ensure_collection, batched_upsert
+    existing = {c.name for c in client.get_collections().collections}
+    ensure_collection(client, settings.visual_entities_collection, len(vectors[0]), existing=existing)
+    points = []
+    for idx, ((t0, t1), text) in enumerate(zip(segments, texts)):
+        points.append(qm.PointStruct(
+            id=str(uuid5(NAMESPACE_OID, f"{video_id}:{idx}:ve")),
+            vector=list(map(float, vectors[idx])),
+            payload={"video_id": str(video_id), "shot_idx": idx,
+                     "t_start": float(t0), "t_end": float(t1),
+                     "visual_entities": text or ""}))
+    batched_upsert(client, settings.visual_entities_collection, points)
+
+
 def _embed_captions(captions: list[str], transcripts: list[str],
                     ocr_texts: list[str] | None = None) -> np.ndarray:
     from main.encoders.search import TextEmbedder
@@ -656,9 +849,7 @@ def _score_toxic(transcripts):
     return [cls.score_text(t or "") for t in transcripts]
 
 
-# ---------------------------------------------------------------------------
 # Lighthouse feature pre-compute & S3 cache
-# ---------------------------------------------------------------------------
 
 
 def _encode_iv2_visual(local_path: str, video_id: UUID, scratch: str) -> str:
@@ -703,9 +894,7 @@ def _put_npy_to_s3(arr: np.ndarray, bucket: str, key: str, scratch: str) -> None
         s3().upload_fileobj(f, bucket, key, ExtraArgs={"ContentType": "application/octet-stream"})
 
 
-# ---------------------------------------------------------------------------
 # Knowledge-graph extraction dispatch
-# ---------------------------------------------------------------------------
 
 
 def _qdrant_point_id_for(video_id: UUID) -> "callable":
@@ -790,9 +979,7 @@ def _run_kg_for_video_indexes(
         session.close()
 
 
-# ---------------------------------------------------------------------------
 # Qdrant upsert
-# ---------------------------------------------------------------------------
 
 
 # Qdrant tuning for the Cloudflare-tunnelled deployment. Default client timeout
@@ -803,6 +990,25 @@ def _run_kg_for_video_indexes(
 _QDRANT_TIMEOUT_SEC = 300
 
 
+def _purge_video_points(client, video_id, collections) -> None:
+    """Delete every point for this video across the given collections so a
+    re-index is idempotent even when the segment count (and thus point ids)
+    changes. Best-effort: a missing collection or a delete error is skipped."""
+    from qdrant_client.http import models as qm
+    try:
+        existing = {c.name for c in client.get_collections().collections}
+    except Exception:  # noqa: BLE001
+        existing = set(collections)
+    flt = qm.Filter(must=[qm.FieldCondition(key="video_id", match=qm.MatchValue(value=str(video_id)))])
+    for coll in collections:
+        if coll not in existing:
+            continue
+        try:
+            client.delete(collection_name=coll, points_selector=qm.FilterSelector(filter=flt))
+        except Exception as exc:  # noqa: BLE001
+            log.warning("ingest:purge failed for %s/%s: %s", coll, video_id, exc)
+
+
 def _upsert_qdrant(s, video_id: UUID, a: IngestArtifacts, summary, user_id, original_filename) -> None:
     from qdrant_client.http import models as qm
 
@@ -810,6 +1016,16 @@ def _upsert_qdrant(s, video_id: UUID, a: IngestArtifacts, summary, user_id, orig
 
     client = get_qdrant_client(timeout=_QDRANT_TIMEOUT_SEC)
     existing = {c.name for c in client.get_collections().collections}
+
+    # Idempotent re-index: drop this video's prior points (segment count — and
+    # thus deterministic point ids — changes between the old 30s grid and the
+    # new fine grid, so a plain upsert would leave orphans). KG entities are
+    # intentionally left to KG's own re-extraction lifecycle.
+    _purge_video_points(client, video_id, [
+        s.qdrant_collection, "jockey_segments_text", s.dino_collection,
+        s.audio_events_collection, s.motion_collection, "jockey_videos",
+        "jockey_timeline_events", s.regions_collection, s.visual_entities_collection,
+    ])
 
     if a.visual_embeddings is None or a.visual_embeddings.size == 0:
         log.warning("ingest:qdrant skipped — no visual embeddings (degenerate input)")
@@ -851,6 +1067,7 @@ def _upsert_qdrant(s, video_id: UUID, a: IngestArtifacts, summary, user_id, orig
             "window_summary": window_summary_by_idx.get(window_idx, ""),
             "audio_tags": a.audio_tags_per_segment[idx],
             "nsfw_score": float(a.nsfw_scores[idx]),
+            "violence_score": float(a.violence_scores[idx]) if a.violence_scores else 0.0,
             "toxic_score": float(a.toxic_scores[idx]),
             "modality": a.modality,
             "has_video": a.has_video,
@@ -874,6 +1091,29 @@ def _upsert_qdrant(s, video_id: UUID, a: IngestArtifacts, summary, user_id, orig
     batched_upsert(client, s.qdrant_collection, visual_points)
     if text_points:
         batched_upsert(client, text_collection, text_points)
+
+    # DINOv2 instance vectors -> jockey_dino (image-search instance channel).
+    if a.dino_embeddings is not None and a.dino_embeddings.size:
+        d_coll = s.dino_collection
+        d_dim = a.dino_embeddings.shape[1]
+        ensure_collection(client, d_coll, d_dim, existing=existing)
+        d_points = [
+            qm.PointStruct(
+                id=str(uuid5(NAMESPACE_OID, f"{video_id}:{idx}:dino")),
+                vector=a.dino_embeddings[idx].tolist(),
+                payload={"video_id": str(video_id), "shot_idx": idx, "segment_idx": idx,
+                         "t_start": float(t0), "t_end": float(t1),
+                         "asr_text": a.transcripts[idx], "ocr_text": a.ocr_texts[idx],
+                         "chunk_caption": a.captions[idx]},
+            )
+            for idx, (t0, t1) in enumerate(a.segments)
+        ]
+        batched_upsert(client, d_coll, d_points)
+
+    # visual-entities text vectors (image search, Approach A) -> jockey_visual_entities
+    if a.visual_entities_texts and a.visual_entities_vectors is not None:
+        _upsert_visual_entities(client, video_id, a.visual_entities_texts,
+                                a.visual_entities_vectors, a.segments, s)
 
     # audio-event CLAP vectors (roadmap #2) -> jockey_audio_events (text-queryable)
     if a.audio_event_embeddings is not None and a.audio_event_embeddings.size:
@@ -907,6 +1147,25 @@ def _upsert_qdrant(s, video_id: UUID, a: IngestArtifacts, summary, user_id, orig
             for idx, (t0, t1) in enumerate(a.segments)
         ]
         batched_upsert(client, m_coll, m_points)
+
+    # region/object DINOv2 vectors (MVP region search) -> jockey_regions.
+    # Background-invariant instance search: the query object/logo is matched against
+    # detected object regions, not whole frames. Fused with OCR at query time.
+    if a.region_embeddings:
+        r_coll = s.regions_collection
+        r_dim = len(a.region_embeddings[0][2])
+        ensure_collection(client, r_coll, r_dim, existing=existing)
+        r_points = []
+        for ri, (shot_idx, bbox, vec) in enumerate(a.region_embeddings):
+            t0, t1 = a.segments[shot_idx]
+            r_points.append(qm.PointStruct(
+                id=str(uuid5(NAMESPACE_OID, f"{video_id}:{shot_idx}:region:{ri}")),
+                vector=to_vector_list(vec),
+                payload={"video_id": str(video_id), "shot_idx": shot_idx, "segment_idx": shot_idx,
+                         "t_start": float(t0), "t_end": float(t1), "bbox": bbox},
+            ))
+        if r_points:
+            batched_upsert(client, r_coll, r_points)
 
     # image crop vectors (roadmap #6) -> jockey_shots (small-object / logo recall)
     if a.crop_embeddings:
@@ -948,9 +1207,7 @@ def _upsert_qdrant(s, video_id: UUID, a: IngestArtifacts, summary, user_id, orig
             log.warning("ingest:metadata_emb failed: %s", exc)
 
 
-# ---------------------------------------------------------------------------
 # Thumbnails
-# ---------------------------------------------------------------------------
 
 
 def _write_thumbnails(local_path: str, video_id: UUID, segments, scratch) -> None:
@@ -987,9 +1244,16 @@ def _save_thumbnail(video_path: str, t_mid: float, dest_path: str) -> bool:
     return os.path.exists(dest_path) and os.path.getsize(dest_path) > 0
 
 
-# ---------------------------------------------------------------------------
 # Time-grid helpers
-# ---------------------------------------------------------------------------
+
+
+def _compute_segment_len(duration: float, target: float, max_count: int) -> float:
+    """Adaptive clip length: ~`target`s for short videos, but never more than
+    `max_count` segments (so a 10-min lecture coarsens instead of producing
+    hundreds of segments). Returns `target` for non-positive duration/count."""
+    if duration <= 0 or max_count <= 0:
+        return target
+    return max(target, duration / max_count)
 
 
 def _fixed_grid(duration: float, segment_len: float) -> list[tuple[float, float]]:

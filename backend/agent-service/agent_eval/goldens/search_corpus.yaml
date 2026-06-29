@@ -1,0 +1,252 @@
+- id: corpus-0
+  query: find videos about basketball
+  context: {}
+  expected_tools:
+  - name: search_corpus
+    args:
+      query: ~basketball
+      group_by: video
+  fake_outputs:
+    search_corpus:
+      query: basketball
+      group_by: video
+      shots:
+      - video_id: vid-corpus-1
+        original_filename: vid-corpus-1.mp4
+        t_start: 0.0
+        t_end: 6.0
+        caption: basketball
+        asr_text: talking about basketball
+        score: 0.74
+        idx: 0
+      - video_id: vid-corpus-1
+        original_filename: vid-corpus-1.mp4
+        t_start: 6.0
+        t_end: 12.0
+        caption: more basketball
+        score: 0.58
+        idx: 1
+- id: corpus-1
+  query: show me cooking videos
+  context: {}
+  expected_tools:
+  - name: search_corpus
+    args:
+      query: ~cooking
+      group_by: video
+  fake_outputs:
+    search_corpus:
+      query: cooking
+      group_by: video
+      shots:
+      - video_id: vid-corpus-1
+        original_filename: vid-corpus-1.mp4
+        t_start: 0.0
+        t_end: 6.0
+        caption: cooking
+        asr_text: talking about cooking
+        score: 0.74
+        idx: 0
+      - video_id: vid-corpus-1
+        original_filename: vid-corpus-1.mp4
+        t_start: 6.0
+        t_end: 12.0
+        caption: more cooking
+        score: 0.58
+        idx: 1
+- id: corpus-2
+  query: which of my videos are about machine learning?
+  context: {}
+  expected_tools:
+  - name: search_corpus
+    args:
+      query: ~machine learning
+      group_by: video
+  fake_outputs:
+    search_corpus:
+      query: machine learning
+      group_by: video
+      shots:
+      - video_id: vid-corpus-1
+        original_filename: vid-corpus-1.mp4
+        t_start: 0.0
+        t_end: 6.0
+        caption: machine learning
+        asr_text: talking about machine learning
+        score: 0.74
+        idx: 0
+      - video_id: vid-corpus-1
+        original_filename: vid-corpus-1.mp4
+        t_start: 6.0
+        t_end: 12.0
+        caption: more machine learning
+        score: 0.58
+        idx: 1
+- id: corpus-3
+  query: do I have any nature documentaries?
+  context: {}
+  expected_tools:
+  - name: search_corpus
+    args:
+      query: ~nature documentary
+      group_by: video
+  fake_outputs:
+    search_corpus:
+      query: nature documentary
+      group_by: video
+      shots:
+      - video_id: vid-corpus-1
+        original_filename: vid-corpus-1.mp4
+        t_start: 0.0
+        t_end: 6.0
+        caption: nature documentary
+        asr_text: talking about nature documentary
+        score: 0.74
+        idx: 0
+      - video_id: vid-corpus-1
+        original_filename: vid-corpus-1.mp4
+        t_start: 6.0
+        t_end: 12.0
+        caption: more nature documentary
+        score: 0.58
+        idx: 1
+- id: corpus-4
+  query: find footage of a soccer match
+  context: {}
+  expected_tools:
+  - name: search_corpus
+    args:
+      query: ~soccer match
+      group_by: video
+  fake_outputs:
+    search_corpus:
+      query: soccer match
+      group_by: video
+      shots:
+      - video_id: vid-corpus-1
+        original_filename: vid-corpus-1.mp4
+        t_start: 0.0
+        t_end: 6.0
+        caption: soccer match
+        asr_text: talking about soccer match
+        score: 0.74
+        idx: 0
+      - video_id: vid-corpus-1
+        original_filename: vid-corpus-1.mp4
+        t_start: 6.0
+        t_end: 12.0
+        caption: more soccer match
+        score: 0.58
+        idx: 1
+- id: corpus-5
+  query: look for videos discussing climate change
+  context: {}
+  expected_tools:
+  - name: search_corpus
+    args:
+      query: ~climate change
+      group_by: video
+  fake_outputs:
+    search_corpus:
+      query: climate change
+      group_by: video
+      shots:
+      - video_id: vid-corpus-1
+        original_filename: vid-corpus-1.mp4
+        t_start: 0.0
+        t_end: 6.0
+        caption: climate change
+        asr_text: talking about climate change
+        score: 0.74
+        idx: 0
+      - video_id: vid-corpus-1
+        original_filename: vid-corpus-1.mp4
+        t_start: 6.0
+        t_end: 12.0
+        caption: more climate change
+        score: 0.58
+        idx: 1
+- id: corpus-6
+  query: any videos with live concert performances?
+  context: {}
+  expected_tools:
+  - name: search_corpus
+    args:
+      query: ~live concert
+      group_by: video
+  fake_outputs:
+    search_corpus:
+      query: live concert
+      group_by: video
+      shots:
+      - video_id: vid-corpus-1
+        original_filename: vid-corpus-1.mp4
+        t_start: 0.0
+        t_end: 6.0
+        caption: live concert
+        asr_text: talking about live concert
+        score: 0.74
+        idx: 0
+      - video_id: vid-corpus-1
+        original_filename: vid-corpus-1.mp4
+        t_start: 6.0
+        t_end: 12.0
+        caption: more live concert
+        score: 0.58
+        idx: 1
+- id: corpus-7
+  query: search my library for tennis matches
+  context: {}
+  expected_tools:
+  - name: search_corpus
+    args:
+      query: ~tennis match
+      group_by: video
+  fake_outputs:
+    search_corpus:
+      query: tennis match
+      group_by: video
+      shots:
+      - video_id: vid-corpus-1
+        original_filename: vid-corpus-1.mp4
+        t_start: 0.0
+        t_end: 6.0
+        caption: tennis match
+        asr_text: talking about tennis match
+        score: 0.74
+        idx: 0
+      - video_id: vid-corpus-1
+        original_filename: vid-corpus-1.mp4
+        t_start: 6.0
+        t_end: 12.0
+        caption: more tennis match
+        score: 0.58
+        idx: 1
+- id: corpus-8
+  query: find videos about python programming
+  context: {}
+  expected_tools:
+  - name: search_corpus
+    args:
+      query: ~python programming
+      group_by: video
+  fake_outputs:
+    search_corpus:
+      query: python programming
+      group_by: video
+      shots:
+      - video_id: vid-corpus-1
+        original_filename: vid-corpus-1.mp4
+        t_start: 0.0
+        t_end: 6.0
+        caption: python programming
+        asr_text: talking about python programming
+        score: 0.74
+        idx: 0
+      - video_id: vid-corpus-1
+        original_filename: vid-corpus-1.mp4
+        t_start: 6.0
+        t_end: 12.0
+        caption: more python programming
+        score: 0.58
+        idx: 1

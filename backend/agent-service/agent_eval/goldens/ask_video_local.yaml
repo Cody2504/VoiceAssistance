@@ -1,0 +1,108 @@
+- id: qa-0
+  query: summarize this video
+  context:
+    video_id: vid-bball-1
+  expected_tools:
+  - name: ask_video_local
+    args:
+      video_id: vid-bball-1
+      question: ~summarize this video
+  fake_outputs:
+    ask_video_local:
+      video_id: vid-bball-1
+      answer: This video shows a basketball game.
+      citations:
+      - t_start: 10.0
+        t_end: 14.0
+      modality: video
+  reference_answer: This video shows a basketball game.
+- id: qa-1
+  query: what is this video about?
+  context:
+    video_id: vid-cook-1
+  expected_tools:
+  - name: ask_video_local
+    args:
+      video_id: vid-cook-1
+      question: ~what is this video about?
+  fake_outputs:
+    ask_video_local:
+      video_id: vid-cook-1
+      answer: It is a cooking tutorial.
+      citations:
+      - t_start: 10.0
+        t_end: 14.0
+      modality: video
+  reference_answer: It is a cooking tutorial.
+- id: qa-2
+  query: explain what happens in this video
+  context:
+    video_id: vid-soccer-1
+  expected_tools:
+  - name: ask_video_local
+    args:
+      video_id: vid-soccer-1
+      question: ~explain what happens in this video
+  fake_outputs:
+    ask_video_local:
+      video_id: vid-soccer-1
+      answer: A soccer match with a late goal.
+      citations:
+      - t_start: 10.0
+        t_end: 14.0
+      modality: video
+  reference_answer: A soccer match with a late goal.
+- id: qa-3
+  query: who is the main person in this video?
+  context:
+    video_id: vid-news-1
+  expected_tools:
+  - name: ask_video_local
+    args:
+      video_id: vid-news-1
+      question: ~who is the main person in this video?
+  fake_outputs:
+    ask_video_local:
+      video_id: vid-news-1
+      answer: A news anchor presents a report.
+      citations:
+      - t_start: 10.0
+        t_end: 14.0
+      modality: video
+  reference_answer: A news anchor presents a report.
+- id: qa-4
+  query: give me a short description of this video
+  context:
+    video_id: vid-nature-1
+  expected_tools:
+  - name: ask_video_local
+    args:
+      video_id: vid-nature-1
+      question: ~give me a short description of this video
+  fake_outputs:
+    ask_video_local:
+      video_id: vid-nature-1
+      answer: A nature documentary about wildlife.
+      citations:
+      - t_start: 10.0
+        t_end: 14.0
+      modality: video
+  reference_answer: A nature documentary about wildlife.
+- id: qa-5
+  query: what's the takeaway from this video?
+  context:
+    video_id: vid-tutorial-1
+  expected_tools:
+  - name: ask_video_local
+    args:
+      video_id: vid-tutorial-1
+      question: ~what's the takeaway from this video?
+  fake_outputs:
+    ask_video_local:
+      video_id: vid-tutorial-1
+      answer: A tutorial explaining a process.
+      citations:
+      - t_start: 10.0
+        t_end: 14.0
+      modality: video
+  reference_answer: A tutorial explaining a process.

@@ -1,0 +1,168 @@
+- id: motion-0
+  query: find clips of someone dunking a basketball
+  context: {}
+  expected_tools:
+  - name: search_motion
+    args:
+      query: ~dunk
+      group_by: video
+  fake_outputs:
+    search_motion:
+      query: dunk
+      group_by: video
+      shots:
+      - video_id: vid-corpus-1
+        original_filename: vid-corpus-1.mp4
+        t_start: 0.0
+        t_end: 6.0
+        caption: dunk
+        asr_text: talking about dunk
+        score: 0.74
+        idx: 0
+      - video_id: vid-corpus-1
+        original_filename: vid-corpus-1.mp4
+        t_start: 6.0
+        t_end: 12.0
+        caption: more dunk
+        score: 0.58
+        idx: 1
+- id: motion-1
+  query: show me people running fast
+  context: {}
+  expected_tools:
+  - name: search_motion
+    args:
+      query: ~running
+      group_by: video
+  fake_outputs:
+    search_motion:
+      query: running
+      group_by: video
+      shots:
+      - video_id: vid-corpus-1
+        original_filename: vid-corpus-1.mp4
+        t_start: 0.0
+        t_end: 6.0
+        caption: running
+        asr_text: talking about running
+        score: 0.74
+        idx: 0
+      - video_id: vid-corpus-1
+        original_filename: vid-corpus-1.mp4
+        t_start: 6.0
+        t_end: 12.0
+        caption: more running
+        score: 0.58
+        idx: 1
+- id: motion-2
+  query: find moments where someone is dancing
+  context: {}
+  expected_tools:
+  - name: search_motion
+    args:
+      query: ~dancing
+      group_by: video
+  fake_outputs:
+    search_motion:
+      query: dancing
+      group_by: video
+      shots:
+      - video_id: vid-corpus-1
+        original_filename: vid-corpus-1.mp4
+        t_start: 0.0
+        t_end: 6.0
+        caption: dancing
+        asr_text: talking about dancing
+        score: 0.74
+        idx: 0
+      - video_id: vid-corpus-1
+        original_filename: vid-corpus-1.mp4
+        t_start: 6.0
+        t_end: 12.0
+        caption: more dancing
+        score: 0.58
+        idx: 1
+- id: motion-3
+  query: clips of a car drifting
+  context: {}
+  expected_tools:
+  - name: search_motion
+    args:
+      query: ~car drifting
+      group_by: video
+  fake_outputs:
+    search_motion:
+      query: car drifting
+      group_by: video
+      shots:
+      - video_id: vid-corpus-1
+        original_filename: vid-corpus-1.mp4
+        t_start: 0.0
+        t_end: 6.0
+        caption: car drifting
+        asr_text: talking about car drifting
+        score: 0.74
+        idx: 0
+      - video_id: vid-corpus-1
+        original_filename: vid-corpus-1.mp4
+        t_start: 6.0
+        t_end: 12.0
+        caption: more car drifting
+        score: 0.58
+        idx: 1
+- id: motion-4
+  query: find footage of someone jumping
+  context: {}
+  expected_tools:
+  - name: search_motion
+    args:
+      query: ~jumping
+      group_by: video
+  fake_outputs:
+    search_motion:
+      query: jumping
+      group_by: video
+      shots:
+      - video_id: vid-corpus-1
+        original_filename: vid-corpus-1.mp4
+        t_start: 0.0
+        t_end: 6.0
+        caption: jumping
+        asr_text: talking about jumping
+        score: 0.74
+        idx: 0
+      - video_id: vid-corpus-1
+        original_filename: vid-corpus-1.mp4
+        t_start: 6.0
+        t_end: 12.0
+        caption: more jumping
+        score: 0.58
+        idx: 1
+- id: motion-5
+  query: show me a person flipping a pancake
+  context: {}
+  expected_tools:
+  - name: search_motion
+    args:
+      query: ~flipping pancake
+      group_by: video
+  fake_outputs:
+    search_motion:
+      query: flipping pancake
+      group_by: video
+      shots:
+      - video_id: vid-corpus-1
+        original_filename: vid-corpus-1.mp4
+        t_start: 0.0
+        t_end: 6.0
+        caption: flipping pancake
+        asr_text: talking about flipping pancake
+        score: 0.74
+        idx: 0
+      - video_id: vid-corpus-1
+        original_filename: vid-corpus-1.mp4
+        t_start: 6.0
+        t_end: 12.0
+        caption: more flipping pancake
+        score: 0.58
+        idx: 1

@@ -5,6 +5,7 @@ import tempfile
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -88,6 +89,90 @@ async def upload_video(
 
     # Upload = storage only. The IV2/TransNet/SG-DETR/KG pipeline is triggered by
     # add-to-index (POST /indexes/{id}/videos), not here. (1 video = 1 index.)
+    return success_response(VideoOut.model_validate(video, from_attributes=True).model_dump(mode="json"))
+
+
+# Direct-to-S3 upload (browser PUTs straight to S3 — no pod relay).
+# Cuts the upload latency: the old POST /videos relayed every byte through the
+# pod and then re-uploaded pod→S3 (a 2s+ leg for a 24MB file, invisible to the
+# progress bar). Here the browser uploads directly and extracts duration+poster
+# client-side, so the pod never touches the file.
+
+
+class UploadUrlRequest(BaseModel):
+    filename: str = Field(min_length=1)
+    content_type: str = "application/octet-stream"
+
+
+class RegisterRequest(BaseModel):
+    video_id: UUID
+    key: str = Field(min_length=1)
+    original_filename: str = Field(min_length=1)
+    duration_s: float | None = None
+
+
+def _owned_key_ext(user_id: UUID, video_id: UUID, key: str) -> str | None:
+    """Return the file extension iff `key` is the canonical key we mint for this
+    user+video (`{user}/{video}{ext}`) with an allowed extension; else None.
+    Guards register against pointing at an arbitrary / another user's object."""
+    if not key.startswith(f"{user_id}/{video_id}"):
+        return None
+    return next((e for e in _VIDEO_EXTS + _AUDIO_EXTS if key.lower().endswith(e)), None)
+
+
+@router.post("/upload-url")
+async def create_upload_url(body: UploadUrlRequest, payload: TokenPayload = Depends(require_user)):
+    """Mint presigned PUT URLs so the browser uploads the video (and a
+    client-generated poster) straight to S3. Returns the canonical key + ids."""
+    s = get_settings()
+    ext = next((e for e in _VIDEO_EXTS + _AUDIO_EXTS if body.filename.lower().endswith(e)), None)
+    if ext is None:
+        raise HTTPException(
+            400,
+            f"Unsupported file extension (allowed video: {','.join(_VIDEO_EXTS)}; "
+            f"audio: {','.join(_AUDIO_EXTS)})",
+        )
+    from main.storage.minio import presigned_put
+    user_id = UUID(payload.sub)
+    video_id = uuid4()
+    key = f"{user_id}/{video_id}{ext}"
+    return success_response({
+        "video_id": str(video_id),
+        "key": key,
+        "video_put_url": presigned_put(s.minio_bucket_videos, key, body.content_type or "application/octet-stream"),
+        "poster_put_url": presigned_put(s.minio_bucket_thumbs, f"{video_id}/poster.jpg", "image/jpeg"),
+    })
+
+
+@router.post("/register", status_code=status.HTTP_201_CREATED)
+async def register_upload(
+    body: RegisterRequest,
+    payload: TokenPayload = Depends(require_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Create the Assets row after the browser finished its direct-to-S3 PUT.
+    HEADs the object first so a failed/forged upload can't create an orphan row."""
+    s = get_settings()
+    user_id = UUID(payload.sub)
+    ext = _owned_key_ext(user_id, body.video_id, body.key)
+    if ext is None:
+        raise HTTPException(403, "Key does not belong to the authenticated user / video, or has an unsupported type")
+    try:
+        head = s3().head_object(Bucket=s.minio_bucket_videos, Key=body.key)
+        size_bytes = int(head["ContentLength"])
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(409, "Uploaded object not found in storage — PUT may have failed") from exc
+
+    video = Video(
+        id=body.video_id, user_id=user_id,
+        original_filename=body.original_filename,
+        minio_key=body.key, status="stored",
+        duration_s=round(body.duration_s, 3) if body.duration_s else None,
+        size_bytes=size_bytes,
+    )
+    session.add(video)
+    await session.commit()
+    await session.refresh(video)
     return success_response(VideoOut.model_validate(video, from_attributes=True).model_dump(mode="json"))
 
 

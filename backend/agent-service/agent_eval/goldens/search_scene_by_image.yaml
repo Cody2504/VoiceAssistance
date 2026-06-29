@@ -1,0 +1,96 @@
+- id: sceneC-0
+  query: which video is this scene from?
+  context:
+    image: data:image/png;base64,FAKE
+  expected_tools:
+  - name: search_scene_by_image
+    args: {}
+  fake_outputs:
+    search_scene_by_image:
+      query: (image)
+      shots:
+      - video_id: vid-bball-1
+        original_filename: vid-bball-1.mp4
+        t_start: 12.0
+        t_end: 15.0
+        score: 0.83
+- id: sceneC-1
+  query: find which of my videos this image came from
+  context:
+    image: data:image/png;base64,FAKE
+  expected_tools:
+  - name: search_scene_by_image
+    args: {}
+  fake_outputs:
+    search_scene_by_image:
+      query: (image)
+      shots:
+      - video_id: vid-cook-1
+        original_filename: vid-cook-1.mp4
+        t_start: 12.0
+        t_end: 15.0
+        score: 0.83
+- id: sceneC-2
+  query: what video does this frame belong to?
+  context:
+    image: data:image/png;base64,FAKE
+  expected_tools:
+  - name: search_scene_by_image
+    args: {}
+  fake_outputs:
+    search_scene_by_image:
+      query: (image)
+      shots:
+      - video_id: vid-soccer-1
+        original_filename: vid-soccer-1.mp4
+        t_start: 12.0
+        t_end: 15.0
+        score: 0.83
+- id: sceneC-3
+  query: search all my videos for this scene
+  context:
+    image: data:image/png;base64,FAKE
+  expected_tools:
+  - name: search_scene_by_image
+    args: {}
+  fake_outputs:
+    search_scene_by_image:
+      query: (image)
+      shots:
+      - video_id: vid-nature-1
+        original_filename: vid-nature-1.mp4
+        t_start: 12.0
+        t_end: 15.0
+        score: 0.83
+- id: sceneC-4
+  query: identify the video this picture is taken from
+  context:
+    image: data:image/png;base64,FAKE
+  expected_tools:
+  - name: search_scene_by_image
+    args: {}
+  fake_outputs:
+    search_scene_by_image:
+      query: (image)
+      shots:
+      - video_id: vid-concert-1
+        original_filename: vid-concert-1.mp4
+        t_start: 12.0
+        t_end: 15.0
+        score: 0.83
+- id: sceneC-5
+  query: where across my library does this image appear?
+  context:
+    image: data:image/png;base64,FAKE
+  expected_tools:
+  - name: search_scene_by_image
+    args: {}
+  fake_outputs:
+    search_scene_by_image:
+      query: (image)
+      shots:
+      - video_id: vid-tennis-1
+        original_filename: vid-tennis-1.mp4
+        t_start: 12.0
+        t_end: 15.0
+        score: 0.83

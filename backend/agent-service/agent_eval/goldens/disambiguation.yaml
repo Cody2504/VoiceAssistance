@@ -1,0 +1,113 @@
+- id: disambig-when-not-search
+  query: when do they score in this game?
+  context:
+    video_id: vid-soccer-1
+  expected_tools:
+  - name: ground_video
+    args:
+      video_id: vid-soccer-1
+      query: ~score
+  fake_outputs:
+    ground_video:
+      video_id: vid-soccer-1
+      moments:
+      - t_start: 41.0
+        t_end: 47.0
+        label: score
+        score: 0.9
+        source: grounding
+- id: disambig-relations-not-mentions
+  query: what is gradient descent connected to?
+  context:
+    index_id: idx-ml-101
+    video_ids: []
+  expected_tools:
+  - name: find_concept_relations
+    args:
+      index_id: idx-ml-101
+      concept_name: ~gradient descent
+  fake_outputs:
+    find_concept_relations:
+      resolved_concept:
+        entity_id: e1
+        canonical_name: gradient descent
+      related:
+      - entity_id: e3
+        canonical_name: related concept
+        relation: is related to
+        weight: 0.7
+        direction: outgoing
+- id: disambig-mentions-not-relations
+  query: where is gradient descent actually discussed?
+  context:
+    index_id: idx-ml-101
+    video_ids: []
+  expected_tools:
+  - name: find_concept_mentions
+    args:
+      index_id: idx-ml-101
+      concept_name: ~gradient descent
+  fake_outputs:
+    find_concept_mentions:
+      resolved_concept:
+        entity_id: e2
+        canonical_name: gradient descent
+      mentions:
+      - video_id: vid-ml-4
+        video_title: Lecture
+        video_position: 3
+        t_start: 200.0
+        t_end: 230.0
+        transcript: discussing gradient descent
+- id: disambig-stale-video-scope
+  query: summarize this video
+  context:
+    video_id: vid-NEW-attached
+  expected_tools:
+  - name: ask_video_local
+    args:
+      video_id: vid-NEW-attached
+      question: ~summarize
+  fake_outputs:
+    ask_video_local:
+      video_id: vid-NEW-attached
+      answer: This video shows a basketball game.
+      citations:
+      - t_start: 10.0
+        t_end: 14.0
+      modality: video
+  reference_answer: This video shows a basketball game.
+- id: disambig-image-corpus-not-text
+  query: which video is this scene from?
+  context:
+    image: data:image/png;base64,FAKE
+  expected_tools:
+  - name: search_scene_by_image
+    args: {}
+  fake_outputs:
+    search_scene_by_image:
+      query: (image)
+      shots:
+      - video_id: vid-bball-1
+        original_filename: vid-bball-1.mp4
+        t_start: 12.0
+        t_end: 15.0
+        score: 0.83
+- id: disambig-local-not-corpus
+  query: where in THIS video do they talk about defense?
+  context:
+    video_id: vid-bball-1
+  expected_tools:
+  - name: search_video_local
+    args:
+      video_id: vid-bball-1
+      query: ~defense
+  fake_outputs:
+    search_video_local:
+      video_id: vid-bball-1
+      shots:
+      - idx: 3
+        t_start: 30.0
+        t_end: 36.0
+        asr_text: defense
+        score: 0.66

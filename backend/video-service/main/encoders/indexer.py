@@ -6,9 +6,7 @@ Consumed by `backend/video-service/main/pipeline/ingest.py`. Exposes:
   - `extract_frames(...)`      — uniform-sampled frames within a [start, end] range
 """
 import logging
-import os
-import uuid
-from typing import Dict, List, Optional, Tuple
+from typing import List, Tuple
 
 import numpy as np
 

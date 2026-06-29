@@ -1,0 +1,102 @@
+- id: sim-0
+  query: find videos similar to this one
+  context:
+    video_id: vid-bball-1
+  expected_tools:
+  - name: find_similar
+    args:
+      video_id: vid-bball-1
+  fake_outputs:
+    find_similar:
+      video_id: vid-bball-1
+      results:
+      - video_id: vid-bball-1-sim
+        original_filename: similar.mp4
+        duration_s: 90.0
+        shot_count: 12
+        score: 0.76
+- id: sim-1
+  query: show me more videos like this
+  context:
+    video_id: vid-cook-1
+  expected_tools:
+  - name: find_similar
+    args:
+      video_id: vid-cook-1
+  fake_outputs:
+    find_similar:
+      video_id: vid-cook-1
+      results:
+      - video_id: vid-cook-1-sim
+        original_filename: similar.mp4
+        duration_s: 90.0
+        shot_count: 12
+        score: 0.76
+- id: sim-2
+  query: what else do I have that's similar to this video?
+  context:
+    video_id: vid-soccer-1
+  expected_tools:
+  - name: find_similar
+    args:
+      video_id: vid-soccer-1
+  fake_outputs:
+    find_similar:
+      video_id: vid-soccer-1
+      results:
+      - video_id: vid-soccer-1-sim
+        original_filename: similar.mp4
+        duration_s: 90.0
+        shot_count: 12
+        score: 0.76
+- id: sim-3
+  query: find related videos to this one
+  context:
+    video_id: vid-concert-1
+  expected_tools:
+  - name: find_similar
+    args:
+      video_id: vid-concert-1
+  fake_outputs:
+    find_similar:
+      video_id: vid-concert-1
+      results:
+      - video_id: vid-concert-1-sim
+        original_filename: similar.mp4
+        duration_s: 90.0
+        shot_count: 12
+        score: 0.76
+- id: sim-4
+  query: recommend videos like this
+  context:
+    video_id: vid-nature-1
+  expected_tools:
+  - name: find_similar
+    args:
+      video_id: vid-nature-1
+  fake_outputs:
+    find_similar:
+      video_id: vid-nature-1
+      results:
+      - video_id: vid-nature-1-sim
+        original_filename: similar.mp4
+        duration_s: 90.0
+        shot_count: 12
+        score: 0.76
+- id: sim-5
+  query: which of my videos resemble this one?
+  context:
+    video_id: vid-tennis-1
+  expected_tools:
+  - name: find_similar
+    args:
+      video_id: vid-tennis-1
+  fake_outputs:
+    find_similar:
+      video_id: vid-tennis-1
+      results:
+      - video_id: vid-tennis-1-sim
+        original_filename: similar.mp4
+        duration_s: 90.0
+        shot_count: 12
+        score: 0.76

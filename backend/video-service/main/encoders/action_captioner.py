@@ -20,7 +20,9 @@ from __future__ import annotations
 import json
 import logging
 import os
+import random
 import re
+import time
 from typing import List, Optional
 
 import numpy as np
@@ -31,6 +33,16 @@ log = logging.getLogger(__name__)
 
 _UNAVAILABLE = "unavailable"
 _JSON_ARRAY_RE = re.compile(r"\[.*\]", re.DOTALL)
+
+
+def _is_rate_limit(exc: Exception) -> bool:
+    """True for an OpenRouter/OpenAI rate-limit (429) or transient overload, so
+    the caller backs off + retries instead of dropping the segment. Matches on
+    status_code when present and on common message substrings otherwise."""
+    if getattr(exc, "status_code", None) == 429 or getattr(exc, "code", None) == 429:
+        return True
+    m = str(exc).lower()
+    return "429" in m or "rate limit" in m or "rate_limit" in m or "too many requests" in m or "overloaded" in m
 
 
 def _build_action_prompt(clip_dur: float) -> str:
@@ -102,12 +114,16 @@ class ActionCaptioner:
         base_url: str = "https://openrouter.ai/api/v1",
         max_frames: int = 32,
         max_tokens: int = 256,
+        max_retries: int = 4,
+        retry_base_s: float = 2.0,
     ):
         self.api_key = api_key
         self.model = model or os.environ.get("VLM_MODEL", "qwen/qwen3-vl-8b-instruct")
         self.base_url = base_url
         self.max_frames = max_frames
         self.max_tokens = max_tokens
+        self.max_retries = max_retries
+        self.retry_base_s = retry_base_s
         self._client = None
 
     @classmethod
@@ -149,15 +165,27 @@ class ActionCaptioner:
         content: list[dict] = [{"type": "text", "text": _build_action_prompt(clip_dur)}]
         for b64 in images:
             content.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}})
-        try:
-            resp = self._client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": content}],
-                max_tokens=self.max_tokens,
-                temperature=0.0,
-            )
-            raw = resp.choices[0].message.content or ""
-        except Exception as exc:  # noqa: BLE001
-            log.warning("ActionCaptioner: VLM call failed: %s", exc)
-            return []
+        # Retry on 429 / transient overload with exponential backoff + jitter so
+        # the parallel per-segment calls don't drop segments when OpenRouter rate-
+        # limits a burst. Non-rate-limit errors fail fast (return []).
+        raw = ""
+        for attempt in range(self.max_retries):
+            try:
+                resp = self._client.chat.completions.create(
+                    model=self.model,
+                    messages=[{"role": "user", "content": content}],
+                    max_tokens=self.max_tokens,
+                    temperature=0.0,
+                )
+                raw = resp.choices[0].message.content or ""
+                break
+            except Exception as exc:  # noqa: BLE001
+                if _is_rate_limit(exc) and attempt < self.max_retries - 1:
+                    delay = self.retry_base_s * (2 ** attempt) + random.uniform(0, self.retry_base_s)
+                    log.warning("ActionCaptioner: rate-limited, backing off %.1fs (attempt %d/%d)",
+                                delay, attempt + 1, self.max_retries)
+                    time.sleep(delay)
+                    continue
+                log.warning("ActionCaptioner: VLM call failed: %s", exc)
+                return []
         return _parse_actions(raw, clip_start, clip_dur, span_sec)

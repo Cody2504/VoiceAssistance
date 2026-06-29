@@ -22,6 +22,20 @@ def get_llm_client(role: Role) -> Union[ChatOpenAI, AzureChatOpenAI]:
             stream_usage=True,
         )
 
+    if s.llm_provider.upper() == "OPENROUTER":
+        # OpenRouter is OpenAI-compatible — same ChatOpenAI client, different
+        # base_url + key + `provider/model` ids.
+        model = s.openrouter_planner_model if role == "router" else s.openrouter_worker_model
+        return ChatOpenAI(
+            model=model,
+            base_url=s.openrouter_base_url,
+            api_key=s.openrouter_api_key,
+            streaming=True,
+            temperature=0,
+            tags=[role],
+            stream_usage=True,
+        )
+
     model = s.openai_planner_model if role == "router" else s.openai_worker_model
     return ChatOpenAI(
         model=model,
