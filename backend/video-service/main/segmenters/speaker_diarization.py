@@ -31,21 +31,42 @@ from .video_io import fetch_video
 log = logging.getLogger(__name__)
 
 
-def _transcript_for_window(
-    shots: list[dict[str, Any]], t_start: float, t_end: float, max_chars: int = 400
-) -> str:
-    """Join ASR text from shots whose time range overlaps [t_start, t_end)."""
-    parts: list[str] = []
+def _assign_transcripts(
+    turns: list[dict[str, Any]], shots: list[dict[str, Any]], max_chars: int = 400
+) -> dict[int, str]:
+    """Assign each ASR shot to the ONE turn it overlaps most, then build that turn's
+    transcript from its owned shots (time-ordered, dedup). Assigning each shot to a
+    single owner (instead of copying a coarse shot's full text onto every turn it
+    touches) is what removes the duplicated `transcript_summary` across turns/speakers.
+    Returns {turn_index: transcript}."""
+    owned: dict[int, list[tuple[float, str]]] = {i: [] for i in range(len(turns))}
     for sh in shots:
+        text = (sh.get("asr_text") or "").strip()
+        if not text:
+            continue
         ts = float(sh.get("t_start", 0.0))
         te = float(sh.get("t_end", 0.0))
-        if te <= t_start or ts >= t_end:
-            continue
-        text = (sh.get("asr_text") or "").strip()
-        if text:
-            parts.append(text)
-    joined = " ".join(parts).strip()
-    return joined[:max_chars] + ("…" if len(joined) > max_chars else "")
+        best_i: int | None = None
+        best_ov = 0.0
+        for i, tn in enumerate(turns):
+            ov = min(te, float(tn["t_end"])) - max(ts, float(tn["t_start"]))
+            if ov > best_ov:
+                best_ov, best_i = ov, i
+        if best_i is not None and best_ov > 0:
+            owned[best_i].append((ts, text))
+
+    summaries: dict[int, str] = {}
+    for i, items in owned.items():
+        items.sort(key=lambda x: x[0])
+        seen: set[str] = set()
+        parts: list[str] = []
+        for _ts, text in items:
+            if text not in seen:
+                seen.add(text)
+                parts.append(text)
+        joined = " ".join(parts).strip()
+        summaries[i] = joined[:max_chars] + ("…" if len(joined) > max_chars else "")
+    return summaries
 
 
 def _format_turns(
@@ -54,8 +75,15 @@ def _format_turns(
     shots: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     field_names = {f.name for f in definition.fields}
+    # Twelve Labs `speakers` schema: surface what was said in each turn from the
+    # cached ASR shots — each shot assigned to a single owning turn (no duplication).
+    # `speaking_context` enum (interview / narration / …) needs an LLM classification
+    # we don't run yet — left empty.
+    summaries: dict[int, str] = {}
+    if "transcript_summary" in field_names and shots:
+        summaries = _assign_transcripts(turns, shots)
     out: list[dict[str, Any]] = []
-    for turn in turns:
+    for i, turn in enumerate(turns):
         t_start = float(turn["t_start"])
         t_end = float(turn["t_end"])
         meta: dict[str, Any] = {}
@@ -63,12 +91,8 @@ def _format_turns(
             meta["speaker_label"] = turn.get("speaker", "")
         if "duration_s" in field_names:
             meta["duration_s"] = round(t_end - t_start, 2)
-        # Twelve Labs `speakers` schema: surface what was said in this turn by
-        # pulling ASR from cached shots overlapping the turn window.
-        # `speaking_context` enum (interview / narration / …) needs an LLM
-        # classification we don't run yet — left empty.
         if "transcript_summary" in field_names and shots:
-            meta["transcript_summary"] = _transcript_for_window(shots, t_start, t_end)
+            meta["transcript_summary"] = summaries.get(i, "")
         out.append({"t_start": t_start, "t_end": t_end, "metadata": meta})
     return out
 
@@ -130,6 +154,16 @@ def segment(video_id: UUID, definition: SegmentDefinition) -> list[dict[str, Any
         return []
     turns = _run_pyannote(video)
     if turns is None:
+        return []
+    # Clean raw pyannote output before formatting: merge adjacent same-speaker
+    # turns + drop micro-turns (normalize_turns), resolve overlapped-speech to the
+    # dominant speaker, then re-merge. Without this the raw itertracks output has
+    # overlapping turns and sub-second fragments.
+    from main.encoders.diarizer import normalize_turns, resolve_speaker_overlaps
+    turns = normalize_turns(turns)
+    turns = resolve_speaker_overlaps(turns)
+    turns = normalize_turns(turns)
+    if not turns:
         return []
     # Pull cached shots only if we'll need ASR for `transcript_summary` —
     # avoids a Qdrant round-trip for the minimal schema.

@@ -452,8 +452,12 @@ function extractClips(tool: string, result: unknown): ClipResult[] {
 
   // ground_video + get_highlights both return time-range `moments`. Surface the
   // TOP-3 as clickable clip cards — the top-1 isn't always the right moment, so
-  // the user can scan candidates. Each plays from its t_start; score shown as %.
+  // the user can scan candidates. Each plays from its t_start.
+  // Grounding `score` is a 0..1 relevance the user can compare, so show it as %.
+  // Highlight `score` is a QD-DETR saliency value (can be negative, not a match
+  // %) — surface only the MOMENT for highlights, no misleading percentage.
   if (tool.includes("ground") || tool.includes("highlight")) {
+    const isHighlight = tool.includes("highlight");
     const moments = (r.moments as Array<Record<string, unknown>>) ?? [];
     return moments
       .filter((m) => typeof m.t_start === "number" && typeof m.t_end === "number")
@@ -463,7 +467,7 @@ function extractClips(tool: string, result: unknown): ClipResult[] {
         video_id: videoId,
         t_start: m.t_start as number,
         t_end: m.t_end as number,
-        score: typeof m.score === "number" ? (m.score as number) : undefined,
+        score: isHighlight ? undefined : (typeof m.score === "number" ? (m.score as number) : undefined),
         display_mode: "clip" as const,
       }));
   }

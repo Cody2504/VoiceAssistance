@@ -94,8 +94,26 @@ def run_analyze(video_id: UUID, question: str, global_summary: str | None = None
                            token_budget=s.analyze_token_budget,
                            summary_intent=summary_intent)
 
-    # 5. Call the LLM
-    answer = _call_llm(prompt)
+    # 5. Call the LLM. For a focused (non-summary) question, attach the top-K
+    # retrieved segments' frames so the model reads on-screen specifics from
+    # pixels rather than the spatially-flattened OCR string. Top-K (not top-1)
+    # because in animated infographics the single top-ranked frame can precede
+    # the moment the answer text finishes rendering. Any miss is skipped; an
+    # empty list → text-only fallback.
+    images: list[bytes] | None = None
+    if not summary_intent and retrieved and s.qa_multimodal_enabled:
+        frames: list[bytes] = []
+        seen_idx: set[int] = set()
+        for seg in retrieved[: max(1, s.qa_multimodal_frames)]:
+            seg_idx = seg.get("segment_idx")
+            if seg_idx is None or int(seg_idx) in seen_idx:
+                continue
+            seen_idx.add(int(seg_idx))
+            fb = _fetch_segment_frame(vid, int(seg_idx))
+            if fb:
+                frames.append(fb)
+        images = frames or None
+    answer = _call_llm(prompt, images=images)
 
     # 6. Parse [mm:ss–mm:ss] citations for the frontend chips
     citations = _parse_citations(answer, retrieved)
@@ -270,6 +288,23 @@ def _fetch_global_summary_from_qdrant(video_id: str) -> str:
         return ""
 
 
+def _fetch_segment_frame(video_id: str, segment_idx: int) -> bytes | None:
+    """The per-segment thumbnail (segment-midpoint frame, 480w) already stored
+    at ingest as `{video_id}/{segment_idx}.jpg` in the thumbs bucket. Returned as
+    raw JPEG bytes for a multimodal QA read; `None` on any miss so the caller
+    silently falls back to text-only. Mirrors the fetch in api/search.py."""
+    s = get_settings()
+    try:
+        from main.storage.minio import s3
+        resp = s3().get_object(
+            Bucket=s.minio_bucket_thumbs, Key=f"{video_id}/{segment_idx}.jpg"
+        )
+        return resp["Body"].read()
+    except Exception as exc:  # noqa: BLE001 — missing thumb is expected, degrade to text
+        log.debug("analyze:frame fetch miss video=%s seg=%s: %s", video_id, segment_idx, exc)
+        return None
+
+
 # Prompt assembly + LLM
 
 
@@ -348,10 +383,16 @@ def _assemble(question: str, global_summary: str, skeleton_lines: str,
         "specific action/moment, cite the precise [mm:ss-mm:ss] from the ACTION "
         "TIMELINE (fine-grained) rather than the coarser segment span — the "
         "action timeline pinpoints the exact instant.\n"
-        "IMPORTANT: the 'on-screen text' in RELEVANT SEGMENTS is text read "
-        "directly from the video frames (signage, infographics, captions) and is "
-        "AUTHORITATIVE for numbers, labels, temperatures and durations — prefer "
-        "it over inference when the question asks for such specifics.\n"
+        "IMPORTANT: one or more frames of the most relevant moments may be "
+        "attached to this message. When the question asks for on-screen "
+        "specifics (numbers, temperatures, labels, scores, durations), read them "
+        "DIRECTLY FROM THE IMAGES — and if several frames are attached, use "
+        "whichever one most clearly shows the answer (in animated graphics the "
+        "text may be fully rendered in only some frames). The 'on-screen text' "
+        "field in RELEVANT SEGMENTS is only a hint: it is OCR that may be "
+        "spatially jumbled, so do NOT trust its word order to bind a value to "
+        "its label (e.g. which column a temperature sits under). Prefer the "
+        "images over the on-screen-text field, and both over inference.\n"
         f"{summary_directive}\n"
         f"── GLOBAL SUMMARY ──\n{global_summary or '(none)'}\n\n"
         "── VIDEO SKELETON (in order, one bullet per ~2 minutes) ──\n"
@@ -367,16 +408,35 @@ def _assemble(question: str, global_summary: str, skeleton_lines: str,
     )
 
 
-def _call_llm(prompt: str) -> str:
+def _call_llm(prompt: str, images: list[bytes] | None = None) -> str:
+    import base64
+
     from openai import OpenAI
     s = get_settings()
     client = OpenAI(api_key=s.openrouter_api_key, base_url=s.openrouter_base_url)
+
+    if images:
+        # Multimodal: let the model read on-screen specifics from the actual
+        # frames. detail:"high" so small overlay text (temperatures, scores) is
+        # legible. Uses the vision model; summaries stay on summary_llm_model.
+        user_content: Any = [{"type": "text", "text": prompt}]
+        for img in images:
+            b64 = base64.b64encode(img).decode("ascii")
+            user_content.append({
+                "type": "image_url",
+                "image_url": {"url": f"data:image/jpeg;base64,{b64}", "detail": "high"},
+            })
+        model = s.qa_vlm_model
+    else:
+        user_content = prompt
+        model = s.summary_llm_model
+
     try:
         resp = client.chat.completions.create(
-            model=s.summary_llm_model,
+            model=model,
             messages=[
                 {"role": "system", "content": "You answer questions about videos using only the provided context."},
-                {"role": "user", "content": prompt},
+                {"role": "user", "content": user_content},
             ],
             max_tokens=600,
             temperature=0.2,

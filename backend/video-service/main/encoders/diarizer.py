@@ -50,6 +50,38 @@ def normalize_turns(
     ]
 
 
+def resolve_speaker_overlaps(turns: list[dict], *, min_cover: float = 0.5) -> list[dict]:
+    """Drop a turn when a LONGER different-speaker turn covers >= `min_cover` of it.
+
+    pyannote 3.1 is overlap-aware and emits a second speaker for the same instant
+    (overlapped speech); this keeps the dominant (longer) speaker for that region and
+    removes the spurious shorter one. Order is preserved; never raises."""
+    out: list[dict] = []
+    for i, b in enumerate(turns):
+        try:
+            b0, b1 = float(b["t_start"]), float(b["t_end"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        bdur = b1 - b0
+        if bdur <= 0:
+            continue
+        drop = False
+        for j, a in enumerate(turns):
+            if i == j or a.get("speaker") == b.get("speaker"):
+                continue
+            try:
+                a0, a1 = float(a["t_start"]), float(a["t_end"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            ov = min(a1, b1) - max(a0, b0)
+            if ov > 0 and ov >= min_cover * bdur and (a1 - a0) > bdur:
+                drop = True
+                break
+        if not drop:
+            out.append(b)
+    return out
+
+
 class SpeakerDiarizer:
     """pyannote 3.1 diarization pipeline behind the standard lazy/_UNAVAILABLE gate."""
 

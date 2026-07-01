@@ -90,7 +90,10 @@ def run_definition(video_id: UUID, definition: "SegmentDefinition") -> list[dict
         and definition.fields
     ):
         shots = read_shots(video_id, with_vectors=False)
-        raw = _enrich.enrich_segments(raw, definition, shots)
+        # speaker_diarization: enrich transcript/summary from the SPEECH only, scoped
+        # to each turn — never the scoreboard/scene or a whole-video rollup.
+        raw = _enrich.enrich_segments(
+            raw, definition, shots, asr_only=(definition.id == "speaker_diarization"))
     return _apply_definition_time_ranges(raw, definition.time_ranges)
 
 

@@ -375,9 +375,12 @@ async def search_corpus(
     if not video_meta:
         return success_response({"query": body.query, "shots": []})
 
+    s = get_settings()
     shots = _corpus_shots(
         _embed_query(body.query), video_meta, body.top_n, body.group_by,
-        min_score=get_settings().corpus_search_min_score,
+        min_score=s.corpus_search_min_score,
+        exclude_crops=s.shot_search_exclude_tiles,
+        merge_gap_s=s.shot_search_merge_gap_s,
     )
     return success_response({"query": body.query, "group_by": body.group_by, "shots": shots})
 
@@ -416,7 +419,8 @@ async def _user_ready_video_meta(session: AsyncSession, user_id: UUID) -> dict:
 
 
 def _corpus_shots(qvec, video_meta: dict, top_n: int, group_by: str, min_score: float = 0.0,
-                  collection: str | None = None) -> list[dict]:
+                  collection: str | None = None, exclude_crops: bool = False,
+                  merge_gap_s: float | None = None) -> list[dict]:
     """Shared corpus retrieval: query vector (CLIP-L visual, image, OR text-RAG) →
     `collection` hits → formatted shot dicts, with optional dedupe-by-video.
     `collection` defaults to the visual jockey_shots; the text endpoint passes
@@ -424,16 +428,23 @@ def _corpus_shots(qvec, video_meta: dict, top_n: int, group_by: str, min_score: 
 
     `min_score` drops hits below an absolute cosine floor — used by TEXT search so
     a no-match query ("snowboarding" over a tennis/cooking corpus) returns [] rather
-    than the top-N noise. Image search passes 0.0 (its fusion + VLM verify prune)."""
+    than the top-N noise. Image search passes 0.0 (its fusion + VLM verify prune).
+
+    `exclude_crops` skips the image-tiling crop points in jockey_shots (whole-frame
+    points only) — for TEXT→shot search, where the crops duplicate a shot 5× and
+    carry no asr_text. `merge_gap_s` (when set) collapses back-to-back shots of the
+    same video into one clip after retrieval."""
     s = get_settings()
     from qdrant_client.http import models as qm
-    fetch_limit = top_n * 5 if (group_by == "video" or min_score > 0) else top_n
+    merging = merge_gap_s is not None
+    fetch_limit = top_n * 5 if (group_by == "video" or min_score > 0 or merging) else top_n
+    must = [qm.FieldCondition(key="video_id", match=qm.MatchAny(any=list(video_meta.keys())))]
+    if exclude_crops:
+        must.append(qm.IsEmptyCondition(is_empty=qm.PayloadField(key="crop")))
     hits = _qdrant().search(
         collection_name=collection or s.qdrant_collection,
         query_vector=to_vector_list(qvec),
-        query_filter=qm.Filter(must=[
-            qm.FieldCondition(key="video_id", match=qm.MatchAny(any=list(video_meta.keys()))),
-        ]),
+        query_filter=qm.Filter(must=must),
         limit=fetch_limit,
     )
     shots: list[dict] = []
@@ -460,8 +471,12 @@ def _corpus_shots(qvec, video_meta: dict, top_n: int, group_by: str, min_score: 
             "audio_tags": h.payload.get("audio_tags", []),
             "score": float(h.score),
         })
-        if len(shots) >= top_n:
+        # When merging we need the whole candidate pool first; truncate afterwards.
+        if not merging and len(shots) >= top_n:
             break
+    if merging:
+        from main.search.shot_merge import merge_contiguous_shots
+        shots = merge_contiguous_shots(shots, merge_gap_s)[:top_n]
     return shots
 
 
@@ -804,25 +819,33 @@ async def search(
     s = get_settings()
     qvec = _embed_query(body.query)
     from qdrant_client.http import models as qm
+    from main.search.shot_merge import merge_contiguous_shots
+    must = [qm.FieldCondition(key="video_id", match=qm.MatchValue(value=str(video_id)))]
+    if s.shot_search_exclude_tiles:
+        # Rank only whole-frame points; skip the image-tiling crop points that
+        # otherwise duplicate a shot 5× and carry no asr_text.
+        must.append(qm.IsEmptyCondition(is_empty=qm.PayloadField(key="crop")))
     hits = _qdrant().search(
         collection_name=s.qdrant_collection,
         query_vector=to_vector_list(qvec),
-        query_filter=qm.Filter(must=[qm.FieldCondition(key="video_id", match=qm.MatchValue(value=str(video_id)))]),
+        query_filter=qm.Filter(must=must),
         limit=10,
     )
+    shots = [
+        {
+            "idx": h.payload["shot_idx"],
+            "t_start": h.payload["t_start"],
+            "t_end": h.payload["t_end"],
+            "asr_text": h.payload.get("asr_text", ""),
+            "score": float(h.score),
+        }
+        for h in hits
+    ]
+    shots = merge_contiguous_shots(shots, s.shot_search_merge_gap_s)
     return success_response({
         "video_id": str(video_id),
         "query": body.query,
-        "shots": [
-            {
-                "idx": h.payload["shot_idx"],
-                "t_start": h.payload["t_start"],
-                "t_end": h.payload["t_end"],
-                "asr_text": h.payload.get("asr_text", ""),
-                "score": float(h.score),
-            }
-            for h in hits
-        ],
+        "shots": shots,
     })
 
 

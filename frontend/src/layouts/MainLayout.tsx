@@ -8,7 +8,6 @@ import {
   OverviewDefault, OverviewFilled,
   IndexesDefault, IndexesFilled,
   AssetsDefault, AssetsFilled,
-  EntitiesDefault, EntitiesFilled,
   SearchDefault, SearchFilled,
   AnalyzeDefault, AnalyzeFilled,
   SegmentDefault, SegmentFilled,
@@ -131,7 +130,6 @@ function SidebarShell() {
           <SidebarItem to="/overview" icon={<OverviewDefault />} iconActive={<OverviewFilled />} label={t("layout.sidebar.overview")} />
           <SidebarItem to="/indexes" icon={<IndexesDefault />} iconActive={<IndexesFilled />} label={t("layout.sidebar.indexes")} />
           <SidebarItem to="/assets" icon={<AssetsDefault />} iconActive={<AssetsFilled />} label={t("layout.sidebar.assets")} />
-          <SidebarItem to="/entities" icon={<EntitiesDefault />} iconActive={<EntitiesFilled />} label={t("layout.sidebar.entities")} />
         </div>
 
         <div className="mt-6 flex flex-col gap-y-1">

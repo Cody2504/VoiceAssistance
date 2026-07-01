@@ -132,6 +132,14 @@ class Settings(BaseServiceSettings):
     image_tiling_enabled: bool = False
     image_tile_grid: int = 2
 
+    # Text→shot search (jockey_shots CLIP): exclude the image-tiling crop points
+    # (a tiled shot becomes 5 points — 1 whole-frame + 4 crops — and the crops
+    # carry no asr_text, so they surface as duplicate, transcript-less rows).
+    # Small-object text recall is now served by the visual_entities/Qwen path.
+    # Then merge back-to-back shots (same video, gap ≤ N s) into one clip.
+    shot_search_exclude_tiles: bool = True
+    shot_search_merge_gap_s: float = 1.0
+
     # Shot detection backend (ingest segment grid). PROD default: "transnet"
     # (TransNetV2 PyTorch — cleaner cuts on high-motion footage; falls back to
     # PySceneDetect if weights/deps are missing). "scenedetect" forces PySceneDetect.
@@ -183,6 +191,16 @@ class Settings(BaseServiceSettings):
     summary_window_size_sec: float = 120.0                  # 2-min rolling windows
     summary_llm_model: str = "openai/gpt-4o-mini"           # via OpenRouter
     summary_max_segments_per_window: int = 24
+
+    # QA multimodal reads: attach the cited frame to a vision model so on-screen
+    # specifics (temperatures, numbers, labels) are read from pixels, not the
+    # spatially-flattened OCR string. Summaries stay on summary_llm_model.
+    qa_vlm_model: str = "qwen/qwen3-vl-32b-instruct"        # via OpenRouter
+    qa_multimodal_enabled: bool = True
+    # Attach the top-K retrieved segments' frames (not just top-1): in animated
+    # infographics the single top-ranked frame can be a beat before the answer
+    # text finishes rendering, while a slightly lower-ranked frame shows it.
+    qa_multimodal_frames: int = 3
 
     # Analyze prompt: how many segments to retrieve for inline grounding citations
     analyze_top_k_segments: int = 10

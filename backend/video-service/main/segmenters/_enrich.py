@@ -46,22 +46,29 @@ def _shots_in_window(
     return out
 
 
-def _format_context(shots: list[dict[str, Any]]) -> str:
+def _format_context(shots: list[dict[str, Any]], *, asr_only: bool = False) -> str:
     lines: list[str] = []
     for sh in shots:
-        tags = ", ".join(
-            t.get("label", "") for t in (sh.get("audio_tags") or [])[:3] if t.get("label")
-        )
         bits: list[str] = []
-        if sh.get("chunk_caption"):
-            bits.append(f"caption={sh['chunk_caption']}")
-        if sh.get("asr_text"):
-            bits.append(f"asr={sh['asr_text']}")
-        if sh.get("ocr_text"):
-            bits.append(f"ocr={sh['ocr_text']}")
-        if tags:
-            bits.append(f"audio=[{tags}]")
-        body = " | ".join(bits) or "(silent, no caption)"
+        if asr_only:
+            # Transcript-scoped presets (speaker_diarization): the summary must be
+            # of what is SAID, not the scoreboard/scene — so feed ONLY the ASR.
+            if sh.get("asr_text"):
+                bits.append(f"asr={sh['asr_text']}")
+            body = " | ".join(bits) or "(no speech in this window)"
+        else:
+            tags = ", ".join(
+                t.get("label", "") for t in (sh.get("audio_tags") or [])[:3] if t.get("label")
+            )
+            if sh.get("chunk_caption"):
+                bits.append(f"caption={sh['chunk_caption']}")
+            if sh.get("asr_text"):
+                bits.append(f"asr={sh['asr_text']}")
+            if sh.get("ocr_text"):
+                bits.append(f"ocr={sh['ocr_text']}")
+            if tags:
+                bits.append(f"audio=[{tags}]")
+            body = " | ".join(bits) or "(silent, no caption)"
         lines.append(
             f"[shot {sh.get('idx', '?')} {float(sh.get('t_start', 0)):.1f}-"
             f"{float(sh.get('t_end', 0)):.1f}s] {body}"
@@ -107,6 +114,7 @@ def _call_llm(
     definition: SegmentDefinition,
     schema_prompt: str,
     context: str,
+    scope_note: str = "",
 ) -> dict[str, Any] | None:
     try:
         from openai import OpenAI
@@ -117,6 +125,7 @@ def _call_llm(
             f"{definition.description}\n\n"
             f"Fields to fill (omit any you cannot confidently fill from context):\n"
             f"{schema_prompt}\n\n"
+            f"{scope_note}"
             f"Shot context for this segment:\n{context}\n\n"
             "Reply with a single JSON object whose keys exactly match the field names above. "
             "Respect enum constraints. For boolean fields, return true/false (not strings). "
@@ -151,12 +160,16 @@ def enrich_segments(
     shots: list[dict[str, Any]],
     *,
     max_concurrent: int = 8,
+    asr_only: bool = False,
 ) -> list[dict[str, Any]]:
     """Fill missing `definition.fields` in each segment via parallel LLM calls.
 
     Mutates and returns `segments`. Segments where every requested field is
     already populated by the boundary-computing segmenter are skipped (no LLM
     call). If `OPENROUTER_API_KEY` is empty, returns segments unchanged.
+
+    `asr_only` (speaker_diarization): feed the LLM ONLY the segment's speech and
+    tell it to summarize just this segment — never the scoreboard/scene/whole video.
     """
     if not segments or not definition.fields:
         return segments
@@ -173,9 +186,17 @@ def enrich_segments(
         schema_prompt = _schema_prompt(definition.fields, existing)
         if not schema_prompt:
             return seg  # all fields already filled
-        shots_in = _shots_in_window(shots, float(seg["t_start"]), float(seg["t_end"]))
-        ctx = _format_context(shots_in) if shots_in else "(no cached shots in this window)"
-        raw = _call_llm(api_key, model, definition, schema_prompt, ctx) or {}
+        t0, t1 = float(seg["t_start"]), float(seg["t_end"])
+        shots_in = _shots_in_window(shots, t0, t1)
+        ctx = _format_context(shots_in, asr_only=asr_only) if shots_in else "(no cached shots in this window)"
+        scope_note = (
+            f"This is one speaker turn spanning {t0:.1f}-{t1:.1f}s. Base your answer ONLY on "
+            "the speech (asr) above. For any transcript/summary field, summarize ONLY what is "
+            "said in THIS turn, in one concise sentence — do NOT describe the scoreboard, "
+            "score, teams, or scene, and do NOT summarize the whole video. If nothing is said "
+            "in this turn, omit the field.\n\n"
+        ) if asr_only else ""
+        raw = _call_llm(api_key, model, definition, schema_prompt, ctx, scope_note) or {}
         filled = _validate(raw, definition.fields, existing)
         if filled:
             seg["metadata"] = {**existing, **filled}
