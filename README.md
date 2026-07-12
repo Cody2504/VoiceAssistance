@@ -10,13 +10,6 @@ retrieval) and **Pegasus** (video text generation), but runs entirely on
 > **ATTENTION**: This is alpha-stage research/product software and may break or
 > behave unexpectedly.
 
-The project began as a fork of the [Jockey](https://python.langchain.com/v0.1/docs/langgraph/)
-LangGraph video agent (the original reference package still lives under
-[`jockey/`](jockey/)) and grew into a full microservice platform under
-[`backend/`](backend/) with a React frontend under [`frontend/`](frontend/). The
-internal codename **jockey** persists throughout the stack (`jockey-net`,
-`jockey-base:dev`, the `jockey_*` Qdrant collections).
-
 ---
 
 ## What it can do
@@ -261,10 +254,8 @@ video/             sample videos (basketball, cooking, tennis, nature, …)
 
 ## Documentation
 
-- [`docs/video-service-pipeline.md`](docs/video-service-pipeline.md) — offline indexing + online propose reference architecture
 - [`docs/USE_CASE_COVERAGE.md`](docs/USE_CASE_COVERAGE.md) — capability audit vs Twelve Labs Playground use cases
 - [`docs/VAST_DEPLOY.md`](docs/VAST_DEPLOY.md) — GPU-pod deployment
-- [`docs/diagrams/`](docs/diagrams/) — per-module architecture diagrams
 - [`backend/README.md`](backend/README.md) · [`frontend/README.md`](frontend/README.md) · [`backend/billing/README.md`](backend/billing/README.md)
 
 ---
