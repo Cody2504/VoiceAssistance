@@ -84,3 +84,14 @@ checkpoints/
 
 docs/
 video/
+
+# Editor / MCP / build tool caches & local artifacts
+.playwright-mcp/
+.wrangler/
+PLAN.md
+__pycache__/
+.pytest_cache/
+
+# Local E2E config (contains credentials; use scripts/e2e_config.example.json as template) + runtime state
+scripts/e2e_config.json
+scripts/.e2e_state.json
