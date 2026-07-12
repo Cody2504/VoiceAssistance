@@ -1,4 +1,4 @@
-# VoiceAssistant (codename: Jockey)
+# VideoAssistance
 
 A self-hosted, open-source **video understanding platform** — upload a video and
 then search it, ground it ("when does X happen?"), summarize it, ask questions
